@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 444px; height: 199px;
+    background: transparent;
+    overflow: hidden;
+    font-family: 'Segoe UI', sans-serif;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  #panel {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: rgba(8, 6, 14, 0.82);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 6px;
+    padding: 18px 24px;
+    transform: translateY(-220px);
+    opacity: 0;
+    transition: transform 320ms cubic-bezier(0.22,1,0.36,1), opacity 320ms ease;
+  }
+
+  #panel.visible {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  #panel.hiding {
+    transform: translateY(-220px);
+    opacity: 0;
+    transition: transform 600ms cubic-bezier(0.55,0,1,0.45), opacity 600ms ease;
+  }
+
+  .glow {
+    position: absolute;
+    inset: 0;
+    border-radius: 6px;
+    pointer-events: none;
+    opacity: 0.18;
+  }
+
+  .label-dropper {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: rgba(255,255,255,0.45);
+    text-transform: uppercase;
+  }
+
+  .label-rarity {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .label-name {
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+    text-align: center;
+    line-height: 1.2;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.8);
+  }
+
+  .label-tier {
+    font-size: 12px;
+    color: rgba(255,255,255,0.5);
+    letter-spacing: 0.1em;
+  }
+
+  .badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+  }
+</style>
+</head>
+<body>
+<div id="panel">
+  <div class="glow" id="glow"></div>
+  <div class="label-dropper" id="dropper"></div>
+  <div class="badge">
+    <div class="dot" id="dot"></div>
+    <div class="label-rarity" id="rarity"></div>
+  </div>
+  <div class="label-name" id="name"></div>
+  <div class="label-tier" id="tier"></div>
+</div>
+
+<script>
+  const COLORS = {
+    Satanic: '#ca1717',
+    Set:     '#40d040',
+    Heroic:  '#00ffae',
+    Angelic: '#f6f794',
+    Unholy:  '#e04a7a',
+    Blessed: '#a78bfa',
+  };
+
+  const panel = document.getElementById('panel');
+  const glow  = document.getElementById('glow');
+  let hideTimer = null;
+  let queue = [];
+  let busy = false;
+
+  function showDrop(drop) {
+    const color = COLORS[drop.rarity] || '#f0e0b0';
+    glow.style.background = `radial-gradient(ellipse at 50% 0%, ${color}55 0%, transparent 70%)`;
+    panel.style.borderColor = color + '44';
+
+    document.getElementById('dot').style.background = color;
+    document.getElementById('rarity').style.color = color;
+    document.getElementById('rarity').textContent = drop.rarity || '';
+    document.getElementById('name').textContent = drop.name || '?';
+    document.getElementById('tier').textContent = drop.tier ? `T${drop.tier}` : '';
+    document.getElementById('dropper').textContent = drop.charName ? `${drop.charName} encontrou` : '';
+
+    panel.classList.remove('hiding');
+    panel.classList.add('visible');
+
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(() => {
+      panel.classList.remove('visible');
+      panel.classList.add('hiding');
+      setTimeout(() => {
+        busy = false;
+        panel.classList.remove('hiding');
+        if (queue.length > 0) {
+          setTimeout(() => showDrop(queue.shift()), 120);
+        }
+      }, 620);
+    }, 6000);
+  }
+
+  window.addEventListener('message', (e) => {
+    const drop = e.data;
+    if (busy) {
+      if (queue.length < 6) queue.push(drop);
+    } else {
+      busy = true;
+      showDrop(drop);
+    }
+  });
+
+  // Receber do Electron via IPC exposto no preload
+  if (window.__HSoverlay) {
+    window.__HSoverlay.onDrop((drop) => {
+      if (busy) {
+        if (queue.length < 6) queue.push(drop);
+      } else {
+        busy = true;
+        showDrop(drop);
+      }
+    });
+  }
+</script>
+</body>
+</html>

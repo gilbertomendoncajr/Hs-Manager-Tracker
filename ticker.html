@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 444px;
+    background: transparent;
+    overflow: hidden;
+    font-family: 'Segoe UI', sans-serif;
+    -webkit-user-select: none;
+    user-select: none;
+    padding: 4px 0;
+  }
+
+  .entry {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 12px;
+    background: rgba(8, 6, 14, 0.78);
+    border-left: 3px solid transparent;
+    border-radius: 0 4px 4px 0;
+    margin-bottom: 3px;
+    animation: slideIn 200ms ease forwards;
+    transition: opacity 600ms ease;
+  }
+
+  .entry.fading { opacity: 0; }
+
+  @keyframes slideIn {
+    from { transform: translateX(-30px); opacity: 0; }
+    to   { transform: translateX(0);     opacity: 1; }
+  }
+
+  .badge {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    min-width: 56px;
+  }
+
+  .iname {
+    font-size: 13px;
+    color: #e8e0d0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+  }
+
+  .tier {
+    font-size: 11px;
+    color: rgba(255,255,255,0.38);
+    white-space: nowrap;
+  }
+
+  .dropper {
+    font-size: 10px;
+    color: rgba(255,255,255,0.35);
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+<div id="list"></div>
+
+<script>
+  const COLORS = {
+    Satanic: '#ca1717',
+    Set:     '#40d040',
+    Heroic:  '#00ffae',
+    Angelic: '#f6f794',
+    Unholy:  '#e04a7a',
+    Blessed: '#a78bfa',
+  };
+
+  const MAX = 5;
+  const TTL = 8000;
+  const list = document.getElementById('list');
+  const entries = [];
+
+  function addDrop(drop) {
+    const color = COLORS[drop.rarity] || '#f0e0b0';
+    const div = document.createElement('div');
+    div.className = 'entry';
+    div.style.borderLeftColor = color;
+    div.innerHTML = `
+      <span class="badge" style="color:${color}">${drop.rarity || ''}</span>
+      <span class="iname">${drop.name || '?'}</span>
+      ${drop.tier ? `<span class="tier">T${drop.tier}</span>` : ''}
+      ${drop.charName ? `<span class="dropper">${drop.charName}</span>` : ''}
+    `;
+    list.prepend(div);
+
+    const entry = { div, timer: null };
+    entries.unshift(entry);
+
+    // Limitar a MAX entradas
+    while (entries.length > MAX) {
+      const old = entries.pop();
+      clearTimeout(old.timer);
+      old.div.remove();
+    }
+
+    // TTL: fade out e remover
+    entry.timer = setTimeout(() => {
+      div.classList.add('fading');
+      setTimeout(() => {
+        div.remove();
+        const i = entries.indexOf(entry);
+        if (i >= 0) entries.splice(i, 1);
+      }, 620);
+    }, TTL);
+  }
+
+  if (window.__HSoverlay) {
+    window.__HSoverlay.onDrop((drop) => addDrop(drop));
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+node_modules/
+dist/
+dist-installer/
+build/
+npcap-installer.exe
+sniffer_debug.txt
+*.pyc
+__pycache__/
+*.spec

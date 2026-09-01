@@ -1,0 +1,52 @@
+{
+  "name": "hs-drop-logger",
+  "version": "1.0.0",
+  "description": "Auto-logger de drops para HS Manager",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win --x64"
+  },
+  "build": {
+    "appId": "com.bloodpact.hs-drop-logger",
+    "productName": "HS Drop Logger",
+    "directories": {
+      "output": "dist-installer"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "preload-overlay.js",
+      "index.html",
+      "flourish.html",
+      "ticker.html",
+      "renderer.js",
+      "package.json",
+      "node_modules/**/*"
+    ],
+    "extraResources": [
+      { "from": "dist/sniffer.exe", "to": "sniffer.exe" },
+      { "from": "npcap-installer.exe", "to": "npcap-installer.exe" }
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "HS Drop Logger",
+      "include": "nsis-custom.nsh"
+    }
+  },
+  "dependencies": {
+    "chokidar": "^3.6.0",
+    "electron-store": "^8.2.0"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^26.15.3"
+  }
+}
