@@ -11,10 +11,15 @@ const statusDot     = document.getElementById('statusDot')
 const statusText    = document.getElementById('statusText')
 const logList       = document.getElementById('logList')
 const logEmpty      = document.getElementById('logEmpty')
-const watchItems    = document.getElementById('watchlistItems')
-const watchInput    = document.getElementById('watchInput')
-const btnAddWatch   = document.getElementById('btnAddWatch')
 const btnClearLog   = document.getElementById('btnClearLog')
+const statDrops     = document.getElementById('statDrops')
+const statRares     = document.getElementById('statRares')
+const dropCount     = document.getElementById('dropCount')
+const rareCount     = document.getElementById('rareCount')
+
+const RARE_RARITIES = new Set(['Satanic', 'Angelic', 'Unholy', 'Heroic', 'Blessed', 'Set'])
+let sessionDrops = 0
+let sessionRares = 0
 
 let isMonitoring = false
 
@@ -28,60 +33,68 @@ function fmtTime(ts) {
   return new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
 
-function addLogEntry({ type, message, ts }) {
+const RARITY_COLORS = {
+  Satanic: '#e03030', Set: '#3ec83e', Heroic: '#00d896',
+  Angelic: '#f0e040', Unholy: '#d04888', Blessed: '#9b7af0',
+}
+
+function rarityFromMsg(message) {
+  for (const r of Object.keys(RARITY_COLORS)) {
+    if (message.includes(r)) return r
+  }
+  return null
+}
+
+function addLogEntry({ type, message, item, ts }) {
   logEmpty.style.display = 'none'
+
+  if (type === 'detect') {
+    sessionDrops++
+    dropCount.textContent = sessionDrops
+    const rarity = item?.rarity || rarityFromMsg(message)
+    if (rarity && RARE_RARITIES.has(rarity)) {
+      sessionRares++
+      rareCount.textContent = sessionRares
+    }
+  }
+
+  const rarity = item?.rarity || rarityFromMsg(message)
+  const stripeColor = (type === 'detect' && rarity) ? RARITY_COLORS[rarity] : ''
+
   const el = document.createElement('div')
   el.className = `log-entry ${type}`
-  el.innerHTML = `<span class="log-time">${fmtTime(ts)}</span><span class="log-msg">${message}</span>`
+  el.innerHTML = `
+    <div class="log-stripe" style="background:${stripeColor || 'transparent'}"></div>
+    <div class="log-inner">
+      <span class="log-time">${fmtTime(ts)}</span>
+      <span class="log-msg">${message}</span>
+    </div>
+  `
   logList.insertBefore(el, logList.firstChild)
 }
 
 function setMonitorUI(watching) {
   isMonitoring = watching
   if (watching) {
-    btnToggle.textContent = '■ Pausar'
+    btnToggle.textContent = '■ PAUSAR'
     btnToggle.className = 'stop'
-    statusDot.className = 'status-dot watching'
+    statusDot.className = 'stat watching'
     statusText.textContent = 'Monitorando'
+    statDrops.style.display = 'flex'
+    statRares.style.display = 'flex'
   } else {
-    btnToggle.textContent = '▶ Iniciar'
+    btnToggle.textContent = '▶ INICIAR'
     btnToggle.className = 'start'
-    statusDot.className = 'status-dot idle'
+    statusDot.className = 'stat idle'
     statusText.textContent = 'Aguardando'
+    sessionDrops = 0
+    sessionRares = 0
+    dropCount.textContent = '0'
+    rareCount.textContent = '0'
+    statDrops.style.display = 'none'
+    statRares.style.display = 'none'
   }
 }
-
-// ── Watchlist ────────────────────────────────────────────────────────────────
-async function renderWatchlist() {
-  const list = await window.api.getWatchlist()
-  watchItems.innerHTML = ''
-  list.forEach((entry) => {
-    const chip = document.createElement('div')
-    chip.className = 'watch-chip'
-    chip.innerHTML = `<span>${entry}</span><button class="remove" data-entry="${entry}" title="Remover">×</button>`
-    watchItems.appendChild(chip)
-  })
-  watchItems.querySelectorAll('.remove').forEach((btn) => {
-    btn.addEventListener('click', async () => {
-      const entry = btn.dataset.entry
-      const current = await window.api.getWatchlist()
-      await window.api.setWatchlist(current.filter((e) => e !== entry))
-      renderWatchlist()
-    })
-  })
-}
-
-btnAddWatch.addEventListener('click', async () => {
-  const val = watchInput.value.trim()
-  if (!val) return
-  const current = await window.api.getWatchlist()
-  if (current.includes(val)) { watchInput.value = ''; return }
-  await window.api.setWatchlist([...current, val])
-  watchInput.value = ''
-  renderWatchlist()
-})
-
-watchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') btnAddWatch.click() })
 
 // ── Ligas ────────────────────────────────────────────────────────────────────
 async function loadLeagues() {
@@ -119,7 +132,6 @@ async function initAuth() {
   userBadge.style.display = 'flex'
   showScreen('app')
   await loadLeagues()
-  await renderWatchlist()
   const state = await window.api.getMonitorState()
   setMonitorUI(state.isMonitoring)
 }
@@ -167,12 +179,49 @@ btnToggle.addEventListener('click', async () => {
 // ── Eventos do main ──────────────────────────────────────────────────────────
 window.api.onLog((entry) => addLogEntry(entry))
 window.api.onStateChange((state) => setMonitorUI(state.isMonitoring))
+window.api.onSessionExpired(() => {
+  userBadge.style.display = 'none'
+  setMonitorUI(false)
+  showScreen('login')
+  btnLogin.textContent = 'Entrar com Discord'
+  btnLogin.disabled = false
+})
 
 btnClearLog.addEventListener('click', () => {
   logList.innerHTML = ''
   logEmpty.style.display = 'flex'
   logList.appendChild(logEmpty)
+  sessionDrops = 0; sessionRares = 0
+  dropCount.textContent = '0'
+  rareCount.textContent = '0'
 })
+
+// ── Auto-update ──────────────────────────────────────────────────────────────
+const updateBanner      = document.getElementById('updateBanner')
+const updateText        = document.getElementById('updateText')
+const updateProgress    = document.getElementById('updateProgress')
+const updateBar         = document.getElementById('updateBar')
+const btnInstallUpdate  = document.getElementById('btnInstallUpdate')
+
+window.api.onUpdateAvailable((info) => {
+  updateBanner.style.display = 'flex'
+  updateText.textContent = `🔄 Nova versão ${info.version} disponível — baixando...`
+  updateProgress.style.display = 'block'
+})
+
+window.api.onUpdateProgress((data) => {
+  updateBar.style.width = `${data.percent}%`
+  updateText.textContent = `🔄 Baixando atualização... ${data.percent}%`
+})
+
+window.api.onUpdateReady(() => {
+  updateBar.style.width = '100%'
+  updateText.textContent = '✅ Atualização pronta!'
+  updateProgress.style.display = 'none'
+  btnInstallUpdate.style.display = 'block'
+})
+
+btnInstallUpdate.addEventListener('click', () => window.api.installUpdate())
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 initAuth()

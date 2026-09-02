@@ -1,4 +1,5 @@
 const { app, BrowserWindow, ipcMain } = require('electron')
+const { autoUpdater } = require('electron-updater')
 const path = require('path')
 const { spawn } = require('child_process')
 const readline = require('readline')
@@ -11,7 +12,6 @@ async function getStore() {
     store = new Store({
       defaults: {
         sessionToken: null,
-        watchlist: ['Angelic', 'Unholy', 'Satanic', 'Set'],
         selectedLeagueId: null,
       },
     })
@@ -19,7 +19,7 @@ async function getStore() {
   return store
 }
 
-const BASE_URL = 'http://localhost:3002'
+const BASE_URL = 'http://109.199.115.128'
 
 // Em produção usa sniffer.exe compilado; em dev usa Python diretamente
 const isPackaged = app.isPackaged
@@ -76,8 +76,8 @@ function createOverlays() {
   flourishWin.setIgnoreMouseEvents(true)
 
   tickerWin = new BrowserWindow({
-    width: 444, height: 170,
-    x: Math.round(width / 2 - 222), y: 225,
+    width: 578, height: 221,
+    x: Math.round(width / 2 - 289), y: 20,
     transparent: true, frame: false,
     alwaysOnTop: true, skipTaskbar: true,
     resizable: false, focusable: false,
@@ -88,11 +88,34 @@ function createOverlays() {
 }
 
 function sendOverlay(drop) {
-  if (flourishWin && !flourishWin.isDestroyed()) flourishWin.webContents.send('overlay:drop', drop)
-  if (tickerWin  && !tickerWin.isDestroyed())   tickerWin.webContents.send('overlay:drop', drop)
+  if (tickerWin && !tickerWin.isDestroyed()) tickerWin.webContents.send('overlay:drop', drop)
 }
 
-app.whenReady().then(() => { createMainWindow(); createOverlays() })
+app.whenReady().then(() => {
+  createMainWindow()
+  createOverlays()
+
+  if (app.isPackaged) {
+    autoUpdater.checkForUpdates()
+  }
+})
+
+// ── Auto-updater ────────────────────────────────────────────────────────────
+autoUpdater.on('update-available', (info) => {
+  if (mainWin) mainWin.webContents.send('update:available', { version: info.version })
+})
+
+autoUpdater.on('download-progress', (prog) => {
+  if (mainWin) mainWin.webContents.send('update:progress', { percent: Math.round(prog.percent) })
+})
+
+autoUpdater.on('update-downloaded', () => {
+  if (mainWin) mainWin.webContents.send('update:ready')
+})
+
+ipcMain.handle('update:install', () => {
+  autoUpdater.quitAndInstall()
+})
 app.on('window-all-closed', () => {
   stopMonitor()
   if (flourishWin && !flourishWin.isDestroyed()) flourishWin.destroy()
@@ -112,6 +135,13 @@ async function apiFetch(urlPath, options = {}) {
       ...(options.headers || {}),
     },
   })
+
+  // Sessão expirou — avisar o usuário para relogar
+  if (res.status === 401) {
+    sendLog('error', '⚠ Sessão expirada. Faça login novamente.')
+    if (mainWin) mainWin.webContents.send('auth:sessionExpired')
+  }
+
   return res
 }
 
@@ -130,19 +160,22 @@ ipcMain.handle('auth:login', () => {
       width: 900,
       height: 700,
       title: 'Login — HS Manager',
-      webPreferences: { partition: 'persist:hs-auth' },
+      webPreferences: { partition: `temp:hs-auth-${Date.now()}` },
     })
 
     authWin.loadURL(`${BASE_URL}/api/auth/signin/discord`)
 
     const tryExtract = async (url) => {
+      console.log('[auth] navigated:', url)
       if (!url.startsWith(BASE_URL)) return
       if (url.includes('/api/auth')) return
       const cookies = await authWin.webContents.session.cookies.get({
         url: BASE_URL,
         name: 'next-auth.session-token',
       })
+      console.log('[auth] cookies found:', cookies.length)
       if (cookies.length > 0) {
+        console.log('[auth] saving token:', cookies[0].value.slice(0, 30) + '...')
         const s = await getStore()
         s.set('sessionToken', cookies[0].value)
         authWin.close()
@@ -159,6 +192,9 @@ ipcMain.handle('auth:login', () => {
 ipcMain.handle('auth:logout', async () => {
   const s = await getStore()
   s.set('sessionToken', null)
+  // Limpar cookies da partição para forçar login limpo na próxima vez
+  const { session: electronSession } = require('electron')
+  await electronSession.fromPartition('persist:hs-auth').clearStorageData()
   stopMonitor()
 })
 
@@ -192,9 +228,7 @@ ipcMain.handle('site:getLeagues', async () => {
   } catch { return [] }
 })
 
-// ── Watchlist ───────────────────────────────────────────────────────────────
-ipcMain.handle('watchlist:get', async () => { const s = await getStore(); return s.get('watchlist') })
-ipcMain.handle('watchlist:set', async (_e, list) => { const s = await getStore(); s.set('watchlist', list) })
+const LOOT_FILTER = ['Heroic', 'Satanic', 'Angelic', 'Unholy']
 
 // ── Post drop para o site ───────────────────────────────────────────────────
 async function postDrop(leagueId, drop) {
@@ -272,7 +306,10 @@ async function connectSSE(leagueId) {
             tier: evt.tier,
             charName: evt.charName ?? evt.dropper?.username ?? null,
           }
-          sendLog('detect', `🌐 ${evt.dropper?.username ?? 'Alguém'} dropou: ${drop.name} (${drop.rarity || '?'})`, drop)
+          const who = evt.charName && evt.dropper?.username
+            ? `${evt.charName} (${evt.dropper.username})`
+            : (evt.charName ?? evt.dropper?.username ?? 'Alguém')
+          sendLog('detect', `🌐 ${who} dropou: ${drop.name} (${drop.rarity || '?'})`, drop)
           sendOverlay(drop)
         } catch { /* linha malformada */ }
       }
@@ -280,6 +317,10 @@ async function connectSSE(leagueId) {
   } catch (err) {
     if (err?.name !== 'AbortError') {
       sendLog('info', `[SSE] desconectado — ${err?.message ?? err}`)
+      // Auto-reconectar após 5 segundos se não foi desconexão intencional
+      if (!sseAbort?.signal.aborted) {
+        setTimeout(() => connectSSE(leagueId), 5000)
+      }
     }
   }
 }
@@ -354,10 +395,7 @@ ipcMain.handle('monitor:start', async (_e, leagueId) => {
     const uid = parseInt((drop.fp || '').split('-')[1] || '0', 10)
     if (uid && charMap[uid]) drop.charName = charMap[uid]
 
-    // Filtrar pela watchlist
-    const s = await getStore()
-    const watchlist = s.get('watchlist') ?? []
-    const matches = watchlist.some((w) => {
+    const matches = LOOT_FILTER.some((w) => {
       const wl = w.toLowerCase()
       return (
         drop.rarity?.toLowerCase() === wl ||

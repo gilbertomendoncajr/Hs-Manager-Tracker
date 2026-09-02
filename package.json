@@ -1,6 +1,6 @@
 {
   "name": "hs-drop-logger",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Auto-logger de drops para HS Manager",
   "main": "main.js",
   "scripts": {
@@ -25,12 +25,23 @@
       "node_modules/**/*"
     ],
     "extraResources": [
-      { "from": "dist/sniffer.exe", "to": "sniffer.exe" },
-      { "from": "npcap-installer.exe", "to": "npcap-installer.exe" }
+      {
+        "from": "dist/sniffer.exe",
+        "to": "sniffer.exe"
+      },
+      {
+        "from": "npcap-installer.exe",
+        "to": "npcap-installer.exe"
+      }
     ],
     "win": {
       "target": [
-        { "target": "nsis", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
     },
     "nsis": {
@@ -39,11 +50,17 @@
       "createDesktopShortcut": true,
       "shortcutName": "HS Drop Logger",
       "include": "nsis-custom.nsh"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "gilbertomendoncajr",
+      "repo": "Hs-Manager-Tracker"
     }
   },
   "dependencies": {
     "chokidar": "^3.6.0",
-    "electron-store": "^8.2.0"
+    "electron-store": "^8.2.0",
+    "electron-updater": "^6.8.9"
   },
   "devDependencies": {
     "electron": "^31.0.0",

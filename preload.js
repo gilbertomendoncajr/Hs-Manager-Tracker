@@ -14,11 +14,14 @@ contextBridge.exposeInMainWorld('api', {
   stopMonitor: () => ipcRenderer.invoke('monitor:stop'),
   getMonitorState: () => ipcRenderer.invoke('monitor:getState'),
 
-  // Watchlist
-  getWatchlist: () => ipcRenderer.invoke('watchlist:get'),
-  setWatchlist: (list) => ipcRenderer.invoke('watchlist:set', list),
-
   // Eventos do main → renderer
   onLog: (cb) => ipcRenderer.on('log:entry', (_e, entry) => cb(entry)),
   onStateChange: (cb) => ipcRenderer.on('monitor:stateChange', (_e, state) => cb(state)),
+  onSessionExpired: (cb) => ipcRenderer.on('auth:sessionExpired', () => cb()),
+
+  // Auto-update
+  onUpdateAvailable: (cb) => ipcRenderer.on('update:available', (_e, info) => cb(info)),
+  onUpdateProgress: (cb) => ipcRenderer.on('update:progress', (_e, data) => cb(data)),
+  onUpdateReady: (cb) => ipcRenderer.on('update:ready', () => cb()),
+  installUpdate: () => ipcRenderer.invoke('update:install'),
 })
