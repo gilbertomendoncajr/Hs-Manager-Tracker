@@ -1,13 +1,15 @@
 """
-hs-drop-logger sniffer — port direto da lógica do hs-tracker (Rust):
+hs-drop-logger sniffer — porta da lógica do hs-tracker (Rust):
 https://github.com/Parazeya/hs-tracker
 
 parser.rs  → extract_messages, item_sources, lies_on_floor, belongs_to_player
 stats.rs   → RARITIES, seen_fingerprints, told, get_identity
 sniffer.rs → filtro BPF dinâmico, deduplicação de pacotes
+
+Reassembly: carry mechanism do hs-tracker — cada byte processado exatamente uma vez.
 """
 
-import json, sys, re, base64, struct, hashlib, time
+import json, sys, re, base64, hashlib, time
 from collections import defaultdict
 from datetime import datetime
 
@@ -33,7 +35,7 @@ ITEM_DB: dict[tuple[int,int], list[tuple[str,str]]] = defaultdict(list)
 RARITY_BY_NAME: dict[str,str] = {}
 
 def _load_db():
-    import os, sys
+    import os
     if getattr(sys, "frozen", False):
         base = sys._MEIPASS
     else:
@@ -58,17 +60,6 @@ def _load_db():
 
 _load_db()
 
-# ─── servidores HS ───────────────────────────────────────────────────────────
-
-HS_IPS = {
-    "172.105.246.129",  # REST API  panicartstudios.com
-    "172.232.36.127",   # game server
-    "194.195.242.141",  # game server regional
-    "195.197.146.222",  # game server regional
-    "139.177.176.8",    # game server
-    "104.18.124.108",   # Cloudflare/CDN
-}
-
 # ─── campos (parser.rs constantes) ──────────────────────────────────────────
 
 MARKET_FIELDS      = {"marketId","market_id","market_tokens","marketTokens",
@@ -79,7 +70,6 @@ ITEM_NAMED_SIG     = {"seed","itemId","item_id","gid"}
 ITEM_RARITY        = ["rarity","itemRarity","item_rarity","d"]
 ITEM_DATA          = ["itemData","item_data"]
 PICKUP             = ["pickup_add_data","pickupAddData"]
-CLIENT_ENVELOPE    = {"identifier","checksum"}
 OWNER              = ["gd","gid"]
 RELIC_TYPE         = 16
 
@@ -131,10 +121,6 @@ def _obj_items(v) -> list:
 # ─── item_sources (parser.rs) ────────────────────────────────────────────────
 
 def item_sources(d: dict) -> list[tuple]:
-    """
-    Retorna [(fingerprint|None, item_dict, ground: bool)]
-    Porta direta de item_sources() do parser.rs do hs-tracker.
-    """
     if not isinstance(d, dict): return []
     if MARKET_FIELDS & d.keys(): return []
 
@@ -214,34 +200,121 @@ def _identity(item: dict, fingerprint) -> str:
     if h:  return f"h:{h}"
     if fp: return str(fp)
     if seed or item_type or item_id: return f"g:{seed}:{item_type}:{item_id}"
-    return ""
+    return "c:" + hashlib.md5(json.dumps(item, sort_keys=True).encode()).hexdigest()[:16]
 
 def _dedup_ok(item: dict, fingerprint, ground: bool) -> bool:
     global _seen_fp, _told
     ident = _identity(item, fingerprint)
-    if ident:
-        sighting = f"{'d' if ground else 'p'}:{ident}"
-        if sighting in _seen_fp:
-            log_debug(f"  [dedup sighting] {sighting}")
-            return False
-        _seen_fp.add(sighting)
-        if ident in _told:
-            log_debug(f"  [dedup told] {ident}")
-            return False
-        _told.add(ident)
+    sighting = f"{'d' if ground else 'p'}:{ident}"
+    if sighting in _seen_fp:
+        log_debug(f"  [dedup sighting] {sighting}")
+        return False
+    _seen_fp.add(sighting)
+    if ident in _told:
+        log_debug(f"  [dedup told] {ident}")
+        return False
+    _told.add(ident)
     if len(_seen_fp) > 20000:
         _seen_fp.clear(); _told.clear()
     return True
 
-# ─── extração de JSON do payload TCP (parser.rs extract_messages) ────────────
+# ─── FlowBuffer — carry mechanism (parser.rs Reassembler) ───────────────────
+
+class FlowBuffer:
+    """
+    Porta do Reassembler do hs-tracker:
+    - Acumula payloads TCP por fluxo
+    - drain() extrai JSONs completos e mantém carry (JSON incompleto no fim)
+    - Cada byte processado exatamente uma vez → sem ghost detections
+    """
+    SCAN_BUDGET = 5_000_000  # anti-quadrático para dados corrompidos
+    CARRY_MAX   = 64 * 1024  # descarta carry > 64KB (mensagem perdida)
+
+    def __init__(self):
+        self.buf: bytes = b""
+
+    def push(self, data: bytes):
+        self.buf += data
+        if len(self.buf) > 512 * 1024:
+            self.buf = self.buf[-256 * 1024:]
+
+    def drain(self) -> list[dict]:
+        """Extrai todos os JSONs completos; deixa carry no buffer."""
+        msgs: list[dict] = []
+        buf = self.buf
+        pos = 0
+        carry_start: int | None = None
+        scanned = 0
+
+        while pos < len(buf) and scanned < self.SCAN_BUDGET:
+            # Avança até o próximo '{'
+            brace = buf.find(b'{', pos)
+            if brace == -1:
+                pos = len(buf)
+                break
+
+            scanned += brace - pos
+            pos = brace
+
+            # Balanceamento de chaves
+            depth = 0; in_str = False; esc = False
+            j = pos
+            complete = False
+
+            while j < len(buf) and scanned < self.SCAN_BUDGET:
+                c = buf[j]
+                scanned += 1
+                if esc:
+                    esc = False; j += 1; continue
+                if c == ord('\\') and in_str:
+                    esc = True; j += 1; continue
+                if c == ord('"'):
+                    in_str = not in_str; j += 1; continue
+                if in_str:
+                    j += 1; continue
+                if c == ord('{'):
+                    depth += 1
+                elif c == ord('}'):
+                    depth -= 1
+                    if depth == 0:
+                        try:
+                            obj = json.loads(buf[pos:j+1])
+                            if isinstance(obj, dict):
+                                msgs.append(obj)
+                        except:
+                            pass
+                        pos = j + 1
+                        complete = True
+                        break
+                j += 1
+
+            if not complete:
+                # JSON incompleto — este é o carry
+                carry_start = pos
+                break
+
+        # Atualiza buffer: mantém carry ou descarta tudo processado
+        if carry_start is not None:
+            self.buf = buf[carry_start:]
+        else:
+            self.buf = b""
+
+        # Carry muito grande = dados corrompidos, descarta
+        if len(self.buf) > self.CARRY_MAX:
+            self.buf = b""
+
+        return msgs
+
+# ─── extração de formatos alternativos (base64, query string) ───────────────
 
 def _b64_jsons(seg: bytes) -> list[dict]:
     out = []
     for m in re.finditer(rb"[A-Za-z0-9+/]{60,}={0,2}", seg):
         try:
             raw = base64.b64decode(m.group() + b"==")
-            for obj in _extract_json_values(raw):
-                out.append(obj)
+            fb = FlowBuffer()
+            fb.push(raw)
+            out.extend(fb.drain())
         except: pass
     return out
 
@@ -255,61 +328,6 @@ def _query_payload(seg: bytes) -> list[dict]:
                 pairs[k.strip()] = v.strip()
         return [pairs] if pairs else []
     except: return []
-
-def _extract_json_values(buf: bytes) -> list[dict]:
-    """Extrai todos os objetos JSON completos de buf usando balanceamento de chaves."""
-    out = []
-    i = 0
-    while i < len(buf):
-        if buf[i] == ord("{"):
-            depth = 0; in_str = False; esc = False
-            for j in range(i, len(buf)):
-                c = buf[j]
-                if esc:           esc = False; continue
-                if c == ord("\\") and in_str: esc = True; continue
-                if c == ord('"'): in_str = not in_str; continue
-                if in_str:        continue
-                if c == ord("{"): depth += 1
-                elif c == ord("}"):
-                    depth -= 1
-                    if depth == 0:
-                        try:
-                            obj = json.loads(buf[i:j+1])
-                            if isinstance(obj, dict): out.append(obj)
-                        except: pass
-                        i = j + 1
-                        break
-            else: break
-        else: i += 1
-    return out
-
-def extract_messages(buf: bytes) -> list[dict]:
-    """Porta de extract_messages() do parser.rs."""
-    out = _extract_json_values(buf)
-    for seg in re.split(rb"[\x00-\x1f\x7f]", buf):
-        if len(seg) > 100:
-            out.extend(_b64_jsons(seg))
-        if b"=" in seg and b"&" in seg:
-            out.extend(_query_payload(seg))
-    return out
-
-# ─── TCP stream buffer (reassembly simplificado) ─────────────────────────────
-
-_streams: dict[tuple, bytes] = defaultdict(bytes)
-_MAX_STREAM = 256 * 1024  # 256 KB (parser.rs MAX_SPAN)
-
-# deduplicação de pacotes (sniffer.rs fresh_messages — janela 10s)
-_pkt_hashes: list[tuple[int, float]] = []
-
-def _is_fresh(payload: bytes) -> bool:
-    global _pkt_hashes
-    h = hash(payload)
-    now = time.time()
-    _pkt_hashes = [(hh, t) for hh, t in _pkt_hashes if now - t < 10]
-    if any(hh == h for hh, _ in _pkt_hashes):
-        return False
-    _pkt_hashes.append((h, now))
-    return True
 
 # ─── rarity + nome ───────────────────────────────────────────────────────────
 
@@ -328,8 +346,6 @@ def _get_rarity(item: dict) -> str | None:
 def _get_name(item: dict, fingerprint) -> str | None:
     name = _f(item, ["name","itemName","item_name","label"])
     if name: return str(name)
-    # fallback: chave fingerprint formato "99-account-ts-SLOT" → slot=h3
-    # b = base item index (h1 no binário, coincide com tier do item)
     fp = str(fingerprint or "")
     slot_str = fp.rsplit("-", 1)[-1] if "-" in fp else ""
     b_val = _i(item, ["b"])
@@ -345,6 +361,8 @@ def _rarity_from_name(name: str | None) -> str | None:
     return RARITY_BY_NAME.get(name.lower())
 
 # ─── processamento ───────────────────────────────────────────────────────────
+
+_TIER_LETTERS = {1:"D", 2:"C", 3:"B", 4:"A", 5:"S", 6:"SS"}
 
 def emit(drop: dict):
     print(json.dumps(drop, ensure_ascii=False), flush=True)
@@ -366,7 +384,13 @@ def process_messages(messages: list[dict], src_ip: str):
                 b_val = _i(item, ["b"])
                 log_debug(f"  sem raridade: fp={fp} name={name} b={b_val} item={json.dumps(item)[:200]}")
                 continue
-            log_debug(f"  item detectado: fp={fp} name={name} rarity={rarity} fields={json.dumps(item)[:200]}")
+            log_debug(f"  item detectado: fp={fp} name={name} rarity={rarity}")
+
+            if ground and _my_uid is not None:
+                fp_acc = _fp_account(fp)
+                if fp_acc is not None and fp_acc != _my_uid:
+                    log_debug(f"  [skip foreign drop] fp_account={fp_acc} my_uid={_my_uid}")
+                    continue
 
             if rarity not in JOURNAL_RARITIES:
                 log_debug(f"  raridade comum ignorada: {rarity} name={name}")
@@ -375,7 +399,8 @@ def process_messages(messages: list[dict], src_ip: str):
             if not _dedup_ok(item, fp, ground):
                 continue
 
-            tier = _i(item, ["tier","n","b"])
+            tier_raw = _i(item, ["tier","n"])
+            tier = _TIER_LETTERS.get(tier_raw, "") if tier_raw and 1 <= tier_raw <= 6 else ""
             drop = {
                 "name":   name or "?",
                 "rarity": rarity,
@@ -384,27 +409,36 @@ def process_messages(messages: list[dict], src_ip: str):
                 "ts_ms":  int(time.time() * 1000),
                 "fp":     str(fp or ""),
             }
-            log_debug(f"  DROP: {name} [{rarity}] T{tier} ground={ground}")
+            log_debug(f"  DROP: {name} [{rarity}] tier={tier} ground={ground}")
             emit(drop)
 
 _emitted_logins: set = set()
+_my_uid: int | None = None
 
-def process_buf(buf: bytes, src_ip: str):
-    if not _is_fresh(buf): return
-    msgs = extract_messages(buf)
-    if not msgs: return
+def _fp_account(fp) -> int | None:
+    if not fp: return None
+    parts = str(fp).split("-")
+    if len(parts) >= 2:
+        try: return int(parts[1])
+        except: return None
+    return None
 
+def process_all(msgs: list[dict], src_ip: str):
+    global _my_uid
     for msg in msgs:
-        # Detectar packet de login: tem "name" + "accountUID" (campo exclusivo do login)
         if "accountUID" in msg and "name" in msg:
             uid = int(msg["accountUID"])
             char = str(msg["name"]).strip()
             if char and uid and uid not in _emitted_logins:
                 _emitted_logins.add(uid)
+                _my_uid = uid
                 print(json.dumps({"type": "player_login", "charName": char, "accountUID": uid}), flush=True)
                 log_debug(f"PLAYER_LOGIN: {char} uid={uid}")
-
     process_messages(msgs, src_ip)
+
+# ─── TCP flows (um FlowBuffer por fluxo) ────────────────────────────────────
+
+_flows: dict[tuple, FlowBuffer] = defaultdict(FlowBuffer)
 
 # ─── main ────────────────────────────────────────────────────────────────────
 
@@ -416,47 +450,37 @@ def main():
         print(json.dumps({"error": "scapy nao instalado"}), flush=True)
         sys.exit(1)
 
-    log_debug("=== Sniffer iniciado (hs-tracker port) ===")
+    log_debug("=== Sniffer iniciado ===")
     log_debug(f"ITEM_DB: {sum(len(v) for v in ITEM_DB.values())} itens, "
               f"RARITY_BY_NAME: {len(RARITY_BY_NAME)} nomes")
-
-    filter_str = (
-        "tcp and len > 30 and ("
-        "net 104.18.124.0/24 or "
-        "net 139.177.176.0/24 or "
-        "host 172.105.246.129 or "
-        "host 172.232.36.127 or "
-        "net 194.195.242.0/24 or "
-        "net 195.197.146.0/24)"
-    )
 
     def on_packet(pkt):
         try:
             if not pkt.haslayer(IP) or not pkt.haslayer(TCP): return
-            src = pkt[IP].src; dst = pkt[IP].dst
-            if src not in HS_IPS and dst not in HS_IPS: return
-
             payload = bytes(pkt[TCP].payload)
             if len(payload) < 20: return
 
-            sp = pkt[TCP].sport; dp = pkt[TCP].dport
+            src = pkt[IP].src; sp = pkt[TCP].sport
+            dst = pkt[IP].dst; dp = pkt[TCP].dport
             key = (src, sp, dst, dp)
 
-            # Tentar payload isolado primeiro
-            process_buf(payload, src)
+            # FlowBuffer: reassembly com carry mechanism
+            _flows[key].push(payload)
+            msgs = _flows[key].drain()
 
-            # Acumular no stream buffer para fragmentos
-            _streams[key] += payload
-            if len(_streams[key]) > _MAX_STREAM:
-                _streams[key] = _streams[key][-_MAX_STREAM:]
-            if len(_streams[key]) > len(payload):
-                process_buf(_streams[key], src)
+            # Formatos alternativos no payload bruto (base64, query string)
+            msgs.extend(_b64_jsons(payload))
+            if b"=" in payload and b"&" in payload:
+                msgs.extend(_query_payload(payload))
+
+            if msgs:
+                process_all(msgs, src)
 
         except Exception as e:
             log_debug(f"ERRO on_packet: {e}")
 
     try:
-        sniff(filter=filter_str, prn=on_packet, store=False)
+        sniff(filter="tcp and len > 30", prn=on_packet, store=False)
     except PermissionError:
         log_debug("ERRO: permissao negada — execute como administrador")
         print(json.dumps({"error": "permissao negada — execute como admin"}), flush=True)

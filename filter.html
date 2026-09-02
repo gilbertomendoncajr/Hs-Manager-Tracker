@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'">
+  <title>Filtro de Itens</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=Exo+2:wght@400;600;700&display=swap">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0d0a18;
+      --bg2:     #0f0c1e;
+      --bg3:     #13102a;
+      --bg4:     #1a1630;
+      --border:  #1e1a38;
+      --border2: #2a2448;
+      --gold:    #c8a840;
+      --muted:   #3e3460;
+      --text:    #d0c8f0;
+      --text2:   #8880b0;
+      --green:   #3eda8c;
+      --satanic: #e03030;
+      --angelic: #f0e040;
+      --unholy:  #d04888;
+      --heroic:  #00d896;
+      --set:     #3ec83e;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Exo 2', 'Segoe UI', sans-serif;
+      font-size: 13px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 16px;
+      height: 46px;
+      background: var(--bg2);
+      border-bottom: 2px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .back-btn {
+      background: none;
+      border: 1px solid var(--border2);
+      color: var(--text2);
+      padding: 4px 10px;
+      cursor: pointer;
+      font-family: 'Chakra Petch', sans-serif;
+      font-size: 11px;
+      transition: all .15s;
+    }
+    .back-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+    .page-title {
+      font-family: 'Chakra Petch', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--gold);
+      letter-spacing: 1px;
+    }
+
+    .header-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .item-count {
+      font-size: 11px;
+      color: var(--text2);
+    }
+
+    .btn-sm {
+      background: none;
+      border: 1px solid var(--border2);
+      color: var(--text2);
+      padding: 4px 10px;
+      cursor: pointer;
+      font-size: 11px;
+      font-family: 'Chakra Petch', sans-serif;
+      transition: all .15s;
+    }
+    .btn-sm:hover { border-color: var(--text); color: var(--text); }
+    .btn-sm.danger:hover { border-color: var(--satanic); color: var(--satanic); }
+
+    /* ── Category Tabs ── */
+    .cat-bar {
+      display: flex;
+      gap: 4px;
+      padding: 8px 16px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+      flex-shrink: 0;
+    }
+    .cat-bar::-webkit-scrollbar { height: 2px; }
+    .cat-bar::-webkit-scrollbar-track { background: transparent; }
+    .cat-bar::-webkit-scrollbar-thumb { background: var(--border2); }
+
+    .cat-tab {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text2);
+      cursor: pointer;
+      font-family: 'Chakra Petch', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: all .15s;
+      letter-spacing: .5px;
+    }
+    .cat-tab:hover { border-color: var(--border2); color: var(--text); }
+    .cat-tab.active {
+      background: var(--bg4);
+      border-color: var(--gold);
+      color: var(--gold);
+    }
+    .cat-tab .cat-icon { font-size: 13px; }
+    .cat-tab .cat-badge {
+      font-size: 10px;
+      background: var(--border2);
+      padding: 1px 5px;
+      border-radius: 8px;
+      color: var(--text2);
+    }
+    .cat-tab.active .cat-badge { background: rgba(200,168,64,.2); color: var(--gold); }
+
+    /* ── Rarity Filter Row ── */
+    .rarity-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .rarity-label {
+      font-size: 10px;
+      color: var(--text2);
+      font-family: 'Chakra Petch', sans-serif;
+      letter-spacing: .5px;
+      flex-shrink: 0;
+    }
+
+    .rarity-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+
+    .rchip {
+      padding: 3px 10px;
+      border: 1px solid transparent;
+      font-size: 11px;
+      font-family: 'Chakra Petch', sans-serif;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+      opacity: .4;
+    }
+    .rchip.active { opacity: 1; }
+    .rchip.Satanic { border-color: var(--satanic); color: var(--satanic); background: rgba(224,48,48,.08); }
+    .rchip.Angelic  { border-color: var(--angelic); color: var(--angelic); background: rgba(240,224,64,.08); }
+    .rchip.Unholy   { border-color: var(--unholy);  color: var(--unholy);  background: rgba(208,72,136,.08); }
+    .rchip.Heroic   { border-color: var(--heroic);  color: var(--heroic);  background: rgba(0,216,150,.08); }
+    .rchip.Set      { border-color: var(--set);     color: var(--set);     background: rgba(62,200,62,.08); }
+    .rchip.All { border-color: var(--border2); color: var(--text); background: var(--bg3); opacity: 1; }
+
+    /* ── Item Grid ── */
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 16px;
+    }
+    .content::-webkit-scrollbar { width: 4px; }
+    .content::-webkit-scrollbar-track { background: transparent; }
+    .content::-webkit-scrollbar-thumb { background: var(--border2); }
+
+    .cat-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .cat-header h2 {
+      font-family: 'Chakra Petch', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--gold);
+      letter-spacing: 1px;
+    }
+    .cat-header .sep { flex: 1; height: 1px; background: var(--border); }
+
+    .select-all-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .item-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .item-card {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all .15s;
+      cursor: pointer;
+      position: relative;
+    }
+    .item-card:hover { border-color: var(--border2); }
+    .item-card.disabled {
+      opacity: .35;
+    }
+
+    .item-card::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+    }
+    .item-card.Satanic::before { background: var(--satanic); }
+    .item-card.Angelic::before  { background: var(--angelic); }
+    .item-card.Unholy::before   { background: var(--unholy); }
+    .item-card.Heroic::before   { background: var(--heroic); }
+    .item-card.Set::before      { background: var(--set); }
+
+    .item-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--bg4);
+      border: 1px solid var(--border2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+      font-family: 'Chakra Petch', sans-serif;
+      font-weight: 700;
+      color: var(--muted);
+    }
+    .item-card.Satanic .item-icon { color: var(--satanic); border-color: rgba(224,48,48,.3); }
+    .item-card.Angelic  .item-icon { color: var(--angelic);  border-color: rgba(240,224,64,.3); }
+    .item-card.Unholy   .item-icon { color: var(--unholy);   border-color: rgba(208,72,136,.3); }
+    .item-card.Heroic   .item-icon { color: var(--heroic);   border-color: rgba(0,216,150,.3); }
+    .item-card.Set      .item-icon { color: var(--set);      border-color: rgba(62,200,62,.3); }
+
+    .item-info { flex: 1; min-width: 0; }
+    .item-name {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.3;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .item-rarity {
+      font-size: 9px;
+      font-family: 'Chakra Petch', sans-serif;
+      letter-spacing: .5px;
+      margin-top: 2px;
+    }
+    .item-rarity.Satanic { color: var(--satanic); }
+    .item-rarity.Angelic  { color: var(--angelic); }
+    .item-rarity.Unholy   { color: var(--unholy); }
+    .item-rarity.Heroic   { color: var(--heroic); }
+    .item-rarity.Set      { color: var(--set); }
+
+    /* Toggle */
+    .toggle {
+      position: relative;
+      width: 28px;
+      height: 16px;
+      flex-shrink: 0;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .toggle-track {
+      position: absolute;
+      inset: 0;
+      background: var(--border2);
+      transition: background .2s;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .toggle-track::after {
+      content: '';
+      position: absolute;
+      width: 12px; height: 12px;
+      background: var(--text2);
+      border-radius: 50%;
+      top: 2px; left: 2px;
+      transition: transform .2s, background .2s;
+    }
+    input:checked + .toggle-track { background: rgba(62,218,140,.25); border: 1px solid var(--green); }
+    input:checked + .toggle-track::after { transform: translateX(12px); background: var(--green); }
+
+    /* Empty state */
+    .empty {
+      text-align: center;
+      padding: 40px;
+      color: var(--text2);
+      font-size: 12px;
+    }
+
+    /* Loading */
+    #loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--text2);
+      font-family: 'Chakra Petch', sans-serif;
+      letter-spacing: 1px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <button class="back-btn" id="backBtn">← VOLTAR</button>
+  <span class="page-title">FILTRO DE ITENS</span>
+  <div class="header-right">
+    <span class="item-count" id="itemCount"></span>
+    <span style="font-size:10px;color:var(--muted);font-family:'Chakra Petch',sans-serif;letter-spacing:.5px;">GERENCIADO PELO SITE</span>
+    <button class="btn-sm" id="refreshBtn">↻ ATUALIZAR</button>
+  </div>
+</header>
+
+<div class="cat-bar" id="catBar"></div>
+
+<div class="rarity-bar">
+  <span class="rarity-label">RARIDADE:</span>
+  <div class="rarity-chips" id="rarityChips">
+    <span class="rchip All active" data-rarity="All">Todos</span>
+    <span class="rchip Satanic active" data-rarity="Satanic">Satanic</span>
+    <span class="rchip Angelic active" data-rarity="Angelic">Angelic</span>
+    <span class="rchip Unholy active" data-rarity="Unholy">Unholy</span>
+    <span class="rchip Heroic active" data-rarity="Heroic">Heroic</span>
+    <span class="rchip Set active" data-rarity="Set">Set</span>
+  </div>
+</div>
+
+<div class="content" id="content">
+  <div id="loading">CARREGANDO ITENS...</div>
+</div>
+
+<script>
+  const CAT_ICONS = {
+    Helmet: '⛑', Armor: '🔰', Boots: '👢', Weapon: '⚔',
+    Gloves: '🥊', Amulet: '📿', Shield: '🛡', Ring: '💍',
+    Belt: '🔗', Charm: '✨',
+  }
+  const CAT_ORDER = ['Weapon', 'Shield', 'Helmet', 'Boots', 'Armor', 'Gloves', 'Belt', 'Amulet', 'Ring', 'Charm']
+
+  // allItems: { "Weapon": [{name, rarity, enabled}], ... }
+  let allItems = {}
+  let activeCategory = null
+  let activeRarities = new Set(['Satanic', 'Angelic', 'Unholy', 'Heroic', 'Set'])
+
+  async function init() {
+    document.getElementById('content').innerHTML = '<div id="loading">CARREGANDO ITENS...</div>'
+    const items = await window.api.getFilterItems()
+    allItems = items || {}
+
+    buildCatTabs()
+    buildRarityChips()
+    const first = CAT_ORDER.find(c => allItems[c]?.length > 0)
+    if (first) selectCategory(first)
+    else document.getElementById('content').innerHTML =
+      '<div class="empty">Nenhum item encontrado. Importe os dados no site.</div>'
+    updateCount()
+  }
+
+  function buildCatTabs() {
+    const bar = document.getElementById('catBar')
+    bar.innerHTML = ''
+    for (const cat of CAT_ORDER) {
+      if (!allItems[cat]?.length) continue
+      const total = allItems[cat].length
+      const enabled = allItems[cat].filter(i => i.enabled).length
+      const tab = document.createElement('div')
+      tab.className = 'cat-tab'
+      tab.dataset.cat = cat
+      tab.innerHTML = `<span class="cat-icon">${CAT_ICONS[cat] || '•'}</span>${cat}<span class="cat-badge">${enabled}/${total}</span>`
+      tab.addEventListener('click', () => selectCategory(cat))
+      bar.appendChild(tab)
+    }
+  }
+
+  function buildRarityChips() {
+    document.querySelectorAll('.rchip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const r = chip.dataset.rarity
+        if (r === 'All') {
+          const allActive = activeRarities.size === 5
+          if (allActive) {
+            activeRarities.clear()
+            chip.classList.remove('active')
+            document.querySelectorAll('.rchip:not(.All)').forEach(c => c.classList.remove('active'))
+          } else {
+            activeRarities = new Set(['Satanic', 'Angelic', 'Unholy', 'Heroic', 'Set'])
+            chip.classList.add('active')
+            document.querySelectorAll('.rchip:not(.All)').forEach(c => c.classList.add('active'))
+          }
+        } else {
+          if (activeRarities.has(r)) { activeRarities.delete(r); chip.classList.remove('active') }
+          else { activeRarities.add(r); chip.classList.add('active') }
+          const allChip = document.querySelector('.rchip.All')
+          if (activeRarities.size === 5) allChip.classList.add('active')
+          else allChip.classList.remove('active')
+        }
+        renderItems(activeCategory)
+      })
+    })
+  }
+
+  function selectCategory(cat) {
+    activeCategory = cat
+    document.querySelectorAll('.cat-tab').forEach(t => {
+      t.classList.toggle('active', t.dataset.cat === cat)
+    })
+    renderItems(cat)
+  }
+
+  function renderItems(cat) {
+    const content = document.getElementById('content')
+    const items = (allItems[cat] || []).filter(it => activeRarities.has(it.rarity))
+
+    if (items.length === 0) {
+      content.innerHTML = '<div class="empty">Nenhum item encontrado para os filtros selecionados.</div>'
+      return
+    }
+
+    const icon = CAT_ICONS[cat] || '•'
+    const enabledCount = items.filter(i => i.enabled).length
+
+    content.innerHTML = `
+      <div class="cat-header">
+        <h2>${icon} ${cat.toUpperCase()}</h2>
+        <div class="sep"></div>
+        <span style="font-size:11px;color:var(--text2)">${enabledCount} ativos / ${items.length} total</span>
+      </div>
+      <div class="item-grid" id="itemGrid"></div>
+    `
+
+    const grid = document.getElementById('itemGrid')
+    for (const item of items) {
+      const card = document.createElement('div')
+      card.className = `item-card ${item.rarity}${item.enabled ? '' : ' disabled'}`
+      card.innerHTML = `
+        <div class="item-icon">${icon}</div>
+        <div class="item-info">
+          <div class="item-name" title="${item.name}">${item.name}</div>
+          <div class="item-rarity ${item.rarity}">${item.rarity.toUpperCase()}</div>
+        </div>
+        <label class="toggle" title="${item.enabled ? 'Ativo' : 'Inativo (filtrado pelo ADM)'}">
+          <input type="checkbox" ${item.enabled ? 'checked' : ''} disabled>
+          <span class="toggle-track" style="cursor:default;opacity:.7"></span>
+        </label>
+      `
+      grid.appendChild(card)
+    }
+  }
+
+  function updateCount() {
+    let total = 0, enabled = 0
+    for (const cat of Object.keys(allItems)) {
+      for (const item of allItems[cat]) {
+        total++
+        if (item.enabled) enabled++
+      }
+    }
+    document.getElementById('itemCount').textContent = total > 0
+      ? `${enabled} ativos / ${total} total`
+      : ''
+  }
+
+  document.getElementById('backBtn').addEventListener('click', () => window.api.closeFilter())
+  document.getElementById('refreshBtn').addEventListener('click', () => init())
+
+  init()
+</script>
+</body>
+</html>

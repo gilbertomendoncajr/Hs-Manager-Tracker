@@ -9,6 +9,9 @@ contextBridge.exposeInMainWorld('api', {
   // Dados do site
   getLeagues: () => ipcRenderer.invoke('site:getLeagues'),
 
+  // Npcap
+  installNpcap: () => ipcRenderer.invoke('npcap:install'),
+
   // Monitor
   startMonitor: (leagueId) => ipcRenderer.invoke('monitor:start', leagueId),
   stopMonitor: () => ipcRenderer.invoke('monitor:stop'),
@@ -21,7 +24,15 @@ contextBridge.exposeInMainWorld('api', {
 
   // Auto-update
   onUpdateAvailable: (cb) => ipcRenderer.on('update:available', (_e, info) => cb(info)),
+  downloadUpdate: () => ipcRenderer.invoke('update:download'),
   onUpdateProgress: (cb) => ipcRenderer.on('update:progress', (_e, data) => cb(data)),
-  onUpdateReady: (cb) => ipcRenderer.on('update:ready', () => cb()),
-  installUpdate: () => ipcRenderer.invoke('update:install'),
+  onUpdateReady: (cb) => ipcRenderer.on('update:ready', (_e, data) => cb(data)),
+  installUpdate: (filePath) => ipcRenderer.invoke('update:install', filePath),
+
+  // Filtro de itens
+  openFilter: () => ipcRenderer.invoke('filter:open'),
+  closeFilter: () => ipcRenderer.invoke('filter:close'),
+  getFilterItems: () => ipcRenderer.invoke('filter:getItems'),
+  getFilterPrefs: () => ipcRenderer.invoke('filter:getPrefs'),
+  saveFilterPrefs: (prefs) => ipcRenderer.invoke('filter:savePrefs', prefs),
 })

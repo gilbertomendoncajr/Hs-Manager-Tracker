@@ -175,6 +175,7 @@
       align-items: center; gap: 10px;
       font-family: 'VT323', monospace; font-size: 15px; color: #5aba5a;
     }
+
     #updateProgress { flex: 1; background: #0e1a0e; height: 4px; overflow: hidden; }
     #updateBar { height: 100%; background: var(--green); width: 0%; transition: width .3s; }
     #btnInstallUpdate {
@@ -263,6 +264,7 @@
     .filter-chip.Angelic { background: rgba(240,200,40,.10); border-color: #8a7010; color: var(--angelic); }
     .filter-chip.Unholy  { background: rgba(200,50,120,.12); border-color: #8a1850; color: var(--unholy); }
     .filter-chip.Heroic  { background: rgba(0,200,150,.10);  border-color: #006040; color: var(--heroic); }
+    .filter-chip.Set     { background: rgba(60,200,60,.10);  border-color: #1a6a1a; color: #3ec83e; }
 
     /* ── Log panel ── */
     .log-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
@@ -285,6 +287,8 @@
     #statusDot .pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
     #statusDot.watching .pulse { background: var(--green); animation: blink 1.5s infinite; }
     #statusDot.watching { color: var(--green); }
+    #statusDot.waiting .pulse { background: #c8a840; animation: blink 1s infinite; }
+    #statusDot.waiting { color: #c8a840; }
     .stats-bar .spacer { flex: 1; }
     #btnClearLog {
       background: none; border: 1px solid var(--border2);
@@ -324,7 +328,10 @@
       font-family: 'Exo 2', sans-serif; font-size: 12px; color: #e05050;
     }
     .log-entry.info .log-msg {
-      font-family: 'Exo 2', sans-serif; font-size: 11px; color: var(--muted);
+      font-family: 'Exo 2', sans-serif; font-size: 11px; color: #7a7a9a;
+    }
+    .log-entry.warn .log-msg {
+      font-family: 'Exo 2', sans-serif; font-size: 12px; font-weight: 600; color: #e08030;
     }
 
     .rarity-tag {
@@ -353,6 +360,7 @@
   <div id="userBadge" style="display:none">
     <div class="live-dot"></div>
     <span id="userNameText"></span>
+    <button id="btnFilter" title="Filtro de Itens" style="background:none;border:1px solid var(--border2);color:var(--muted);cursor:pointer;font-family:'Chakra Petch',sans-serif;font-size:10px;font-weight:600;padding:4px 10px;transition:color .15s,border-color .15s;letter-spacing:.06em;">FILTRO</button>
     <button id="btnLogout">SAIR</button>
   </div>
 </header>
@@ -361,7 +369,7 @@
 <div id="updateBanner" style="display:none">
   <span id="updateText">🔄 Nova versão disponível...</span>
   <div id="updateProgress" style="display:none"><div id="updateBar"></div></div>
-  <button id="btnInstallUpdate" style="display:none">INSTALAR E REINICIAR</button>
+  <button id="btnInstallUpdate" style="display:none">ATUALIZAR</button>
 </div>
 
 <!-- Login -->
@@ -404,6 +412,7 @@
         <div class="px-section-label">Filtro ativo</div>
         <div class="filter-chips">
           <span class="filter-chip Satanic">Satanic</span>
+          <span class="filter-chip Set">Set</span>
           <span class="filter-chip Angelic">Angelic</span>
           <span class="filter-chip Unholy">Unholy</span>
           <span class="filter-chip Heroic">Heroic</span>

@@ -32,6 +32,8 @@ const SNIFFER_PY = path.join(__dirname, 'sniffer.py')
 let mainWin = null
 let flourishWin = null
 let tickerWin = null
+let filterWin = null
+let serverEnabledItems = null   // Set<string> | null — null = not loaded yet (allow all)
 let snifferProc = null
 let sseAbort = null   // AbortController para fechar a conexão SSE ao parar
 let isMonitoring = false
@@ -39,6 +41,7 @@ let currentLeagueId = null
 const charMap = {}   // accountUID (number) → charName (string)
 let myDiscordId = null
 let myDiscordUsername = null
+let charIdentified = false
 
 // ── Janela principal ────────────────────────────────────────────────────────
 function createMainWindow() {
@@ -97,25 +100,112 @@ app.whenReady().then(() => {
   createOverlays()
 
   if (app.isPackaged) {
+    autoUpdater.autoDownload = false
     autoUpdater.checkForUpdates()
+    setInterval(() => autoUpdater.checkForUpdates(), 30 * 60 * 1000)
   }
 })
 
 // ── Auto-updater ────────────────────────────────────────────────────────────
+let pendingUpdate = null
+
 autoUpdater.on('update-available', (info) => {
+  pendingUpdate = info
   if (mainWin) mainWin.webContents.send('update:available', { version: info.version })
 })
 
-autoUpdater.on('download-progress', (prog) => {
-  if (mainWin) mainWin.webContents.send('update:progress', { percent: Math.round(prog.percent) })
+
+autoUpdater.on('error', (err) => {
+  console.error('[updater] erro:', err?.message ?? err)
+  if (mainWin) mainWin.webContents.send('log:entry', {
+    type: 'info',
+    message: `[updater] ${err?.message ?? err}`,
+    item: null,
+    ts: Date.now(),
+  })
 })
 
-autoUpdater.on('update-downloaded', () => {
-  if (mainWin) mainWin.webContents.send('update:ready')
+autoUpdater.on('checking-for-update', () => {
+  console.log('[updater] verificando atualizações...')
 })
 
-ipcMain.handle('update:install', () => {
-  autoUpdater.quitAndInstall()
+autoUpdater.on('update-not-available', () => {
+  console.log('[updater] app já está na versão mais recente')
+})
+
+ipcMain.handle('update:download', async () => {
+  if (!pendingUpdate) return
+  const https = require('https')
+  const fs = require('fs')
+  const os = require('os')
+
+  const version = pendingUpdate.version
+
+  const fail = (msg) => {
+    if (mainWin) mainWin.webContents.send('log:entry', { type: 'error', message: `[updater] ${msg}`, item: null, ts: Date.now() })
+  }
+
+  // Buscar URL real do asset via GitHub API (evita problema de espaços/dashes no nome)
+  const getReleaseAssetUrl = () => new Promise((resolve, reject) => {
+    const opts = {
+      hostname: 'api.github.com',
+      path: `/repos/gilbertomendoncajr/Hs-Manager-Tracker/releases/tags/v${version}`,
+      headers: { 'User-Agent': 'HS-Drop-Logger' },
+    }
+    https.get(opts, (res) => {
+      let body = ''
+      res.on('data', (c) => body += c)
+      res.on('end', () => {
+        try {
+          const data = JSON.parse(body)
+          const asset = data.assets?.find((a) => a.name.endsWith('.exe'))
+          if (!asset) return reject(new Error('EXE não encontrado no release'))
+          resolve({ url: asset.browser_download_url, name: asset.name })
+        } catch (e) { reject(e) }
+      })
+    }).on('error', reject)
+  })
+
+  const followAndDownload = (currentUrl, dest) => {
+    https.get(currentUrl, (res) => {
+      if (res.statusCode === 301 || res.statusCode === 302) {
+        followAndDownload(res.headers.location, dest)
+        return
+      }
+      if (res.statusCode !== 200) { fail(`HTTP ${res.statusCode}`); return }
+
+      const total = parseInt(res.headers['content-length'] || '0', 10)
+      let downloaded = 0
+      const file = fs.createWriteStream(dest)
+
+      res.on('data', (chunk) => {
+        downloaded += chunk.length
+        if (total > 0 && mainWin) {
+          mainWin.webContents.send('update:progress', { percent: Math.round((downloaded / total) * 100) })
+        }
+      })
+
+      res.pipe(file)
+      file.on('finish', () => file.close(() => {
+        if (mainWin) mainWin.webContents.send('update:ready', { filePath: dest })
+      }))
+      file.on('error', (err) => { fs.unlink(dest, () => {}); fail(err.message) })
+    }).on('error', (err) => fail(err.message))
+  }
+
+  try {
+    const { url, name } = await getReleaseAssetUrl()
+    const dest = path.join(os.tmpdir(), name)
+    followAndDownload(url, dest)
+  } catch (err) {
+    fail(err.message)
+  }
+})
+
+ipcMain.handle('update:install', (_e, filePath) => {
+  const { shell } = require('electron')
+  shell.openPath(filePath)
+  setTimeout(() => app.quit(), 1500)
 })
 app.on('window-all-closed', () => {
   stopMonitor()
@@ -151,7 +241,7 @@ function sendLog(type, message, item = null) {
 }
 
 function sendState() {
-  if (mainWin) mainWin.webContents.send('monitor:stateChange', { isMonitoring, leagueId: currentLeagueId })
+  if (mainWin) mainWin.webContents.send('monitor:stateChange', { isMonitoring, leagueId: currentLeagueId, charIdentified })
 }
 
 // ── Auth: OAuth via BrowserWindow separada ──────────────────────────────────
@@ -229,7 +319,7 @@ ipcMain.handle('site:getLeagues', async () => {
   } catch { return [] }
 })
 
-const LOOT_FILTER = ['Heroic', 'Satanic', 'Angelic', 'Unholy']
+const LOOT_FILTER = ['Heroic', 'Satanic', 'Angelic', 'Unholy', 'Set']
 
 // ── Post drop para o site ───────────────────────────────────────────────────
 async function postDrop(leagueId, drop) {
@@ -263,7 +353,7 @@ async function postDrop(leagueId, drop) {
     const charPart = drop.charName || myDiscordUsername || ''
     const discordPart = drop.charName && myDiscordUsername ? ` / ${myDiscordUsername}` : ''
     const who = charPart ? ` [${charPart}${discordPart}]` : ''
-    const tier = drop.tier ? ` T${drop.tier}` : ''
+    const tier = drop.tier ? ` ${drop.tier}` : ''
     sendLog('detect', `🎯 ${drop.name} (${drop.rarity}${tier})${who}`, drop)
   } else {
     const err = await res.json().catch(() => ({}))
@@ -303,6 +393,13 @@ async function connectSSE(leagueId) {
         if (!line.startsWith('data: ')) continue
         try {
           const evt = JSON.parse(line.slice(6))
+
+          // Notificação de nova versão do app
+          if (evt.type === 'version_update') {
+            if (mainWin) mainWin.webContents.send('update:available', { version: evt.version })
+            continue
+          }
+
           // Ignorar drops do próprio jogador (já apareceram via sniffer)
           if (myDiscordId && evt.dropper?.discordId === myDiscordId) continue
           const drop = {
@@ -321,7 +418,7 @@ async function connectSSE(leagueId) {
     }
   } catch (err) {
     if (err?.name !== 'AbortError') {
-      sendLog('info', `[SSE] desconectado — ${err?.message ?? err}`)
+      console.warn('[SSE] desconectado —', err?.message ?? err)
       // Auto-reconectar após 5 segundos se não foi desconexão intencional
       if (!sseAbort?.signal.aborted) {
         setTimeout(() => connectSSE(leagueId), 5000)
@@ -338,11 +435,28 @@ function stopMonitor() {
     snifferProc = null
   }
   isMonitoring = false
+  charIdentified = false
   currentLeagueId = null
   sendState()
 }
 
+function hasNpcap() {
+  const fs = require('fs')
+  const windir = process.env.WINDIR || 'C:\\Windows'
+  return fs.existsSync(path.join(windir, 'System32', 'Npcap', 'wpcap.dll'))
+}
+
+ipcMain.handle('npcap:install', () => {
+  const { shell } = require('electron')
+  const npcapPath = path.join(RESOURCES, 'npcap-installer.exe')
+  shell.openPath(npcapPath)
+})
+
 ipcMain.handle('monitor:start', async (_e, leagueId) => {
+  if (!hasNpcap()) {
+    return { ok: false, needsNpcap: true }
+  }
+
   if (isMonitoring) stopMonitor()
 
   // Capturar Discord ID do usuário logado para filtrar SSE
@@ -357,12 +471,21 @@ ipcMain.handle('monitor:start', async (_e, leagueId) => {
 
   currentLeagueId = leagueId
   isMonitoring = true
+  charIdentified = false
   sendState()
+
+  // Carregar filtro do servidor
+  fetchServerFilter().then(data => {
+    if (data?.enabledNames) {
+      serverEnabledItems = new Set(data.enabledNames)
+      sendLog('info', `📋 Filtro carregado: ${serverEnabledItems.size} itens ativos`)
+    }
+  }).catch(() => {})
 
   // Conectar SSE para drops de outros membros da guilda
   connectSSE(leagueId)
 
-  sendLog('info', `▶ Iniciando captura de pacotes...`)
+  sendLog('warn', `▶ Entre ou relogue no jogo para iniciar o monitoramento`)
 
   // Spawn sniffer (exe em produção, python em dev)
   try {
@@ -387,15 +510,28 @@ ipcMain.handle('monitor:start', async (_e, leagueId) => {
   rl.on('line', async (line) => {
     let msg
     try { msg = JSON.parse(line) } catch { return }
+    if (!msg || typeof msg !== 'object') return
+
+    // Erro explícito do sniffer
+    if (msg.error) {
+      sendLog('error', `❌ Sniffer: ${msg.error}`)
+      stopMonitor()
+      return
+    }
 
     // Evento de login: mapear UID → nome do personagem
     if (msg.type === 'player_login') {
       charMap[msg.accountUID] = msg.charName
-      sendLog('info', `👤 Personagem detectado: ${msg.charName} (uid=${msg.accountUID})`)
+      if (!charIdentified) {
+        charIdentified = true
+        sendState()
+        sendLog('info', `✅ Personagem identificado: ${msg.charName} — monitorando drops!`)
+      }
       return
     }
 
     const drop = msg
+    if (!drop.name) return
 
     // Anexar nome do personagem a partir do fingerprint (99-UID-ts-slot)
     const uid = parseInt((drop.fp || '').split('-')[1] || '0', 10)
@@ -410,9 +546,14 @@ ipcMain.handle('monitor:start', async (_e, leagueId) => {
     })
 
     if (matches) {
-      await postDrop(currentLeagueId, drop)
-    } else {
-      sendLog('info', `➕ Drop: ${drop.name} (${drop.rarity}) — fora da watchlist`)
+      // Verificar filtro do servidor (se carregado)
+      if (serverEnabledItems !== null && !serverEnabledItems.has(drop.name)) {
+        sendLog('info', `⊘ ${drop.name} filtrado pelo ADM`)
+        return
+      }
+      if (charIdentified) {
+        await postDrop(currentLeagueId, drop)
+      }
     }
   })
 
@@ -422,6 +563,11 @@ ipcMain.handle('monitor:start', async (_e, leagueId) => {
     if (!msg) return
     if (msg.includes('PermissionError') || msg.includes('Access is denied')) {
       sendLog('error', '❌ Sem permissão — reinicie o app como Administrador')
+      stopMonitor()
+    } else if (msg.includes('No libpcap provider') || msg.includes("pcap won't be used")) {
+      const { shell } = require('electron')
+      sendLog('error', '❌ Npcap não instalado. Abrindo site de download...')
+      shell.openExternal('https://npcap.com/#download')
       stopMonitor()
     } else if (msg.includes('No module named')) {
       sendLog('error', `❌ Python: ${msg}`)
@@ -438,7 +584,6 @@ ipcMain.handle('monitor:start', async (_e, leagueId) => {
     }
   })
 
-  sendLog('info', `🟢 Monitorando drops em tempo real para liga #${leagueId}`)
   return { ok: true }
 })
 
@@ -447,4 +592,65 @@ ipcMain.handle('monitor:stop', () => {
   sendLog('info', '■ Monitor pausado')
 })
 
-ipcMain.handle('monitor:getState', () => ({ isMonitoring, leagueId: currentLeagueId }))
+// ── Filtro de Itens ─────────────────────────────────────────────────────────
+const ITEM_CATEGORIES = {
+  0: 'Helmet', 1: 'Armor', 2: 'Boots', 3: 'Weapon',
+  4: 'Gloves', 5: 'Amulet', 6: 'Shield', 7: 'Ring',
+  8: 'Belt', 10: 'Charm',
+}
+
+ipcMain.handle('filter:open', () => {
+  if (filterWin && !filterWin.isDestroyed()) {
+    filterWin.focus()
+    return
+  }
+  filterWin = new BrowserWindow({
+    width: 920,
+    height: 640,
+    minWidth: 700,
+    minHeight: 500,
+    title: 'Filtro de Itens — HS Drop Logger',
+    backgroundColor: '#0d0a18',
+    parent: mainWin,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  })
+  filterWin.loadFile('filter.html')
+  filterWin.setMenuBarVisibility(false)
+  filterWin.on('closed', () => { filterWin = null })
+})
+
+ipcMain.handle('filter:close', () => {
+  if (filterWin && !filterWin.isDestroyed()) filterWin.close()
+})
+
+// Fetch server filter (used both for the filter window and drop processing)
+async function fetchServerFilter() {
+  try {
+    const res = await fetch(`${BASE_URL}/api/filter`)
+    if (!res.ok) return null
+    return await res.json()  // { grouped, enabledNames, total }
+  } catch { return null }
+}
+
+ipcMain.handle('filter:getItems', async () => {
+  const data = await fetchServerFilter()
+  if (!data) return {}
+  // Convert grouped (by category name) to grouped by category name with enabled state
+  return data.grouped  // { "Weapon": [{name, rarity, enabled}], ... }
+})
+
+ipcMain.handle('filter:getPrefs', async () => {
+  // Prefs are now server-side — return empty (filter.html reads from getItems)
+  return { hiddenItems: [] }
+})
+
+ipcMain.handle('filter:savePrefs', async () => {
+  // Read-only in app — editing is done on the dashboard
+  return { ok: false, reason: 'read-only' }
+})
+
+ipcMain.handle('monitor:getState', () => ({ isMonitoring, leagueId: currentLeagueId, charIdentified }))

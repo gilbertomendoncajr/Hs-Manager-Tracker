@@ -5,6 +5,7 @@ const userBadge     = document.getElementById('userBadge')
 const userNameText  = document.getElementById('userNameText')
 const btnLogin      = document.getElementById('btnLogin')
 const btnLogout     = document.getElementById('btnLogout')
+const btnFilter     = document.getElementById('btnFilter')
 const leagueSelect  = document.getElementById('leagueSelect')
 const btnToggle     = document.getElementById('btnToggleMonitor')
 const statusDot     = document.getElementById('statusDot')
@@ -73,18 +74,12 @@ function addLogEntry({ type, message, item, ts }) {
   logList.insertBefore(el, logList.firstChild)
 }
 
-function setMonitorUI(watching) {
+function setMonitorUI(watching, charIdentified) {
   isMonitoring = watching
-  if (watching) {
-    btnToggle.textContent = '■ PAUSAR'
-    btnToggle.className = 'stop'
-    statusDot.className = 'stat watching'
-    statusText.textContent = 'Monitorando'
-    statDrops.style.display = 'flex'
-    statRares.style.display = 'flex'
-  } else {
+  if (!watching) {
     btnToggle.textContent = '▶ INICIAR'
     btnToggle.className = 'start'
+    btnToggle.disabled = false
     statusDot.className = 'stat idle'
     statusText.textContent = 'Aguardando'
     sessionDrops = 0
@@ -93,6 +88,22 @@ function setMonitorUI(watching) {
     rareCount.textContent = '0'
     statDrops.style.display = 'none'
     statRares.style.display = 'none'
+  } else if (!charIdentified) {
+    btnToggle.textContent = '■ PAUSAR'
+    btnToggle.className = 'stop'
+    btnToggle.disabled = false
+    statusDot.className = 'stat waiting'
+    statusText.textContent = 'Aguardando relog...'
+    statDrops.style.display = 'none'
+    statRares.style.display = 'none'
+  } else {
+    btnToggle.textContent = '■ PAUSAR'
+    btnToggle.className = 'stop'
+    btnToggle.disabled = false
+    statusDot.className = 'stat watching'
+    statusText.textContent = 'Monitorando'
+    statDrops.style.display = 'flex'
+    statRares.style.display = 'flex'
   }
 }
 
@@ -133,7 +144,7 @@ async function initAuth() {
   showScreen('app')
   await loadLeagues()
   const state = await window.api.getMonitorState()
-  setMonitorUI(state.isMonitoring)
+  setMonitorUI(state.isMonitoring, state.charIdentified)
 }
 
 btnLogin.addEventListener('click', async () => {
@@ -150,6 +161,8 @@ btnLogin.addEventListener('click', async () => {
     btnLogin.disabled = false
   }
 })
+
+btnFilter.addEventListener('click', () => window.api.openFilter())
 
 btnLogout.addEventListener('click', async () => {
   await window.api.logout()
@@ -170,7 +183,13 @@ btnToggle.addEventListener('click', async () => {
     btnToggle.disabled = true
     const result = await window.api.startMonitor(parseInt(leagueId))
     btnToggle.disabled = false
-    if (!result.ok) {
+    if (result.needsNpcap) {
+      const install = confirm('O Npcap precisa estar instalado para capturar pacotes.\n\nDeseja instalar agora?')
+      if (install) {
+        await window.api.installNpcap()
+        addLogEntry({ type: 'info', message: '⚙ Instalando Npcap... Após instalar, clique INICIAR novamente.', ts: Date.now() })
+      }
+    } else if (!result.ok) {
       addLogEntry({ type: 'error', message: result.error, ts: Date.now() })
     }
   }
@@ -178,7 +197,7 @@ btnToggle.addEventListener('click', async () => {
 
 // ── Eventos do main ──────────────────────────────────────────────────────────
 window.api.onLog((entry) => addLogEntry(entry))
-window.api.onStateChange((state) => setMonitorUI(state.isMonitoring))
+window.api.onStateChange((state) => setMonitorUI(state.isMonitoring, state.charIdentified))
 window.api.onSessionExpired(() => {
   userBadge.style.display = 'none'
   setMonitorUI(false)
@@ -197,31 +216,42 @@ btnClearLog.addEventListener('click', () => {
 })
 
 // ── Auto-update ──────────────────────────────────────────────────────────────
-const updateBanner      = document.getElementById('updateBanner')
-const updateText        = document.getElementById('updateText')
-const updateProgress    = document.getElementById('updateProgress')
-const updateBar         = document.getElementById('updateBar')
-const btnInstallUpdate  = document.getElementById('btnInstallUpdate')
+const updateBanner     = document.getElementById('updateBanner')
+const updateText       = document.getElementById('updateText')
+const updateProgress   = document.getElementById('updateProgress')
+const updateBar        = document.getElementById('updateBar')
+const btnInstallUpdate = document.getElementById('btnInstallUpdate')
+
+let pendingFilePath = null
 
 window.api.onUpdateAvailable((info) => {
   updateBanner.style.display = 'flex'
-  updateText.textContent = `🔄 Nova versão ${info.version} disponível — baixando...`
-  updateProgress.style.display = 'block'
+  updateText.textContent = `🔄 Nova versão ${info.version} disponível`
+  btnInstallUpdate.textContent = 'ATUALIZAR'
+  btnInstallUpdate.style.display = 'block'
+  btnInstallUpdate.disabled = false
+  btnInstallUpdate.onclick = async () => {
+    btnInstallUpdate.disabled = true
+    btnInstallUpdate.textContent = 'BAIXANDO...'
+    updateProgress.style.display = 'block'
+    await window.api.downloadUpdate()
+  }
 })
 
 window.api.onUpdateProgress((data) => {
   updateBar.style.width = `${data.percent}%`
-  updateText.textContent = `🔄 Baixando atualização... ${data.percent}%`
+  updateText.textContent = `🔄 Baixando... ${data.percent}%`
 })
 
-window.api.onUpdateReady(() => {
+window.api.onUpdateReady((data) => {
+  pendingFilePath = data.filePath
   updateBar.style.width = '100%'
   updateText.textContent = '✅ Atualização pronta!'
   updateProgress.style.display = 'none'
-  btnInstallUpdate.style.display = 'block'
+  btnInstallUpdate.disabled = false
+  btnInstallUpdate.textContent = 'INSTALAR E REINICIAR'
+  btnInstallUpdate.onclick = () => window.api.installUpdate(pendingFilePath)
 })
-
-btnInstallUpdate.addEventListener('click', () => window.api.installUpdate())
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 initAuth()
