@@ -37,7 +37,8 @@ let sseAbort = null   // AbortController para fechar a conexão SSE ao parar
 let isMonitoring = false
 let currentLeagueId = null
 const charMap = {}   // accountUID (number) → charName (string)
-let myDiscordId = null  // Discord ID do usuário logado (para filtrar own drops no SSE)
+let myDiscordId = null
+let myDiscordUsername = null
 
 // ── Janela principal ────────────────────────────────────────────────────────
 function createMainWindow() {
@@ -259,7 +260,11 @@ async function postDrop(leagueId, drop) {
   })
 
   if (res.ok) {
-    sendLog('success', `✔ ${drop.name} (${drop.rarity}) registrado`, drop)
+    const charPart = drop.charName || myDiscordUsername || ''
+    const discordPart = drop.charName && myDiscordUsername ? ` / ${myDiscordUsername}` : ''
+    const who = charPart ? ` [${charPart}${discordPart}]` : ''
+    const tier = drop.tier ? ` T${drop.tier}` : ''
+    sendLog('detect', `🎯 ${drop.name} (${drop.rarity}${tier})${who}`, drop)
   } else {
     const err = await res.json().catch(() => ({}))
     sendLog('error', `✘ Falha ao registrar ${drop.name}: ${err.error ?? res.status}`, drop)
@@ -346,6 +351,7 @@ ipcMain.handle('monitor:start', async (_e, leagueId) => {
     if (profileRes.ok) {
       const p = await profileRes.json()
       myDiscordId = p.discordId ?? null
+      myDiscordUsername = p.username ?? null
     }
   } catch { /* sem perfil */ }
 
@@ -404,8 +410,6 @@ ipcMain.handle('monitor:start', async (_e, leagueId) => {
     })
 
     if (matches) {
-      const who = drop.charName ? ` [${drop.charName}]` : ''
-      sendLog('detect', `🎯 Detectado: ${drop.name} (${drop.rarity}${drop.tier ? ' T' + drop.tier : ''})${who}`, drop)
       await postDrop(currentLeagueId, drop)
     } else {
       sendLog('info', `➕ Drop: ${drop.name} (${drop.rarity}) — fora da watchlist`)
