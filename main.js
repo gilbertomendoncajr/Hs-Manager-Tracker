@@ -571,14 +571,6 @@ ipcMain.handle('monitor:start', async (_e, leagueId) => {
     const uid = parseInt((drop.fp || '').split('-')[1] || '0', 10)
     if (uid && charMap[uid]) drop.charName = charMap[uid]
 
-    // floor_drop: Unholy/Angelic caiu no chão — mostrar como "aguardando pickup"
-    if (drop.event === 'floor_drop') {
-      const charPart = drop.charName ? ` [${drop.charName}]` : ''
-      sendLog('detect', `⬇ ${drop.name} (${drop.rarity}) — no chão${charPart}`, drop, 'meus')
-      if (mainWin) mainWin.webContents.send('drop:pending', drop)
-      return
-    }
-
     const matches = LOOT_FILTER.some((w) => {
       const wl = w.toLowerCase()
       return (
@@ -587,36 +579,27 @@ ipcMain.handle('monitor:start', async (_e, leagueId) => {
       )
     })
 
-    if (!matches) return
+    if (matches) {
+      // Filtro pessoal → overlay (independente do filtro do ADM)
+      if (personalFilter.size > 0 && personalFilter.has(drop.name)) {
+        sendOverlay(drop)
+      }
 
-    // collected: Unholy/Angelic foi coletado — atualizar tabela UA
-    if (drop.event === 'collected') {
-      const tierVal = serverTierMap[drop.name] ?? null
-      const tierTag = tierVal ? ` [${tierVal}]` : ''
-      const charPart = drop.charName ? ` [${drop.charName}]` : ''
-      sendLog('success', `✓ ${drop.name}${tierTag} (${drop.rarity}) — coletado${charPart}`, drop, 'meus')
-      if (mainWin) mainWin.webContents.send('drop:collected', drop)
-    } else {
-      // Drop normal (Satanic, Heroic, Set, etc.) — registrar em "Meus Drops"
+      // Sempre registrar em "Meus Drops" (tudo que eu dropei que está no meu filtro)
       const tierValMeus = serverTierMap[drop.name] ?? null
       const tierTagMeus = tierValMeus ? ` [${tierValMeus}]` : ''
       const charPartMeus = drop.charName ? ` [${drop.charName}]` : ''
       sendLog('detect', `⚔ ${drop.name}${tierTagMeus} (${drop.rarity})${charPartMeus}`, drop, 'meus')
-    }
 
-    // Filtro pessoal → overlay (independente do filtro do ADM)
-    if (personalFilter.size > 0 && personalFilter.has(drop.name)) {
-      sendOverlay(drop)
-    }
-
-    // Filtro do ADM → registrar como filtrado, não postar no servidor
-    if (serverEnabledItems !== null && !serverEnabledItems.has(drop.name)) {
-      const tierTag = serverTierMap[drop.name] ? ` [${serverTierMap[drop.name]}]` : ''
-      sendLog('info', `⊘ ${drop.name}${tierTag} filtrado pelo ADM`, drop, 'liga-filtrado')
-      return
-    }
-    if (charIdentified) {
-      await postDrop(currentLeagueId, drop)
+      // Filtro do ADM → registrar em Liga como oculto, não postar no servidor
+      if (serverEnabledItems !== null && !serverEnabledItems.has(drop.name)) {
+        const tierTag = tierTagMeus
+        sendLog('info', `⊘ ${drop.name}${tierTag} filtrado pelo ADM`, drop, 'liga-filtrado')
+        return
+      }
+      if (charIdentified) {
+        await postDrop(currentLeagueId, drop)
+      }
     }
   })
 
