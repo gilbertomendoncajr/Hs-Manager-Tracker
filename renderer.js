@@ -17,11 +17,20 @@ const statDrops     = document.getElementById('statDrops')
 const statRares     = document.getElementById('statRares')
 const dropCount     = document.getElementById('dropCount')
 const rareCount     = document.getElementById('rareCount')
+const tabMeusBtn    = document.getElementById('tabMeus')
+const tabLigaBtn    = document.getElementById('tabLiga')
+const cntMeus       = document.getElementById('cntMeus')
+const cntLiga       = document.getElementById('cntLiga')
 
 const RARE_RARITIES = new Set(['Satanic', 'Angelic', 'Unholy', 'Heroic', 'Blessed', 'Set'])
-let sessionDrops = 0
-let sessionRares = 0
 
+// per-tab counters
+// 'meus' tab = my drops that went to site (tab:'both' detects)
+// 'liga' tab = all drops to site (tab:'both' + tab:'liga' detects)
+let meusDrops = 0, meusRares = 0
+let ligaOnlyDrops = 0, ligaOnlyRares = 0   // others' drops (tab:'liga')
+
+let currentTab = 'meus'
 let isMonitoring = false
 
 // ── Utils ────────────────────────────────────────────────────────────────────
@@ -46,17 +55,57 @@ function rarityFromMsg(message) {
   return null
 }
 
-function addLogEntry({ type, message, item, ts }) {
-  logEmpty.style.display = 'none'
+function isEntryVisible(tab) {
+  return tab === 'both' || tab === currentTab
+}
 
+function updateTabCounts() {
+  cntMeus.textContent = meusDrops
+  cntLiga.textContent = meusDrops + ligaOnlyDrops
+}
+
+function updateStatsBar() {
+  if (currentTab === 'meus') {
+    dropCount.textContent = meusDrops
+    rareCount.textContent = meusRares
+  } else {
+    dropCount.textContent = meusDrops + ligaOnlyDrops
+    rareCount.textContent = meusRares + ligaOnlyRares
+  }
+}
+
+function updateEmptyState() {
+  const hasVisible = Array.from(logList.children).some(
+    el => !el.classList.contains('log-empty') && el.style.display !== 'none'
+  )
+  logEmpty.style.display = hasVisible ? 'none' : 'flex'
+}
+
+function switchTab(tab) {
+  currentTab = tab
+  tabMeusBtn.classList.toggle('active', tab === 'meus')
+  tabLigaBtn.classList.toggle('active', tab === 'liga')
+  document.querySelectorAll('.log-entry').forEach(el => {
+    const entryTab = el.dataset.tab || 'both'
+    el.style.display = isEntryVisible(entryTab) ? '' : 'none'
+  })
+  updateEmptyState()
+  updateStatsBar()
+}
+
+function addLogEntry({ type, message, item, ts, tab = 'both' }) {
   if (type === 'detect') {
-    sessionDrops++
-    dropCount.textContent = sessionDrops
     const rarity = item?.rarity || rarityFromMsg(message)
-    if (rarity && RARE_RARITIES.has(rarity)) {
-      sessionRares++
-      rareCount.textContent = sessionRares
+    const isRare = rarity && RARE_RARITIES.has(rarity)
+    if (tab === 'both') {
+      meusDrops++
+      if (isRare) meusRares++
+    } else if (tab === 'liga') {
+      ligaOnlyDrops++
+      if (isRare) ligaOnlyRares++
     }
+    updateTabCounts()
+    updateStatsBar()
   }
 
   const rarity = item?.rarity || rarityFromMsg(message)
@@ -66,6 +115,8 @@ function addLogEntry({ type, message, item, ts }) {
 
   const el = document.createElement('div')
   el.className = `log-entry ${type}`
+  el.dataset.tab = tab
+  el.style.display = isEntryVisible(tab) ? '' : 'none'
   el.innerHTML = `
     <div class="log-stripe" style="background:${stripeColor}"></div>
     <div class="log-inner">
@@ -74,6 +125,7 @@ function addLogEntry({ type, message, item, ts }) {
     </div>
   `
   logList.insertBefore(el, logList.firstChild)
+  updateEmptyState()
 }
 
 function setMonitorUI(watching, charIdentified) {
@@ -84,10 +136,12 @@ function setMonitorUI(watching, charIdentified) {
     btnToggle.disabled = false
     statusDot.className = 'stat idle'
     statusText.textContent = 'Aguardando'
-    sessionDrops = 0
-    sessionRares = 0
+    meusDrops = 0; meusRares = 0
+    ligaOnlyDrops = 0; ligaOnlyRares = 0
     dropCount.textContent = '0'
     rareCount.textContent = '0'
+    cntMeus.textContent = '0'
+    cntLiga.textContent = '0'
     statDrops.style.display = 'none'
     statRares.style.display = 'none'
   } else if (!charIdentified) {
@@ -212,9 +266,12 @@ btnClearLog.addEventListener('click', () => {
   logList.innerHTML = ''
   logEmpty.style.display = 'flex'
   logList.appendChild(logEmpty)
-  sessionDrops = 0; sessionRares = 0
+  meusDrops = 0; meusRares = 0
+  ligaOnlyDrops = 0; ligaOnlyRares = 0
   dropCount.textContent = '0'
   rareCount.textContent = '0'
+  cntMeus.textContent = '0'
+  cntLiga.textContent = '0'
 })
 
 // ── Auto-update ──────────────────────────────────────────────────────────────
@@ -254,6 +311,10 @@ window.api.onUpdateReady((data) => {
   btnInstallUpdate.textContent = 'INSTALAR E REINICIAR'
   btnInstallUpdate.onclick = () => window.api.installUpdate(pendingFilePath)
 })
+
+// ── Tabs ─────────────────────────────────────────────────────────────────────
+tabMeusBtn.addEventListener('click', () => switchTab('meus'))
+tabLigaBtn.addEventListener('click', () => switchTab('liga'))
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 initAuth()

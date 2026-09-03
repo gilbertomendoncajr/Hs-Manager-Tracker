@@ -345,6 +345,44 @@
       line-height: 2;
     }
 
+    /* ── Tabs ── */
+    .tab-bar {
+      display: flex;
+      background: var(--bg2);
+      border-bottom: 2px solid var(--border);
+      flex-shrink: 0;
+    }
+    .tab-btn {
+      flex: 1;
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      color: var(--muted);
+      cursor: pointer;
+      font-family: 'Chakra Petch', sans-serif;
+      font-size: 10px; font-weight: 700;
+      padding: 9px 0 8px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      transition: color .15s, border-color .15s;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--gold); border-bottom-color: var(--gold); }
+    .tab-count {
+      display: inline-block;
+      font-family: 'Exo 2', sans-serif;
+      font-size: 9px; font-weight: 700;
+      background: var(--border2);
+      color: var(--muted);
+      padding: 1px 5px;
+      margin-left: 6px;
+      vertical-align: middle;
+      line-height: 1.5;
+      transition: background .15s, color .15s;
+    }
+    .tab-btn.active .tab-count { background: rgba(200,168,64,.18); color: var(--gold); }
+
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border2); }
@@ -423,6 +461,16 @@
 
     <!-- Log -->
     <div class="log-panel">
+
+      <!-- Tabs -->
+      <div class="tab-bar">
+        <button class="tab-btn active" id="tabMeus" data-tab="meus">
+          Meus Drops <span class="tab-count" id="cntMeus">0</span>
+        </button>
+        <button class="tab-btn" id="tabLiga" data-tab="liga">
+          Liga <span class="tab-count" id="cntLiga">0</span>
+        </button>
+      </div>
 
       <div class="stats-bar">
         <div id="statusDot" class="stat idle">

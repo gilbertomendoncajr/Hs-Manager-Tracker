@@ -262,8 +262,8 @@ async function apiFetch(urlPath, options = {}) {
   return res
 }
 
-function sendLog(type, message, item = null) {
-  if (mainWin) mainWin.webContents.send('log:entry', { type, message, item, ts: Date.now() })
+function sendLog(type, message, item = null, tab = 'both') {
+  if (mainWin) mainWin.webContents.send('log:entry', { type, message, item, ts: Date.now(), tab })
 }
 
 function sendState() {
@@ -438,7 +438,7 @@ async function connectSSE(leagueId) {
           const who = evt.charName && evt.dropper?.username
             ? `${evt.charName} (${evt.dropper.username})`
             : (evt.charName ?? evt.dropper?.username ?? 'Alguém')
-          sendLog('detect', `🌐 ${who} dropou: ${drop.name} (${drop.rarity || '?'})`, drop)
+          sendLog('detect', `🌐 ${who} dropou: ${drop.name} (${drop.rarity || '?'})`, drop, 'liga')
           sendOverlay(drop)
         } catch { /* linha malformada */ }
       }
@@ -588,7 +588,7 @@ ipcMain.handle('monitor:start', async (_e, leagueId) => {
       // Filtro do ADM → postar no servidor
       if (serverEnabledItems !== null && !serverEnabledItems.has(drop.name)) {
         const tierTag = serverTierMap[drop.name] ? ` [${serverTierMap[drop.name]}]` : ''
-        sendLog('info', `⊘ ${drop.name}${tierTag} filtrado pelo ADM`, drop)
+        sendLog('info', `⊘ ${drop.name}${tierTag} filtrado pelo ADM`, drop, 'meus')
         return
       }
       if (charIdentified) {
