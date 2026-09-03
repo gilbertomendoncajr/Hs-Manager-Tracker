@@ -1,6 +1,6 @@
 {
   "name": "hs-drop-logger",
-  "version": "1.7.1",
+  "version": "1.7.2",
   "description": "Auto-logger de drops para HS Manager",
   "main": "main.js",
   "scripts": {
