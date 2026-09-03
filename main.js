@@ -545,15 +545,6 @@ ipcMain.handle('monitor:start', async (_e, leagueId) => {
       )
     })
 
-    // Reportar tier ao servidor (fire-and-forget — popula item_filter.tier ao longo do tempo)
-    if (drop.name && drop.tier) {
-      fetch(`${BASE_URL}/api/filter`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify([{ name: drop.name, tier: drop.tier }]),
-      }).catch(() => {})
-    }
-
     if (matches) {
       // Verificar filtro do servidor (se carregado)
       if (serverEnabledItems !== null && !serverEnabledItems.has(drop.name)) {
