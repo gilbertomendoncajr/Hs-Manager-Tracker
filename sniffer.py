@@ -168,19 +168,17 @@ def item_sources(d: dict) -> list[tuple]:
 
             out = []
             for fp, item in candidates:
-                c_val = _i(item, ["c"])
-                d_val = _i(item, ["d"])
-                is_journal = RARITIES.get(d_val) in JOURNAL_RARITIES
-                if c_val != 1 and _fp_type(fp) != RELIC_TYPE and not is_journal:
-                    log_debug(f"  [skip c={c_val} fp_type={_fp_type(fp)} d={d_val}] {fp}")
-                    continue
                 if _belongs_to_player(item):
                     log_debug(f"  [skip belongs_to_player] {fp}")
                     continue
-                if not _lies_on_floor(item):
-                    log_debug(f"  [skip not_on_floor] {fp}")
-                    continue
-                out.append((fp, item, True))
+                on_floor = _lies_on_floor(item)
+                if not on_floor:
+                    # Non-floor item: only process if c=1 (named) or relic type
+                    c_val = _i(item, ["c"])
+                    if c_val != 1 and _fp_type(fp) != RELIC_TYPE:
+                        log_debug(f"  [skip non_floor c={c_val} fp_type={_fp_type(fp)}] {fp}")
+                        continue
+                out.append((fp, item, on_floor))
             return out
 
     wrapped = _f(d, ITEM_WRAPPER)
