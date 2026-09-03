@@ -406,7 +406,9 @@ def process_messages(messages: list[dict], src_ip: str):
             c_val      = _i(item, ["c"])
             fp_type_v  = _fp_type(fp)
             named_flag = (c_val == 1)
-            resource   = (fp_type_v in RESOURCE_TYPES) if fp_type_v is not None else False
+            item_type_v = _i(item, ["type", "itemType", "item_type"])
+            resource   = (fp_type_v is not None and fp_type_v in RESOURCE_TYPES) or \
+                         (item_type_v is not None and item_type_v in RESOURCE_TYPES)
 
             rarity = _get_rarity(item)
 
