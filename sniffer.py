@@ -396,10 +396,10 @@ def process_messages(messages: list[dict], src_ip: str):
                 continue
             log_debug(f"  item detectado: fp={fp} name={name} rarity={rarity}")
 
-            if ground and _my_uid is not None:
+            if _my_uid is not None:
                 fp_acc = _fp_account(fp)
                 if fp_acc is not None and fp_acc != _my_uid:
-                    log_debug(f"  [skip foreign drop] fp_account={fp_acc} my_uid={_my_uid}")
+                    log_debug(f"  [skip foreign {'drop' if ground else 'item'}] fp_account={fp_acc} my_uid={_my_uid}")
                     continue
 
             if rarity not in JOURNAL_RARITIES:
