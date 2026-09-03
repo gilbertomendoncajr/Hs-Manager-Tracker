@@ -7,3 +7,5 @@ sniffer_debug.txt
 *.pyc
 __pycache__/
 *.spec
+.env
+.env.*
