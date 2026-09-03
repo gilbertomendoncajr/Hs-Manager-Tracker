@@ -29,9 +29,11 @@ RARITIES: dict[int, str] = {
 }
 JOURNAL_RARITIES = {"Satanic", "Set", "Heroic", "Angelic", "Unholy"}
 
-# ─── item DB (name + rarity fallback via sniffer_items.json) ────────────────
+# ─── item DB (name + rarity via sniffer_items.json) ─────────────────────────
+# Chave: (item_type, item_id, weapon_type) — idêntico ao hs-tracker
+# Packed original: (type << 24) | (id << 8) | wt
 
-ITEM_DB: dict[tuple[int,int], list[tuple[str,str]]] = defaultdict(list)
+ITEM_DB: dict[tuple[int,int,int], tuple[str,str]] = {}
 RARITY_BY_NAME: dict[str,str] = {}
 
 def _load_db():
@@ -47,14 +49,14 @@ def _load_db():
     try:
         with open(path, encoding="utf-8") as f:
             db = json.load(f)
-        n = 0
-        for key, entries in db.items():
-            h3, j = map(int, key.split(","))
-            for e in entries:
-                ITEM_DB[(h3, j)].append((e[0], e[1]))
-                RARITY_BY_NAME[e[0].lower()] = e[1]
-                n += 1
-        log_debug(f"ITEM_DB: {n} itens carregados")
+        for key, entry in db.items():
+            parts = key.split(",")
+            item_type, item_id, wt = int(parts[0]), int(parts[1]), int(parts[2])
+            name, rarity = entry[0], entry[1]
+            ITEM_DB[(item_type, item_id, wt)] = (name, rarity)
+            if name:
+                RARITY_BY_NAME[name.lower()] = rarity
+        log_debug(f"ITEM_DB: {len(ITEM_DB)} itens, RARITY_BY_NAME: {len(RARITY_BY_NAME)} nomes")
     except Exception as ex:
         log_debug(f"Erro ao carregar ITEM_DB: {ex}")
 
@@ -344,34 +346,37 @@ def _get_rarity(item: dict) -> str | None:
         if isinstance(v, str) and v in RARITY_BY_NAME.values(): return v
     return None
 
-def _get_name(item: dict, fingerprint, hint_rarity: str | None = None) -> str | None:
-    name = _f(item, ["name","itemName","item_name","label","n","nm","itemName2"])
+def _get_name(item: dict, fingerprint) -> str | None:
+    # 1. Nome explícito no packet (igual ao hs-tracker)
+    name = _f(item, ["name","itemName","item_name","label"])
     if name: return str(name)
+
+    # 2. Lookup por (item_type, item_id, weapon_type) — chave idêntica ao hs-tracker
     fp = str(fingerprint or "")
     slot_str = fp.rsplit("-", 1)[-1] if "-" in fp else ""
-    b_val = _i(item, ["b"])
     try:
-        h3 = int(slot_str)
-        entries = ITEM_DB.get((h3, b_val), [])
-        if entries:
-            # Log full packet when falling back to DB (helps diagnose misidentifications)
-            log_debug(f"  [db-fallback] fp={fp} h3={h3} b={b_val} item={json.dumps(item)[:300]}")
-            if len(entries) == 1:
-                return entries[0][0]
-            # Narrow down by rarity when available to reduce false positives
-            rarity_check = hint_rarity or _get_rarity(item)
-            if rarity_check:
-                matched = [e[0] for e in entries if e[1] == rarity_check]
-                if len(matched) == 1:
-                    return matched[0]
-                if len(matched) > 1:
-                    # Still ambiguous: prefer None over a wrong name
-                    log_debug(f"  [nome ambíguo] chave=({h3},{b_val}) rarity={rarity_check} candidatos={matched} → retornando None")
-                    return None
-            # Rarity unknown or no rarity match: prefer None over wrong name
-            log_debug(f"  [db sem match] chave=({h3},{b_val}) rarity={rarity_check} candidatos={[e[0] for e in entries]} → retornando None")
-            return None
-    except: pass
+        item_type = int(slot_str)          # último segmento do fingerprint = type
+    except:
+        return None
+
+    # Quando fingerprint presente, b = item_id; sem fingerprint, b = item_type
+    item_id = _i(item, ["b"]) if fp else _i(item, ["id","itemId","item_id","gid"])
+
+    # weapon_type: campo explícito, ou campo "j" quando type=3 (armas)
+    weapon_type = _i(item, ["weapon_type","weaponType"])
+    if weapon_type == 0 and item_type == 3:
+        weapon_type = _i(item, ["j"])
+
+    # Lookup com weapon_type; fallback sem (wt=0) como o hs-tracker faz
+    entry = ITEM_DB.get((item_type, item_id, weapon_type))
+    if entry is None and weapon_type != 0:
+        entry = ITEM_DB.get((item_type, item_id, 0))
+
+    if entry:
+        log_debug(f"  [db-lookup] type={item_type} id={item_id} wt={weapon_type} → {entry[0]}")
+        return entry[0]
+
+    log_debug(f"  [db-miss] fp={fp} type={item_type} id={item_id} wt={weapon_type} item={json.dumps(item)[:200]}")
     return None
 
 def _rarity_from_name(name: str | None) -> str | None:
@@ -394,7 +399,7 @@ def process_messages(messages: list[dict], src_ip: str):
                 name = _get_name(item, fp)
                 rarity = _rarity_from_name(name)
             else:
-                name = _get_name(item, fp, hint_rarity=rarity)
+                name = _get_name(item, fp)
 
             if not rarity:
                 b_val = _i(item, ["b"])
@@ -464,8 +469,7 @@ def main():
         sys.exit(1)
 
     log_debug("=== Sniffer iniciado ===")
-    log_debug(f"ITEM_DB: {sum(len(v) for v in ITEM_DB.values())} itens, "
-              f"RARITY_BY_NAME: {len(RARITY_BY_NAME)} nomes")
+    log_debug(f"ITEM_DB: {len(ITEM_DB)} itens, RARITY_BY_NAME: {len(RARITY_BY_NAME)} nomes")
 
     def on_packet(pkt):
         try:
