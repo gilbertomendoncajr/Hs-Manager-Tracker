@@ -445,6 +445,10 @@ def process_messages(messages: list[dict], src_ip: str):
                 log_debug(f"  raridade comum ignorada: {rarity} name={name}")
                 continue
 
+            if resource:
+                log_debug(f"  [skip resource type={fp_type_v}] name={name} rarity={rarity}")
+                continue
+
             ident    = _identity(item, fp)
             sighting = f"{'d' if ground else 'p'}:{ident}"
             if sighting in _seen_fp:
