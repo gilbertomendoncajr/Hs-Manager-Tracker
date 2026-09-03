@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain } = require('electron')
 const { autoUpdater } = require('electron-updater')
 const path = require('path')
+const fs = require('fs')
 const { spawn } = require('child_process')
 const readline = require('readline')
 
@@ -34,6 +35,30 @@ let flourishWin = null
 let tickerWin = null
 let filterWin = null
 let serverEnabledItems = null   // Set<string> | null — null = not loaded yet (allow all)
+let serverTierMap = {}          // Record<string, string> — name → tier
+
+// ── Filtro pessoal (local) ───────────────────────────────────────────────────
+let personalFilter = new Set()  // Set<string> — nomes de itens que ativam o overlay
+let _personalFilterPath = null  // calculado após app.ready
+
+function personalFilterPath() {
+  if (!_personalFilterPath) {
+    _personalFilterPath = path.join(app.getPath('userData'), 'personal-filter.json')
+  }
+  return _personalFilterPath
+}
+
+function loadPersonalFilter() {
+  try {
+    const data = JSON.parse(fs.readFileSync(personalFilterPath(), 'utf8'))
+    personalFilter = new Set(Array.isArray(data.enabled) ? data.enabled : [])
+  } catch { personalFilter = new Set() }
+}
+
+function savePersonalFilter() {
+  try { fs.writeFileSync(personalFilterPath(), JSON.stringify({ enabled: [...personalFilter] })) }
+  catch {}
+}
 let snifferProc = null
 let sseAbort = null   // AbortController para fechar a conexão SSE ao parar
 let isMonitoring = false
@@ -96,6 +121,7 @@ function sendOverlay(drop) {
 }
 
 app.whenReady().then(() => {
+  loadPersonalFilter()
   createMainWindow()
   createOverlays()
 
@@ -353,8 +379,9 @@ async function postDrop(leagueId, drop) {
     const charPart = drop.charName || myDiscordUsername || ''
     const discordPart = drop.charName && myDiscordUsername ? ` / ${myDiscordUsername}` : ''
     const who = charPart ? ` [${charPart}${discordPart}]` : ''
-    const tier = drop.tier ? ` ${drop.tier}` : ''
-    sendLog('detect', `🎯 ${drop.name} (${drop.rarity}${tier})${who}`, drop)
+    const tierVal = drop.tier ?? serverTierMap[drop.name] ?? null
+    const tier = tierVal ? ` [${tierVal}]` : ''
+    sendLog('detect', `🎯 ${drop.name}${tier} (${drop.rarity})${who}`, drop)
   } else {
     const err = await res.json().catch(() => ({}))
     sendLog('error', `✘ Falha ao registrar ${drop.name}: ${err.error ?? res.status}`, drop)
@@ -478,6 +505,13 @@ ipcMain.handle('monitor:start', async (_e, leagueId) => {
   fetchServerFilter().then(data => {
     if (data?.enabledNames) {
       serverEnabledItems = new Set(data.enabledNames)
+      const newTierMap = {}
+      for (const items of Object.values(data.grouped ?? {})) {
+        for (const item of items) {
+          if (item.tier) newTierMap[item.name] = item.tier
+        }
+      }
+      serverTierMap = newTierMap
       sendLog('info', `📋 Filtro carregado: ${serverEnabledItems.size} itens ativos`)
     }
   }).catch(() => {})
@@ -546,9 +580,15 @@ ipcMain.handle('monitor:start', async (_e, leagueId) => {
     })
 
     if (matches) {
-      // Verificar filtro do servidor (se carregado)
+      // Filtro pessoal → overlay (independente do filtro do ADM)
+      if (personalFilter.size > 0 && personalFilter.has(drop.name)) {
+        sendOverlay(drop)
+      }
+
+      // Filtro do ADM → postar no servidor
       if (serverEnabledItems !== null && !serverEnabledItems.has(drop.name)) {
-        sendLog('info', `⊘ ${drop.name} filtrado pelo ADM`)
+        const tierTag = serverTierMap[drop.name] ? ` [${serverTierMap[drop.name]}]` : ''
+        sendLog('info', `⊘ ${drop.name}${tierTag} filtrado pelo ADM`, drop)
         return
       }
       if (charIdentified) {
@@ -644,13 +684,29 @@ ipcMain.handle('filter:getItems', async () => {
 })
 
 ipcMain.handle('filter:getPrefs', async () => {
-  // Prefs are now server-side — return empty (filter.html reads from getItems)
   return { hiddenItems: [] }
 })
 
 ipcMain.handle('filter:savePrefs', async () => {
-  // Read-only in app — editing is done on the dashboard
   return { ok: false, reason: 'read-only' }
+})
+
+// ── Filtro pessoal ───────────────────────────────────────────────────────────
+ipcMain.handle('personal:getEnabled', () => [...personalFilter])
+
+ipcMain.handle('personal:toggle', (_, name) => {
+  if (personalFilter.has(name)) personalFilter.delete(name)
+  else personalFilter.add(name)
+  savePersonalFilter()
+  return personalFilter.has(name)
+})
+
+ipcMain.handle('personal:setAll', (_, names, value) => {
+  for (const name of names) {
+    if (value) personalFilter.add(name)
+    else personalFilter.delete(name)
+  }
+  savePersonalFilter()
 })
 
 ipcMain.handle('monitor:getState', () => ({ isMonitoring, leagueId: currentLeagueId, charIdentified }))

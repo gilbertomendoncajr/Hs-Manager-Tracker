@@ -60,15 +60,17 @@ function addLogEntry({ type, message, item, ts }) {
   }
 
   const rarity = item?.rarity || rarityFromMsg(message)
-  const stripeColor = (type === 'detect' && rarity) ? RARITY_COLORS[rarity] : ''
+  const rarityColor = (rarity && RARITY_COLORS[rarity]) ? RARITY_COLORS[rarity] : null
+  const stripeColor = rarityColor || 'transparent'
+  const msgStyle = (type === 'detect' && rarityColor) ? ` style="color:${rarityColor}"` : ''
 
   const el = document.createElement('div')
   el.className = `log-entry ${type}`
   el.innerHTML = `
-    <div class="log-stripe" style="background:${stripeColor || 'transparent'}"></div>
+    <div class="log-stripe" style="background:${stripeColor}"></div>
     <div class="log-inner">
       <span class="log-time">${fmtTime(ts)}</span>
-      <span class="log-msg">${message}</span>
+      <span class="log-msg"${msgStyle}>${message}</span>
     </div>
   `
   logList.insertBefore(el, logList.firstChild)

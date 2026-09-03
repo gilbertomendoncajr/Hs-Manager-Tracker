@@ -1,6 +1,6 @@
 {
   "name": "hs-drop-logger",
-  "version": "1.5.7",
+  "version": "1.6.3",
   "description": "Auto-logger de drops para HS Manager",
   "main": "main.js",
   "scripts": {
@@ -19,6 +19,7 @@
       "preload-overlay.js",
       "index.html",
       "filter.html",
+      "filter-renderer.js",
       "flourish.html",
       "ticker.html",
       "renderer.js",

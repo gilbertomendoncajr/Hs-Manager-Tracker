@@ -29,10 +29,15 @@ contextBridge.exposeInMainWorld('api', {
   onUpdateReady: (cb) => ipcRenderer.on('update:ready', (_e, data) => cb(data)),
   installUpdate: (filePath) => ipcRenderer.invoke('update:install', filePath),
 
-  // Filtro de itens
+  // Filtro de itens (admin — leitura do servidor)
   openFilter: () => ipcRenderer.invoke('filter:open'),
   closeFilter: () => ipcRenderer.invoke('filter:close'),
   getFilterItems: () => ipcRenderer.invoke('filter:getItems'),
   getFilterPrefs: () => ipcRenderer.invoke('filter:getPrefs'),
   saveFilterPrefs: (prefs) => ipcRenderer.invoke('filter:savePrefs', prefs),
+
+  // Filtro pessoal (local — controla overlay)
+  getPersonalEnabled: () => ipcRenderer.invoke('personal:getEnabled'),
+  togglePersonal: (name) => ipcRenderer.invoke('personal:toggle', name),
+  setAllPersonal: (names, value) => ipcRenderer.invoke('personal:setAll', names, value),
 })

@@ -2,8 +2,8 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'">
-  <title>Filtro de Itens</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'; img-src 'self' https://guosmhnujsowkrkvuoyn.supabase.co https://herosiege.wiki.gg data:">
+  <title>Meu Filtro</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=Exo+2:wght@400;600;700&display=swap">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -70,6 +70,13 @@
       letter-spacing: 1px;
     }
 
+    .header-subtitle {
+      font-size: 10px;
+      color: var(--text2);
+      font-family: 'Chakra Petch', sans-serif;
+      letter-spacing: .5px;
+    }
+
     .header-right {
       margin-left: auto;
       display: flex;
@@ -77,10 +84,7 @@
       gap: 10px;
     }
 
-    .item-count {
-      font-size: 11px;
-      color: var(--text2);
-    }
+    .item-count { font-size: 11px; color: var(--text2); }
 
     .btn-sm {
       background: none;
@@ -93,7 +97,31 @@
       transition: all .15s;
     }
     .btn-sm:hover { border-color: var(--text); color: var(--text); }
-    .btn-sm.danger:hover { border-color: var(--satanic); color: var(--satanic); }
+
+    /* ── Legend ── */
+    .legend-bar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 6px 16px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      color: var(--text2);
+      font-family: 'Chakra Petch', sans-serif;
+    }
+    .legend-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+    }
+    .legend-dot.my { background: var(--green); }
+    .legend-dot.adm { background: var(--gold); }
+    .legend-dot.off { background: var(--border2); }
 
     /* ── Category Tabs ── */
     .cat-bar {
@@ -126,11 +154,7 @@
       letter-spacing: .5px;
     }
     .cat-tab:hover { border-color: var(--border2); color: var(--text); }
-    .cat-tab.active {
-      background: var(--bg4);
-      border-color: var(--gold);
-      color: var(--gold);
-    }
+    .cat-tab.active { background: var(--bg4); border-color: var(--gold); color: var(--gold); }
     .cat-tab .cat-icon { font-size: 13px; }
     .cat-tab .cat-badge {
       font-size: 10px;
@@ -151,17 +175,12 @@
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
     }
-
     .rarity-label {
-      font-size: 10px;
-      color: var(--text2);
+      font-size: 10px; color: var(--text2);
       font-family: 'Chakra Petch', sans-serif;
-      letter-spacing: .5px;
-      flex-shrink: 0;
+      letter-spacing: .5px; flex-shrink: 0;
     }
-
     .rarity-chips { display: flex; gap: 6px; flex-wrap: wrap; }
-
     .rchip {
       padding: 3px 10px;
       border: 1px solid transparent;
@@ -194,14 +213,12 @@
       display: flex;
       align-items: center;
       gap: 10px;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
     .cat-header h2 {
       font-family: 'Chakra Petch', sans-serif;
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--gold);
-      letter-spacing: 1px;
+      font-size: 13px; font-weight: 700;
+      color: var(--gold); letter-spacing: 1px;
     }
     .cat-header .sep { flex: 1; height: 1px; background: var(--border); }
 
@@ -210,10 +227,23 @@
       gap: 8px;
       margin-bottom: 10px;
     }
+    .btn-mini {
+      background: none;
+      border: 1px solid var(--border2);
+      color: var(--text2);
+      padding: 3px 10px;
+      cursor: pointer;
+      font-size: 10px;
+      font-family: 'Chakra Petch', sans-serif;
+      transition: all .15s;
+      letter-spacing: .5px;
+    }
+    .btn-mini:hover { border-color: var(--green); color: var(--green); }
+    .btn-mini.deselect:hover { border-color: var(--satanic); color: var(--satanic); }
 
     .item-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
       gap: 8px;
       margin-bottom: 20px;
     }
@@ -225,14 +255,15 @@
       display: flex;
       align-items: center;
       gap: 10px;
-      transition: all .15s;
+      transition: border-color .15s, opacity .15s;
       cursor: pointer;
       position: relative;
+      user-select: none;
     }
     .item-card:hover { border-color: var(--border2); }
-    .item-card.disabled {
-      opacity: .35;
-    }
+    .item-card.personal-off { opacity: .4; }
+    .item-card.personal-on { border-color: rgba(62,218,140,.25); }
+    .item-card.personal-on:hover { border-color: rgba(62,218,140,.5); }
 
     .item-card::before {
       content: '';
@@ -247,18 +278,19 @@
     .item-card.Set::before      { background: var(--set); }
 
     .item-icon {
-      width: 32px;
-      height: 32px;
+      width: 36px; height: 36px;
       background: var(--bg4);
       border: 1px solid var(--border2);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 16px;
-      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; flex-shrink: 0;
       font-family: 'Chakra Petch', sans-serif;
-      font-weight: 700;
-      color: var(--muted);
+      font-weight: 700; color: var(--muted);
+      overflow: hidden;
+    }
+    .item-icon img {
+      width: 100%; height: 100%;
+      object-fit: contain;
+      image-rendering: pixelated;
     }
     .item-card.Satanic .item-icon { color: var(--satanic); border-color: rgba(224,48,48,.3); }
     .item-card.Angelic  .item-icon { color: var(--angelic);  border-color: rgba(240,224,64,.3); }
@@ -268,19 +300,17 @@
 
     .item-info { flex: 1; min-width: 0; }
     .item-name {
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--text);
-      line-height: 1.3;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      font-size: 11px; font-weight: 600;
+      color: var(--text); line-height: 1.3;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .item-meta {
+      display: flex; align-items: center; gap: 5px; margin-top: 3px;
     }
     .item-rarity {
       font-size: 9px;
       font-family: 'Chakra Petch', sans-serif;
       letter-spacing: .5px;
-      margin-top: 2px;
     }
     .item-rarity.Satanic { color: var(--satanic); }
     .item-rarity.Angelic  { color: var(--angelic); }
@@ -288,21 +318,28 @@
     .item-rarity.Heroic   { color: var(--heroic); }
     .item-rarity.Set      { color: var(--set); }
 
+    /* ADM badge */
+    .adm-badge {
+      font-size: 8px;
+      font-family: 'Chakra Petch', sans-serif;
+      padding: 1px 4px;
+      border-radius: 2px;
+      letter-spacing: .3px;
+      font-weight: 700;
+    }
+    .adm-badge.on  { background: rgba(200,168,64,.15); color: var(--gold); border: 1px solid rgba(200,168,64,.3); }
+    .adm-badge.off { background: rgba(62,52,96,.3);   color: var(--text2); border: 1px solid var(--border2); }
+
     /* Toggle */
     .toggle {
-      position: relative;
-      width: 28px;
-      height: 16px;
-      flex-shrink: 0;
+      position: relative; width: 28px; height: 16px; flex-shrink: 0;
+      pointer-events: none;
     }
     .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
     .toggle-track {
-      position: absolute;
-      inset: 0;
-      background: var(--border2);
-      transition: background .2s;
+      position: absolute; inset: 0;
+      background: var(--border2); transition: background .2s;
       border-radius: 8px;
-      cursor: pointer;
     }
     .toggle-track::after {
       content: '';
@@ -316,23 +353,52 @@
     input:checked + .toggle-track { background: rgba(62,218,140,.25); border: 1px solid var(--green); }
     input:checked + .toggle-track::after { transform: translateX(12px); background: var(--green); }
 
-    /* Empty state */
-    .empty {
-      text-align: center;
-      padding: 40px;
-      color: var(--text2);
-      font-size: 12px;
-    }
-
-    /* Loading */
-    #loading {
+    /* ── Search Bar ── */
+    .search-bar {
       display: flex;
       align-items: center;
-      justify-content: center;
-      height: 100%;
+      gap: 8px;
+      padding: 6px 16px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .search-input {
+      flex: 1;
+      background: var(--bg4);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      padding: 5px 10px;
+      font-family: 'Exo 2', sans-serif;
+      font-size: 12px;
+      outline: none;
+      transition: border-color .15s;
+    }
+    .search-input::placeholder { color: var(--text2); }
+    .search-input:focus { border-color: var(--gold); }
+    .search-clear {
+      background: none;
+      border: 1px solid var(--border2);
       color: var(--text2);
+      padding: 4px 8px;
+      cursor: pointer;
+      font-size: 11px;
       font-family: 'Chakra Petch', sans-serif;
-      letter-spacing: 1px;
+      transition: all .15s;
+      display: none;
+    }
+    .search-clear.visible { display: block; }
+    .search-clear:hover { border-color: var(--satanic); color: var(--satanic); }
+
+    .empty {
+      text-align: center; padding: 40px;
+      color: var(--text2); font-size: 12px;
+    }
+
+    #loading {
+      display: flex; align-items: center; justify-content: center;
+      height: 100%; color: var(--text2);
+      font-family: 'Chakra Petch', sans-serif; letter-spacing: 1px;
     }
   </style>
 </head>
@@ -340,13 +406,24 @@
 
 <header>
   <button class="back-btn" id="backBtn">← VOLTAR</button>
-  <span class="page-title">FILTRO DE ITENS</span>
+  <span class="page-title">MEU FILTRO</span>
+  <span class="header-subtitle">OVERLAY PESSOAL</span>
   <div class="header-right">
     <span class="item-count" id="itemCount"></span>
-    <span style="font-size:10px;color:var(--muted);font-family:'Chakra Petch',sans-serif;letter-spacing:.5px;">GERENCIADO PELO SITE</span>
     <button class="btn-sm" id="refreshBtn">↻ ATUALIZAR</button>
   </div>
 </header>
+
+<div class="legend-bar">
+  <div class="legend-item"><div class="legend-dot my"></div> Notifica no overlay</div>
+  <div class="legend-item"><div class="legend-dot adm"></div> ADM: enviado ao site</div>
+  <div class="legend-item"><div class="legend-dot off"></div> Desativado</div>
+</div>
+
+<div class="search-bar">
+  <input type="text" class="search-input" id="searchInput" placeholder="Buscar item pelo nome...">
+  <button class="search-clear" id="searchClear">✕ limpar</button>
+</div>
 
 <div class="cat-bar" id="catBar"></div>
 
@@ -366,141 +443,6 @@
   <div id="loading">CARREGANDO ITENS...</div>
 </div>
 
-<script>
-  const CAT_ICONS = {
-    Helmet: '⛑', Armor: '🔰', Boots: '👢', Weapon: '⚔',
-    Gloves: '🥊', Amulet: '📿', Shield: '🛡', Ring: '💍',
-    Belt: '🔗', Charm: '✨',
-  }
-  const CAT_ORDER = ['Weapon', 'Shield', 'Helmet', 'Boots', 'Armor', 'Gloves', 'Belt', 'Amulet', 'Ring', 'Charm']
-
-  // allItems: { "Weapon": [{name, rarity, enabled}], ... }
-  let allItems = {}
-  let activeCategory = null
-  let activeRarities = new Set(['Satanic', 'Angelic', 'Unholy', 'Heroic', 'Set'])
-
-  async function init() {
-    document.getElementById('content').innerHTML = '<div id="loading">CARREGANDO ITENS...</div>'
-    const items = await window.api.getFilterItems()
-    allItems = items || {}
-
-    buildCatTabs()
-    buildRarityChips()
-    const first = CAT_ORDER.find(c => allItems[c]?.length > 0)
-    if (first) selectCategory(first)
-    else document.getElementById('content').innerHTML =
-      '<div class="empty">Nenhum item encontrado. Importe os dados no site.</div>'
-    updateCount()
-  }
-
-  function buildCatTabs() {
-    const bar = document.getElementById('catBar')
-    bar.innerHTML = ''
-    for (const cat of CAT_ORDER) {
-      if (!allItems[cat]?.length) continue
-      const total = allItems[cat].length
-      const enabled = allItems[cat].filter(i => i.enabled).length
-      const tab = document.createElement('div')
-      tab.className = 'cat-tab'
-      tab.dataset.cat = cat
-      tab.innerHTML = `<span class="cat-icon">${CAT_ICONS[cat] || '•'}</span>${cat}<span class="cat-badge">${enabled}/${total}</span>`
-      tab.addEventListener('click', () => selectCategory(cat))
-      bar.appendChild(tab)
-    }
-  }
-
-  function buildRarityChips() {
-    document.querySelectorAll('.rchip').forEach(chip => {
-      chip.addEventListener('click', () => {
-        const r = chip.dataset.rarity
-        if (r === 'All') {
-          const allActive = activeRarities.size === 5
-          if (allActive) {
-            activeRarities.clear()
-            chip.classList.remove('active')
-            document.querySelectorAll('.rchip:not(.All)').forEach(c => c.classList.remove('active'))
-          } else {
-            activeRarities = new Set(['Satanic', 'Angelic', 'Unholy', 'Heroic', 'Set'])
-            chip.classList.add('active')
-            document.querySelectorAll('.rchip:not(.All)').forEach(c => c.classList.add('active'))
-          }
-        } else {
-          if (activeRarities.has(r)) { activeRarities.delete(r); chip.classList.remove('active') }
-          else { activeRarities.add(r); chip.classList.add('active') }
-          const allChip = document.querySelector('.rchip.All')
-          if (activeRarities.size === 5) allChip.classList.add('active')
-          else allChip.classList.remove('active')
-        }
-        renderItems(activeCategory)
-      })
-    })
-  }
-
-  function selectCategory(cat) {
-    activeCategory = cat
-    document.querySelectorAll('.cat-tab').forEach(t => {
-      t.classList.toggle('active', t.dataset.cat === cat)
-    })
-    renderItems(cat)
-  }
-
-  function renderItems(cat) {
-    const content = document.getElementById('content')
-    const items = (allItems[cat] || []).filter(it => activeRarities.has(it.rarity))
-
-    if (items.length === 0) {
-      content.innerHTML = '<div class="empty">Nenhum item encontrado para os filtros selecionados.</div>'
-      return
-    }
-
-    const icon = CAT_ICONS[cat] || '•'
-    const enabledCount = items.filter(i => i.enabled).length
-
-    content.innerHTML = `
-      <div class="cat-header">
-        <h2>${icon} ${cat.toUpperCase()}</h2>
-        <div class="sep"></div>
-        <span style="font-size:11px;color:var(--text2)">${enabledCount} ativos / ${items.length} total</span>
-      </div>
-      <div class="item-grid" id="itemGrid"></div>
-    `
-
-    const grid = document.getElementById('itemGrid')
-    for (const item of items) {
-      const card = document.createElement('div')
-      card.className = `item-card ${item.rarity}${item.enabled ? '' : ' disabled'}`
-      card.innerHTML = `
-        <div class="item-icon">${icon}</div>
-        <div class="item-info">
-          <div class="item-name" title="${item.name}">${item.name}</div>
-          <div class="item-rarity ${item.rarity}">${item.rarity.toUpperCase()}</div>
-        </div>
-        <label class="toggle" title="${item.enabled ? 'Ativo' : 'Inativo (filtrado pelo ADM)'}">
-          <input type="checkbox" ${item.enabled ? 'checked' : ''} disabled>
-          <span class="toggle-track" style="cursor:default;opacity:.7"></span>
-        </label>
-      `
-      grid.appendChild(card)
-    }
-  }
-
-  function updateCount() {
-    let total = 0, enabled = 0
-    for (const cat of Object.keys(allItems)) {
-      for (const item of allItems[cat]) {
-        total++
-        if (item.enabled) enabled++
-      }
-    }
-    document.getElementById('itemCount').textContent = total > 0
-      ? `${enabled} ativos / ${total} total`
-      : ''
-  }
-
-  document.getElementById('backBtn').addEventListener('click', () => window.api.closeFilter())
-  document.getElementById('refreshBtn').addEventListener('click', () => init())
-
-  init()
-</script>
+<script src="filter-renderer.js"></script>
 </body>
 </html>
