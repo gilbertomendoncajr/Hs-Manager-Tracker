@@ -197,8 +197,9 @@ def _identity(item: dict, fingerprint) -> str:
     seed      = _i(item, ["seed","a"])
     item_type = _i(item, ["type","itemType","item_type"])
     item_id   = _i(item, ["id","itemId","item_id"])
-    if h:  return f"h:{h}"
+    # fp is the stable unique ID for ground items; sh can vary between retransmitted packets
     if fp: return str(fp)
+    if h:  return f"h:{h}"
     if seed or item_type or item_id: return f"g:{seed}:{item_type}:{item_id}"
     return "c:" + hashlib.md5(json.dumps(item, sort_keys=True).encode()).hexdigest()[:16]
 
@@ -362,8 +363,6 @@ def _rarity_from_name(name: str | None) -> str | None:
 
 # ─── processamento ───────────────────────────────────────────────────────────
 
-_TIER_LETTERS = {1:"D", 2:"C", 3:"B", 4:"A", 5:"S", 6:"SS"}
-
 def emit(drop: dict):
     print(json.dumps(drop, ensure_ascii=False), flush=True)
 
@@ -399,17 +398,14 @@ def process_messages(messages: list[dict], src_ip: str):
             if not _dedup_ok(item, fp, ground):
                 continue
 
-            tier_raw = _i(item, ["tier","n"])
-            tier = _TIER_LETTERS.get(tier_raw, "") if tier_raw and 1 <= tier_raw <= 6 else ""
             drop = {
                 "name":   name or "?",
                 "rarity": rarity,
-                "tier":   tier,
                 "ground": ground,
                 "ts_ms":  int(time.time() * 1000),
                 "fp":     str(fp or ""),
             }
-            log_debug(f"  DROP: {name} [{rarity}] tier={tier} ground={ground}")
+            log_debug(f"  DROP: {name} [{rarity}] ground={ground}")
             emit(drop)
 
 _emitted_logins: set = set()
