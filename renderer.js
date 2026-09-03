@@ -365,25 +365,39 @@ tabLigaBtn.addEventListener('click', () => switchTab('liga'))
 if (btnToggleFiltered) btnToggleFiltered.addEventListener('click', toggleFiltered)
 
 // ── Tabela Unholy / Angelic ──────────────────────────────────────────────────
-window.api.onDropPending((drop) => {
+function _addPendingRow(drop, collected = false) {
   const color = RARITY_COLORS[drop.rarity] || 'var(--text)'
   const safeId = (drop.fp || '').replace(/[^a-zA-Z0-9-]/g, '_')
   const row = document.createElement('tr')
   row.dataset.fp = drop.fp
+  if (collected) row.classList.add('collected')
   row.innerHTML = `
     <td class="ua-name" style="color:${color}">${drop.name}</td>
     <td class="ua-time">${fmtTime(drop.ts_ms)}</td>
-    <td class="ua-collect" id="ua-c-${safeId}">⏳</td>
+    <td class="ua-collect" id="ua-c-${safeId}">${collected ? fmtTime(drop.ts_ms) : '⏳'}</td>
   `
+  if (collected) row.querySelector('.ua-collect').classList.add('done')
   uaBody.insertBefore(row, uaBody.firstChild)
   uaMap.set(drop.fp, safeId)
   uaSection.style.display = 'block'
   uaCount.textContent = uaBody.children.length
+
+  // Incrementar contadores de MEUS DROPS
+  const isRare = drop.rarity && RARE_RARITIES.has(drop.rarity)
+  meusDrops++
+  if (isRare) meusRares++
+  updateTabCounts()
+  updateStatsBar()
+}
+
+window.api.onDropPending((drop) => {
+  _addPendingRow(drop, false)
 })
 
 window.api.onDropCollected((drop) => {
   const safeId = uaMap.get(drop.fp)
   if (safeId) {
+    // Item tinha floor_drop → atualiza linha existente
     const cell = document.getElementById(`ua-c-${safeId}`)
     if (cell) {
       cell.textContent = fmtTime(drop.ts_ms)
@@ -391,6 +405,9 @@ window.api.onDropCollected((drop) => {
     }
     const row = uaBody.querySelector(`[data-fp="${CSS.escape(drop.fp)}"]`)
     if (row) row.classList.add('collected')
+  } else {
+    // Missed floor (vote reset etc.) → adiciona linha já como coletada
+    _addPendingRow(drop, true)
   }
 })
 

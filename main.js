@@ -597,7 +597,6 @@ ipcMain.handle('monitor:start', async (_e, leagueId) => {
       // ── floor_drop: item apareceu no chão, aguarda coleta ──────────────────
       if (drop.type === 'floor_drop') {
         if (personalFilter.size > 0 && personalFilter.has(drop.name)) sendOverlay(drop)
-        sendLog('detect', `⚔ ${drop.name}${tierTag} (${drop.rarity})${charPart} ⏳`, drop, 'meus')
         if (mainWin) mainWin.webContents.send('drop:pending', drop)
         return
       }
@@ -605,8 +604,9 @@ ipcMain.handle('monitor:start', async (_e, leagueId) => {
       // ── collected: item coletado (via pickup ou missed-floor) ──────────────
       if (drop.type === 'collected') {
         if (personalFilter.size > 0 && personalFilter.has(drop.name)) sendOverlay(drop)
-        sendLog('detect', `⚔ ${drop.name}${tierTag} (${drop.rarity})${charPart} ✓`, drop, 'meus')
-        if (mainWin) mainWin.webContents.send('drop:collected', drop)
+        // Renderer atualiza a linha existente com ⏳ → ✓; se não existir, cria nova
+        const logMsg = `⚔ ${drop.name}${tierTag} (${drop.rarity})${charPart} ✓`
+        if (mainWin) mainWin.webContents.send('drop:collected', { ...drop, _logMsg: logMsg })
         if (serverEnabledItems !== null && !serverEnabledItems.has(drop.name)) {
           sendLog('info', `⊘ ${drop.name}${tierTag} filtrado pelo ADM`, drop, 'liga-filtrado')
           return
@@ -616,7 +616,7 @@ ipcMain.handle('monitor:start', async (_e, leagueId) => {
       }
 
       // ── fallback: tipo antigo sem field "type" (compat) ───────────────────
-      sendLog('detect', `⚔ ${drop.name}${tierTag} (${drop.rarity})${charPart}`, drop, 'meus')
+      if (mainWin) mainWin.webContents.send('drop:collected', { ...drop, had_floor: false, _logMsg: '' })
       if (serverEnabledItems !== null && !serverEnabledItems.has(drop.name)) {
         sendLog('info', `⊘ ${drop.name}${tierTag} filtrado pelo ADM`, drop, 'liga-filtrado')
         return
