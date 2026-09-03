@@ -345,7 +345,7 @@ def _get_rarity(item: dict) -> str | None:
     return None
 
 def _get_name(item: dict, fingerprint, hint_rarity: str | None = None) -> str | None:
-    name = _f(item, ["name","itemName","item_name","label"])
+    name = _f(item, ["name","itemName","item_name","label","n","nm","itemName2"])
     if name: return str(name)
     fp = str(fingerprint or "")
     slot_str = fp.rsplit("-", 1)[-1] if "-" in fp else ""
@@ -354,17 +354,23 @@ def _get_name(item: dict, fingerprint, hint_rarity: str | None = None) -> str | 
         h3 = int(slot_str)
         entries = ITEM_DB.get((h3, b_val), [])
         if entries:
+            # Log full packet when falling back to DB (helps diagnose misidentifications)
+            log_debug(f"  [db-fallback] fp={fp} h3={h3} b={b_val} item={json.dumps(item)[:300]}")
             if len(entries) == 1:
                 return entries[0][0]
             # Narrow down by rarity when available to reduce false positives
             rarity_check = hint_rarity or _get_rarity(item)
             if rarity_check:
                 matched = [e[0] for e in entries if e[1] == rarity_check]
-                if matched:
-                    if len(matched) > 1:
-                        log_debug(f"  [nome ambíguo] chave=({h3},{b_val}) rarity={rarity_check} candidatos={matched}")
+                if len(matched) == 1:
                     return matched[0]
-            return entries[0][0]
+                if len(matched) > 1:
+                    # Still ambiguous: prefer None over a wrong name
+                    log_debug(f"  [nome ambíguo] chave=({h3},{b_val}) rarity={rarity_check} candidatos={matched} → retornando None")
+                    return None
+            # Rarity unknown or no rarity match: prefer None over wrong name
+            log_debug(f"  [db sem match] chave=({h3},{b_val}) rarity={rarity_check} candidatos={[e[0] for e in entries]} → retornando None")
+            return None
     except: pass
     return None
 
