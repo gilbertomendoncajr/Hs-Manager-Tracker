@@ -381,7 +381,7 @@ async function postDrop(leagueId, drop) {
     const who = charPart ? ` [${charPart}${discordPart}]` : ''
     const tierVal = drop.tier ?? serverTierMap[drop.name] ?? null
     const tier = tierVal ? ` [${tierVal}]` : ''
-    sendLog('detect', `🎯 ${drop.name}${tier} (${drop.rarity})${who}`, drop)
+    sendLog('detect', `🎯 ${drop.name}${tier} (${drop.rarity})${who}`, drop, 'liga')
   } else {
     const err = await res.json().catch(() => ({}))
     sendLog('error', `✘ Falha ao registrar ${drop.name}: ${err.error ?? res.status}`, drop)
@@ -585,10 +585,16 @@ ipcMain.handle('monitor:start', async (_e, leagueId) => {
         sendOverlay(drop)
       }
 
-      // Filtro do ADM → postar no servidor
+      // Sempre registrar em "Meus Drops" (tudo que eu dropei que está no meu filtro)
+      const tierValMeus = serverTierMap[drop.name] ?? null
+      const tierTagMeus = tierValMeus ? ` [${tierValMeus}]` : ''
+      const charPartMeus = drop.charName ? ` [${drop.charName}]` : ''
+      sendLog('detect', `⚔ ${drop.name}${tierTagMeus} (${drop.rarity})${charPartMeus}`, drop, 'meus')
+
+      // Filtro do ADM → registrar em Liga como oculto, não postar no servidor
       if (serverEnabledItems !== null && !serverEnabledItems.has(drop.name)) {
-        const tierTag = serverTierMap[drop.name] ? ` [${serverTierMap[drop.name]}]` : ''
-        sendLog('info', `⊘ ${drop.name}${tierTag} filtrado pelo ADM`, drop, 'meus')
+        const tierTag = tierTagMeus
+        sendLog('info', `⊘ ${drop.name}${tierTag} filtrado pelo ADM`, drop, 'liga-filtrado')
         return
       }
       if (charIdentified) {

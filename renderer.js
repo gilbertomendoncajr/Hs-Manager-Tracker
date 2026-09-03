@@ -19,17 +19,17 @@ const dropCount     = document.getElementById('dropCount')
 const rareCount     = document.getElementById('rareCount')
 const tabMeusBtn    = document.getElementById('tabMeus')
 const tabLigaBtn    = document.getElementById('tabLiga')
-const cntMeus       = document.getElementById('cntMeus')
-const cntLiga       = document.getElementById('cntLiga')
-const statFiltered  = document.getElementById('statFiltered')
-const filteredCount = document.getElementById('filteredCount')
+const cntMeus            = document.getElementById('cntMeus')
+const cntLiga            = document.getElementById('cntLiga')
+const btnToggleFiltered  = document.getElementById('btnToggleFiltered')
 
 const RARE_RARITIES = new Set(['Satanic', 'Angelic', 'Unholy', 'Heroic', 'Blessed', 'Set'])
 
 // per-tab counters
-let meusDrops = 0, meusRares = 0       // my sends to site (tab:'both' detect)
-let ligaOnlyDrops = 0, ligaOnlyRares = 0  // others via SSE (tab:'liga' detect)
-let meusFiltered = 0                   // my items blocked by ADM (tab:'meus' info)
+let meusDrops = 0, meusRares = 0       // tab:'meus' detect — my drops (raw, local filter)
+let ligaDrops = 0, ligaRares = 0       // tab:'liga' detect — site drops (mine sent + others SSE)
+let ligaFilteredCount = 0             // tab:'liga-filtrado' — blocked by ADM
+let showFiltered = false              // toggle for ADM-filtered entries in Liga tab
 
 let currentTab = 'meus'
 let isMonitoring = false
@@ -57,25 +57,41 @@ function rarityFromMsg(message) {
 }
 
 function isEntryVisible(tab) {
-  return tab === 'both' || tab === currentTab
+  if (tab === 'both') return true
+  if (tab === 'liga-filtrado') return currentTab === 'liga' && showFiltered
+  return tab === currentTab
 }
 
 function updateTabCounts() {
   cntMeus.textContent = meusDrops
-  cntLiga.textContent = meusDrops + ligaOnlyDrops
+  cntLiga.textContent = ligaDrops
 }
 
 function updateStatsBar() {
   if (currentTab === 'meus') {
     dropCount.textContent = meusDrops
     rareCount.textContent = meusRares
-    filteredCount.textContent = meusFiltered
-    statFiltered.style.display = (isMonitoring && meusFiltered > 0) ? 'flex' : 'none'
+    if (btnToggleFiltered) btnToggleFiltered.style.display = 'none'
   } else {
-    dropCount.textContent = meusDrops + ligaOnlyDrops
-    rareCount.textContent = meusRares + ligaOnlyRares
-    statFiltered.style.display = 'none'
+    dropCount.textContent = ligaDrops
+    rareCount.textContent = ligaRares
+    if (btnToggleFiltered) {
+      const hasFiltered = ligaFilteredCount > 0
+      btnToggleFiltered.style.display = hasFiltered ? 'inline-block' : 'none'
+      btnToggleFiltered.textContent = showFiltered
+        ? `⊘ ocultar filtrados (${ligaFilteredCount})`
+        : `⊘ ver filtrados (${ligaFilteredCount})`
+    }
   }
+}
+
+function toggleFiltered() {
+  showFiltered = !showFiltered
+  document.querySelectorAll('[data-tab="liga-filtrado"]').forEach(el => {
+    el.style.display = showFiltered ? '' : 'none'
+  })
+  updateStatsBar()
+  updateEmptyState()
 }
 
 function updateEmptyState() {
@@ -95,23 +111,28 @@ function switchTab(tab) {
   })
   updateEmptyState()
   updateStatsBar()
+  // Show/hide stats bar based on tab
+  const hasMon = isMonitoring
+  statDrops.style.display = hasMon ? 'flex' : 'none'
+  statRares.style.display = hasMon ? 'flex' : 'none'
 }
 
 function addLogEntry({ type, message, item, ts, tab = 'both' }) {
   if (type === 'detect') {
     const rarity = item?.rarity || rarityFromMsg(message)
     const isRare = rarity && RARE_RARITIES.has(rarity)
-    if (tab === 'both') {
+    if (tab === 'meus' || tab === 'both') {
       meusDrops++
       if (isRare) meusRares++
-    } else if (tab === 'liga') {
-      ligaOnlyDrops++
-      if (isRare) ligaOnlyRares++
+    }
+    if (tab === 'liga' || tab === 'both') {
+      ligaDrops++
+      if (isRare) ligaRares++
     }
     updateTabCounts()
     updateStatsBar()
-  } else if (type === 'info' && tab === 'meus') {
-    meusFiltered++
+  } else if (tab === 'liga-filtrado') {
+    ligaFilteredCount++
     updateStatsBar()
   }
 
@@ -144,16 +165,15 @@ function setMonitorUI(watching, charIdentified) {
     statusDot.className = 'stat idle'
     statusText.textContent = 'Aguardando'
     meusDrops = 0; meusRares = 0
-    ligaOnlyDrops = 0; ligaOnlyRares = 0
-    meusFiltered = 0
+    ligaDrops = 0; ligaRares = 0
+    ligaFilteredCount = 0; showFiltered = false
     dropCount.textContent = '0'
     rareCount.textContent = '0'
-    filteredCount.textContent = '0'
     cntMeus.textContent = '0'
     cntLiga.textContent = '0'
     statDrops.style.display = 'none'
     statRares.style.display = 'none'
-    statFiltered.style.display = 'none'
+    if (btnToggleFiltered) btnToggleFiltered.style.display = 'none'
   } else if (!charIdentified) {
     btnToggle.textContent = '■ PAUSAR'
     btnToggle.className = 'stop'
@@ -277,14 +297,13 @@ btnClearLog.addEventListener('click', () => {
   logEmpty.style.display = 'flex'
   logList.appendChild(logEmpty)
   meusDrops = 0; meusRares = 0
-  ligaOnlyDrops = 0; ligaOnlyRares = 0
-  meusFiltered = 0
+  ligaDrops = 0; ligaRares = 0
+  ligaFilteredCount = 0; showFiltered = false
   dropCount.textContent = '0'
   rareCount.textContent = '0'
-  filteredCount.textContent = '0'
   cntMeus.textContent = '0'
   cntLiga.textContent = '0'
-  statFiltered.style.display = 'none'
+  if (btnToggleFiltered) btnToggleFiltered.style.display = 'none'
 })
 
 // ── Auto-update ──────────────────────────────────────────────────────────────
@@ -328,6 +347,7 @@ window.api.onUpdateReady((data) => {
 // ── Tabs ─────────────────────────────────────────────────────────────────────
 tabMeusBtn.addEventListener('click', () => switchTab('meus'))
 tabLigaBtn.addEventListener('click', () => switchTab('liga'))
+if (btnToggleFiltered) btnToggleFiltered.addEventListener('click', toggleFiltered)
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 initAuth()
