@@ -574,9 +574,10 @@ ipcMain.handle('monitor:start', async (_e, leagueId) => {
       const drop = msg
       if (!drop.name) return
 
-      // Runes e materiais de craft vão direto ao inventário (ground=false, sem sighting no chão).
-      // Drops legítimos (Satanic, Set, etc.) sempre aparecem no chão primeiro → ground=true.
-      if (!drop.ground) return
+      // Runes e materiais (resource=true) são tipos conhecidos que vão direto ao inventário.
+      // Drops legítimos (Satanic, Set, etc.) têm resource=false, mesmo que o pacote de floor
+      // tenha sido perdido na transição de mapa (vote reset) e cheguem via operations.add.
+      if (drop.resource) return
 
       // Anexar nome do personagem a partir do fingerprint (99-UID-ts-slot)
       const uid = parseInt((drop.fp || '').split('-')[1] || '0', 10)

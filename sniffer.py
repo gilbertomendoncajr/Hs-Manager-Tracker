@@ -464,11 +464,12 @@ def process_messages(messages: list[dict], src_ip: str):
                 continue
 
             drop = {
-                "name":   name or "?",
-                "rarity": rarity,
-                "ground": ground,
-                "ts_ms":  int(time.time() * 1000),
-                "fp":     str(fp or ""),
+                "name":     name or "?",
+                "rarity":   rarity,
+                "ground":   ground,
+                "resource": resource,
+                "ts_ms":    int(time.time() * 1000),
+                "fp":       str(fp or ""),
             }
             log_debug(f"  DROP: {name} [{rarity}] ground={ground}")
             emit(drop)
