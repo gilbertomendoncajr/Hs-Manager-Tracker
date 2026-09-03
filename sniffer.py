@@ -406,9 +406,12 @@ def process_messages(messages: list[dict], src_ip: str):
             c_val      = _i(item, ["c"])
             fp_type_v  = _fp_type(fp)
             named_flag = (c_val == 1)
-            item_type_v = _i(item, ["type", "itemType", "item_type"])
-            resource   = (fp_type_v is not None and fp_type_v in RESOURCE_TYPES) or \
-                         (item_type_v is not None and item_type_v in RESOURCE_TYPES)
+            resource   = (fp_type_v is not None and fp_type_v in RESOURCE_TYPES)
+            # debug: log fp=None items to identify craft-item path
+            if fp is None:
+                b_val = _i(item, ["b","id","itemId","item_id"])
+                t_val = _i(item, ["type","itemType","item_type"])
+                log_debug(f"  [fp=None item] type={t_val} b={b_val} c={c_val} keys={list(item.keys())[:8]}")
 
             rarity = _get_rarity(item)
 
