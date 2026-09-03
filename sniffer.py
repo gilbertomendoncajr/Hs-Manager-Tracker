@@ -344,7 +344,7 @@ def _get_rarity(item: dict) -> str | None:
         if isinstance(v, str) and v in RARITY_BY_NAME.values(): return v
     return None
 
-def _get_name(item: dict, fingerprint) -> str | None:
+def _get_name(item: dict, fingerprint, hint_rarity: str | None = None) -> str | None:
     name = _f(item, ["name","itemName","item_name","label"])
     if name: return str(name)
     fp = str(fingerprint or "")
@@ -353,7 +353,18 @@ def _get_name(item: dict, fingerprint) -> str | None:
     try:
         h3 = int(slot_str)
         entries = ITEM_DB.get((h3, b_val), [])
-        if entries: return entries[0][0]
+        if entries:
+            if len(entries) == 1:
+                return entries[0][0]
+            # Narrow down by rarity when available to reduce false positives
+            rarity_check = hint_rarity or _get_rarity(item)
+            if rarity_check:
+                matched = [e[0] for e in entries if e[1] == rarity_check]
+                if matched:
+                    if len(matched) > 1:
+                        log_debug(f"  [nome ambíguo] chave=({h3},{b_val}) rarity={rarity_check} candidatos={matched}")
+                    return matched[0]
+            return entries[0][0]
     except: pass
     return None
 
@@ -377,7 +388,7 @@ def process_messages(messages: list[dict], src_ip: str):
                 name = _get_name(item, fp)
                 rarity = _rarity_from_name(name)
             else:
-                name = _get_name(item, fp)
+                name = _get_name(item, fp, hint_rarity=rarity)
 
             if not rarity:
                 b_val = _i(item, ["b"])
