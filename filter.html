@@ -126,16 +126,13 @@
     /* ── Category Tabs ── */
     .cat-bar {
       display: flex;
+      flex-wrap: wrap;
       gap: 4px;
       padding: 8px 16px;
       background: var(--bg2);
       border-bottom: 1px solid var(--border);
-      overflow-x: auto;
       flex-shrink: 0;
     }
-    .cat-bar::-webkit-scrollbar { height: 2px; }
-    .cat-bar::-webkit-scrollbar-track { background: transparent; }
-    .cat-bar::-webkit-scrollbar-thumb { background: var(--border2); }
 
     .cat-tab {
       display: flex;
