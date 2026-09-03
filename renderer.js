@@ -21,14 +21,15 @@ const tabMeusBtn    = document.getElementById('tabMeus')
 const tabLigaBtn    = document.getElementById('tabLiga')
 const cntMeus       = document.getElementById('cntMeus')
 const cntLiga       = document.getElementById('cntLiga')
+const statFiltered  = document.getElementById('statFiltered')
+const filteredCount = document.getElementById('filteredCount')
 
 const RARE_RARITIES = new Set(['Satanic', 'Angelic', 'Unholy', 'Heroic', 'Blessed', 'Set'])
 
 // per-tab counters
-// 'meus' tab = my drops that went to site (tab:'both' detects)
-// 'liga' tab = all drops to site (tab:'both' + tab:'liga' detects)
-let meusDrops = 0, meusRares = 0
-let ligaOnlyDrops = 0, ligaOnlyRares = 0   // others' drops (tab:'liga')
+let meusDrops = 0, meusRares = 0       // my sends to site (tab:'both' detect)
+let ligaOnlyDrops = 0, ligaOnlyRares = 0  // others via SSE (tab:'liga' detect)
+let meusFiltered = 0                   // my items blocked by ADM (tab:'meus' info)
 
 let currentTab = 'meus'
 let isMonitoring = false
@@ -68,9 +69,12 @@ function updateStatsBar() {
   if (currentTab === 'meus') {
     dropCount.textContent = meusDrops
     rareCount.textContent = meusRares
+    filteredCount.textContent = meusFiltered
+    statFiltered.style.display = (isMonitoring && meusFiltered > 0) ? 'flex' : 'none'
   } else {
     dropCount.textContent = meusDrops + ligaOnlyDrops
     rareCount.textContent = meusRares + ligaOnlyRares
+    statFiltered.style.display = 'none'
   }
 }
 
@@ -106,6 +110,9 @@ function addLogEntry({ type, message, item, ts, tab = 'both' }) {
     }
     updateTabCounts()
     updateStatsBar()
+  } else if (type === 'info' && tab === 'meus') {
+    meusFiltered++
+    updateStatsBar()
   }
 
   const rarity = item?.rarity || rarityFromMsg(message)
@@ -138,12 +145,15 @@ function setMonitorUI(watching, charIdentified) {
     statusText.textContent = 'Aguardando'
     meusDrops = 0; meusRares = 0
     ligaOnlyDrops = 0; ligaOnlyRares = 0
+    meusFiltered = 0
     dropCount.textContent = '0'
     rareCount.textContent = '0'
+    filteredCount.textContent = '0'
     cntMeus.textContent = '0'
     cntLiga.textContent = '0'
     statDrops.style.display = 'none'
     statRares.style.display = 'none'
+    statFiltered.style.display = 'none'
   } else if (!charIdentified) {
     btnToggle.textContent = '■ PAUSAR'
     btnToggle.className = 'stop'
@@ -268,10 +278,13 @@ btnClearLog.addEventListener('click', () => {
   logList.appendChild(logEmpty)
   meusDrops = 0; meusRares = 0
   ligaOnlyDrops = 0; ligaOnlyRares = 0
+  meusFiltered = 0
   dropCount.textContent = '0'
   rareCount.textContent = '0'
+  filteredCount.textContent = '0'
   cntMeus.textContent = '0'
   cntLiga.textContent = '0'
+  statFiltered.style.display = 'none'
 })
 
 // ── Auto-update ──────────────────────────────────────────────────────────────
