@@ -514,6 +514,9 @@ def main():
     log_debug("=== Sniffer iniciado ===")
     log_debug(f"ITEM_DB: {len(ITEM_DB)} itens, RARITY_BY_NAME: {len(RARITY_BY_NAME)} nomes")
 
+    # Dedup de pacotes duplicados capturados em múltiplas interfaces
+    _seen_seqs: dict[tuple, set] = defaultdict(set)
+
     def on_packet(pkt):
         try:
             if not pkt.haslayer(IP) or not pkt.haslayer(TCP): return
@@ -523,6 +526,15 @@ def main():
             src = pkt[IP].src; sp = pkt[TCP].sport
             dst = pkt[IP].dst; dp = pkt[TCP].dport
             key = (src, sp, dst, dp)
+
+            # Mesmo pacote capturado em outra interface → ignorar
+            seq = pkt[TCP].seq
+            if seq in _seen_seqs[key]:
+                return
+            _seen_seqs[key].add(seq)
+            # Limpar set se crescer demais (mantém só os últimos 256 seqs por fluxo)
+            if len(_seen_seqs[key]) > 256:
+                _seen_seqs[key] = set(list(_seen_seqs[key])[-128:])
 
             # FlowBuffer: reassembly com carry mechanism
             _flows[key].push(payload)
