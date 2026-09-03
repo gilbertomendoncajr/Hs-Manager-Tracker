@@ -35,6 +35,8 @@ JOURNAL_RARITIES = {"Satanic", "Set", "Heroic", "Angelic", "Unholy"}
 
 ITEM_DB: dict[tuple[int,int,int], tuple[str,str]] = {}
 RARITY_BY_NAME: dict[str,str] = {}
+# Pre-filtered set of (type, id) pairs with JOURNAL_RARITIES — for fast floor-item lookup
+KNOWN_JOURNAL_PAIRS: set[tuple[int,int]] = set()
 
 def _load_db():
     import os
@@ -58,7 +60,9 @@ def _load_db():
             ITEM_DB[(item_type, item_id, wt)] = (name, rarity)
             if name:
                 RARITY_BY_NAME[name.lower()] = rarity
-        log_debug(f"ITEM_DB: {len(ITEM_DB)} itens, RARITY_BY_NAME: {len(RARITY_BY_NAME)} nomes")
+            if rarity in JOURNAL_RARITIES:
+                KNOWN_JOURNAL_PAIRS.add((item_type, item_id))
+        log_debug(f"ITEM_DB: {len(ITEM_DB)} itens, KNOWN_JOURNAL_PAIRS: {len(KNOWN_JOURNAL_PAIRS)}, RARITY_BY_NAME: {len(RARITY_BY_NAME)} nomes")
     except Exception as ex:
         log_debug(f"Erro ao carregar ITEM_DB: {ex}")
 
@@ -172,7 +176,17 @@ def item_sources(d: dict) -> list[tuple]:
                     log_debug(f"  [skip belongs_to_player] {fp}")
                     continue
                 on_floor = _lies_on_floor(item)
-                if not on_floor:
+                if on_floor:
+                    # Floor item: only process if (type, id) is a known journal-rarity item.
+                    # The game sends ALL floor items in the area per packet — this pre-filter
+                    # prevents logging hundreds of unrelated items on each mob kill.
+                    fp_type = _fp_type(fp)
+                    b_val = _i(item, ["b"])
+                    log_debug(f"  [FLOOR_ITEM] fp={fp} fp_type={fp_type} b={b_val} item={json.dumps(item)[:300]}")
+                    if (fp_type, b_val) not in KNOWN_JOURNAL_PAIRS:
+                        log_debug(f"  [skip floor not_journal_db fp_type={fp_type} b={b_val}]")
+                        continue
+                else:
                     # Non-floor item: only process if c=1 (named) or relic type
                     c_val = _i(item, ["c"])
                     if c_val != 1 and _fp_type(fp) != RELIC_TYPE:
@@ -396,9 +410,6 @@ def process_messages(messages: list[dict], src_ip: str):
         if not sources: continue
         log_debug(f"item_sources: {len(sources)} candidatos de {src_ip}")
         for fp, item, ground in sources:
-            # [DEBUG-ATTRS] log completo do item no chão para análise de atributos
-            if ground:
-                log_debug(f"  [FLOOR_ITEM] fp={fp} item={json.dumps(item)}")
 
             rarity = _get_rarity(item)
             if not rarity:
