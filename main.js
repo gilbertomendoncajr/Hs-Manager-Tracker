@@ -601,8 +601,7 @@ ipcMain.handle('monitor:start', async (_e, leagueId) => {
       const tierValMeus = serverTierMap[drop.name] ?? null
       const tierTagMeus = tierValMeus ? ` [${tierValMeus}]` : ''
       const charPartMeus = drop.charName ? ` [${drop.charName}]` : ''
-      const groundIcon = drop.ground ? '✔' : '⚔'
-      sendLog('detect', `${groundIcon} ${drop.name}${tierTagMeus} (${drop.rarity})${charPartMeus}`, drop, 'meus')
+      sendLog('detect', `⚔ ${drop.name}${tierTagMeus} (${drop.rarity})${charPartMeus}`, drop, 'meus')
     }
 
     // Filtro pessoal → overlay (independente do filtro do ADM)
