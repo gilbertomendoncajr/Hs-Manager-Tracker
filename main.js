@@ -574,9 +574,7 @@ ipcMain.handle('monitor:start', async (_e, leagueId) => {
       const drop = msg
       if (!drop.name) return
 
-      // Runes e materiais (resource=true) são tipos conhecidos que vão direto ao inventário.
-      // Drops legítimos (Satanic, Set, etc.) têm resource=false, mesmo que o pacote de floor
-      // tenha sido perdido na transição de mapa (vote reset) e cheguem via operations.add.
+      // Runes/materiais conhecidos — sempre ignorar
       if (drop.resource) return
 
       // Anexar nome do personagem a partir do fingerprint (99-UID-ts-slot)
@@ -590,29 +588,40 @@ ipcMain.handle('monitor:start', async (_e, leagueId) => {
           drop.name?.toLowerCase().includes(wl)
         )
       })
+      if (!matches) return
 
-      if (matches) {
-        // Filtro pessoal → overlay (independente do filtro do ADM)
-        if (personalFilter.size > 0 && personalFilter.has(drop.name)) {
-          sendOverlay(drop)
-        }
+      const tierVal    = serverTierMap[drop.name] ?? null
+      const tierTag    = tierVal ? ` [${tierVal}]` : ''
+      const charPart   = drop.charName ? ` [${drop.charName}]` : ''
 
-        // Sempre registrar em "Meus Drops" (tudo que eu dropei que está no meu filtro)
-        const tierValMeus = serverTierMap[drop.name] ?? null
-        const tierTagMeus = tierValMeus ? ` [${tierValMeus}]` : ''
-        const charPartMeus = drop.charName ? ` [${drop.charName}]` : ''
-        sendLog('detect', `⚔ ${drop.name}${tierTagMeus} (${drop.rarity})${charPartMeus}`, drop, 'meus')
+      // ── floor_drop: item apareceu no chão, aguarda coleta ──────────────────
+      if (drop.type === 'floor_drop') {
+        if (personalFilter.size > 0 && personalFilter.has(drop.name)) sendOverlay(drop)
+        sendLog('detect', `⚔ ${drop.name}${tierTag} (${drop.rarity})${charPart} ⏳`, drop, 'meus')
+        if (mainWin) mainWin.webContents.send('drop:pending', drop)
+        return
+      }
 
-        // Filtro do ADM → registrar em Liga como oculto, não postar no servidor
+      // ── collected: item coletado (via pickup ou missed-floor) ──────────────
+      if (drop.type === 'collected') {
+        if (personalFilter.size > 0 && personalFilter.has(drop.name)) sendOverlay(drop)
+        sendLog('detect', `⚔ ${drop.name}${tierTag} (${drop.rarity})${charPart} ✓`, drop, 'meus')
+        if (mainWin) mainWin.webContents.send('drop:collected', drop)
         if (serverEnabledItems !== null && !serverEnabledItems.has(drop.name)) {
-          const tierTag = tierTagMeus
           sendLog('info', `⊘ ${drop.name}${tierTag} filtrado pelo ADM`, drop, 'liga-filtrado')
           return
         }
-        if (charIdentified) {
-          await postDrop(currentLeagueId, drop)
-        }
+        if (charIdentified) await postDrop(currentLeagueId, drop)
+        return
       }
+
+      // ── fallback: tipo antigo sem field "type" (compat) ───────────────────
+      sendLog('detect', `⚔ ${drop.name}${tierTag} (${drop.rarity})${charPart}`, drop, 'meus')
+      if (serverEnabledItems !== null && !serverEnabledItems.has(drop.name)) {
+        sendLog('info', `⊘ ${drop.name}${tierTag} filtrado pelo ADM`, drop, 'liga-filtrado')
+        return
+      }
+      if (charIdentified) await postDrop(currentLeagueId, drop)
     } catch (err) {
       sendLog('error', `❌ Erro ao processar drop: ${err.message}`)
     }

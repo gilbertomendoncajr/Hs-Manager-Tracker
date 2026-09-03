@@ -214,8 +214,9 @@ def item_sources(d: dict) -> list[tuple]:
 
 # ─── identidade + deduplicação (stats.rs) ───────────────────────────────────
 
-_seen_fp: set[str] = set()
-_told:    set[str] = set()
+_seen_fp:      set[str]        = set()
+_told:         set[str]        = set()
+_pending_drops: dict[str, dict] = {}   # ident → drop parcial (aguardando coleta)
 
 def _identity(item: dict, fingerprint) -> str:
     h  = str(_f(item, ["sh"]) or "")
@@ -223,27 +224,50 @@ def _identity(item: dict, fingerprint) -> str:
     seed      = _i(item, ["seed","a"])
     item_type = _i(item, ["type","itemType","item_type"])
     item_id   = _i(item, ["id","itemId","item_id"])
-    # fp is the stable unique ID for ground items; sh can vary between retransmitted packets
     if fp: return str(fp)
     if h:  return f"h:{h}"
     if seed or item_type or item_id: return f"g:{seed}:{item_type}:{item_id}"
     return "c:" + hashlib.md5(json.dumps(item, sort_keys=True).encode()).hexdigest()[:16]
 
-def _dedup_ok(item: dict, fingerprint, ground: bool) -> bool:
-    global _seen_fp, _told
-    ident = _identity(item, fingerprint)
-    sighting = f"{'d' if ground else 'p'}:{ident}"
+def _try_floor(item: dict, fingerprint) -> str | None:
+    """Registra sighting de chão. Retorna ident se deve emitir floor_drop, None se duplicata."""
+    global _seen_fp, _told, _pending_drops
+    ident    = _identity(item, fingerprint)
+    sighting = f"d:{ident}"
     if sighting in _seen_fp:
-        log_debug(f"  [dedup sighting] {sighting}")
-        return False
+        log_debug(f"  [dedup floor] já visto no chão")
+        return None
     _seen_fp.add(sighting)
     if ident in _told:
-        log_debug(f"  [dedup told] {ident}")
-        return False
-    _told.add(ident)
+        log_debug(f"  [dedup told] já coletado")
+        return None
+    if ident in _pending_drops:
+        log_debug(f"  [dedup pending] já pendente")
+        return None
+    _pending_drops[ident] = {}
     if len(_seen_fp) > 20000:
-        _seen_fp.clear(); _told.clear()
-    return True
+        _seen_fp.clear(); _told.clear(); _pending_drops.clear()
+    return ident
+
+def _try_collect(item: dict, fingerprint) -> tuple[str | None, bool]:
+    """Registra coleta. Retorna (ident, had_floor) se deve emitir collected, (None,_) se duplicata."""
+    global _seen_fp, _told, _pending_drops
+    ident    = _identity(item, fingerprint)
+    sighting = f"p:{ident}"
+    if sighting in _seen_fp:
+        log_debug(f"  [dedup pickup] já processado")
+        return None, False
+    _seen_fp.add(sighting)
+    if ident in _told:
+        log_debug(f"  [dedup told] já coletado")
+        return None, False
+    _told.add(ident)
+    had_floor = ident in _pending_drops
+    if had_floor:
+        del _pending_drops[ident]
+    if len(_seen_fp) > 20000:
+        _seen_fp.clear(); _told.clear(); _pending_drops.clear()
+    return ident, had_floor
 
 # ─── FlowBuffer — carry mechanism (parser.rs Reassembler) ───────────────────
 
@@ -460,19 +484,39 @@ def process_messages(messages: list[dict], src_ip: str):
                 log_debug(f"  raridade comum ignorada: {rarity} name={name}")
                 continue
 
-            if not _dedup_ok(item, fp, ground):
-                continue
+            ts = int(time.time() * 1000)
+            fp_str = str(fp or "")
 
-            drop = {
-                "name":     name or "?",
-                "rarity":   rarity,
-                "ground":   ground,
-                "resource": resource,
-                "ts_ms":    int(time.time() * 1000),
-                "fp":       str(fp or ""),
-            }
-            log_debug(f"  DROP: {name} [{rarity}] ground={ground}")
-            emit(drop)
+            if resource:
+                # Runes/materiais: dedup simples, emite para ser filtrado em main.js
+                ident = _identity(item, fp)
+                if f"p:{ident}" in _seen_fp or ident in _told:
+                    continue
+                _seen_fp.add(f"p:{ident}")
+                _told.add(ident)
+                drop = {"name": name or "?", "rarity": rarity, "ground": ground,
+                        "resource": True, "ts_ms": ts, "fp": fp_str}
+                log_debug(f"  DROP (resource): {name} [{rarity}]")
+                emit(drop)
+            elif ground:
+                # Item no chão — emite floor_drop, aguarda coleta
+                ident = _try_floor(item, fp)
+                if ident is None:
+                    continue
+                drop = {"type": "floor_drop", "name": name or "?", "rarity": rarity,
+                        "ground": True, "resource": False, "ts_ms": ts, "fp": fp_str}
+                log_debug(f"  FLOOR_DROP: {name} [{rarity}]")
+                emit(drop)
+            else:
+                # Pickup (operations.add) — emite collected
+                ident, had_floor = _try_collect(item, fp)
+                if ident is None:
+                    continue
+                drop = {"type": "collected", "name": name or "?", "rarity": rarity,
+                        "ground": False, "resource": False, "ts_ms": ts, "fp": fp_str,
+                        "had_floor": had_floor}
+                log_debug(f"  COLLECTED: {name} [{rarity}] had_floor={had_floor}")
+                emit(drop)
 
 _emitted_logins: set = set()
 _my_uid: int | None = None
