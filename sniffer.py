@@ -39,7 +39,9 @@ RARITY_BY_NAME: dict[str,str] = {}
 def _load_db():
     import os
     if getattr(sys, "frozen", False):
-        base = sys._MEIPASS
+        # sniffer_items.json is placed next to sniffer.exe (extraResources),
+        # not inside the PyInstaller bundle (_MEIPASS is the internal temp dir)
+        base = os.path.dirname(sys.executable)
     else:
         base = os.path.dirname(os.path.abspath(__file__))
     path = os.path.join(base, "sniffer_items.json")
