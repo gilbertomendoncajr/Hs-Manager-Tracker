@@ -126,11 +126,22 @@ def _obj_items(v) -> list:
     if isinstance(v, dict):   return [(k, x) for k, x in v.items() if isinstance(x, dict)]
     return []
 
+# Session credentials the client attaches to outgoing requests — their presence
+# means this is OUR packet going out, not a server drop answer coming back.
+CLIENT_ENVELOPE = {"identifier", "checksum"}
+
+# Item types whose id IS the identity (keys, collectibles, materials, socketables,
+# vaults) — same as hs-tracker's SELF_NUMBERED. For these, c==0 is simply what
+# they are and the id is the lookup key (safe to name even without named flag).
+RESOURCE_TYPES = frozenset([12, 13, 14, 15, 19])
+
 # ─── item_sources (parser.rs) ────────────────────────────────────────────────
 
 def item_sources(d: dict) -> list[tuple]:
     if not isinstance(d, dict): return []
     if MARKET_FIELDS & d.keys(): return []
+    # Client's own requests carry session credentials; server drop answers do not.
+    if CLIENT_ENVELOPE & d.keys(): return []
 
     ops = d.get("operations")
     if isinstance(ops, dict):
@@ -176,21 +187,18 @@ def item_sources(d: dict) -> list[tuple]:
                     log_debug(f"  [skip belongs_to_player] {fp}")
                     continue
                 on_floor = _lies_on_floor(item)
+                c_val      = _i(item, ["c"])
+                fp_type_v  = _fp_type(fp)
                 if on_floor:
-                    # Floor item: only process if (type, id) is a known journal-rarity item.
-                    # The game sends ALL floor items in the area per packet — this pre-filter
-                    # prevents logging hundreds of unrelated items on each mob kill.
-                    fp_type = _fp_type(fp)
-                    b_val = _i(item, ["b"])
-                    log_debug(f"  [FLOOR_ITEM] fp={fp} fp_type={fp_type} b={b_val} item={json.dumps(item)[:300]}")
-                    if (fp_type, b_val) not in KNOWN_JOURNAL_PAIRS:
-                        log_debug(f"  [skip floor not_journal_db fp_type={fp_type} b={b_val}]")
+                    log_debug(f"  [FLOOR_ITEM] fp={fp} c={c_val} fp_type={fp_type_v} item={json.dumps(item)[:200]}")
+                    # Exact hs-tracker filter: c==1 = named/confirmed drop; c==0 = loot-table
+                    # candidate (pre-MF roll). Relics are always tracked regardless of c.
+                    if c_val != 1 and fp_type_v != RELIC_TYPE:
+                        log_debug(f"  [skip floor c={c_val}]")
                         continue
                 else:
-                    # Non-floor item: only process if c=1 (named) or relic type
-                    c_val = _i(item, ["c"])
-                    if c_val != 1 and _fp_type(fp) != RELIC_TYPE:
-                        log_debug(f"  [skip non_floor c={c_val} fp_type={_fp_type(fp)}] {fp}")
+                    if c_val != 1 and fp_type_v != RELIC_TYPE:
+                        log_debug(f"  [skip non_floor c={c_val}] {fp}")
                         continue
                 out.append((fp, item, on_floor))
             return out
@@ -410,13 +418,31 @@ def process_messages(messages: list[dict], src_ip: str):
         if not sources: continue
         log_debug(f"item_sources: {len(sources)} candidatos de {src_ip}")
         for fp, item, ground in sources:
+            c_val      = _i(item, ["c"])
+            fp_type_v  = _fp_type(fp)
+            named_flag = (c_val == 1)
+            resource   = (fp_type_v in RESOURCE_TYPES) if fp_type_v is not None else False
 
             rarity = _get_rarity(item)
-            if not rarity:
+
+            # hs-tracker: plain_base && named_only → rarity = Null.
+            # c==0 base items share item-ids with named gear (0..20 overlap);
+            # trusting a journal-rarity claim from such a packet would produce
+            # false positives on every pickup of a white sword.
+            if "c" in item and c_val == 0 and rarity in JOURNAL_RARITIES and not resource:
+                rarity = None
+
+            # hs-tracker: name = if named_flag || worth_naming || resource { lookup }
+            worth_naming = (rarity in JOURNAL_RARITIES)
+            if named_flag or worth_naming or resource:
                 name = _get_name(item, fp)
-                rarity = _rarity_from_name(name)
+                if not rarity:
+                    rarity = _rarity_from_name(name)
             else:
-                name = _get_name(item, fp)
+                name = _f(item, ["name", "itemName", "item_name", "label"])
+                name = str(name) if name else None
+                if not rarity:
+                    rarity = _rarity_from_name(name)
 
             if not rarity:
                 b_val = _i(item, ["b"])
