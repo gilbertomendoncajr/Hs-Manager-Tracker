@@ -362,18 +362,24 @@ async function postDrop(leagueId, drop) {
     }
   } catch { /* sem wiki */ }
 
-  const res = await apiFetch(`/api/dashboard/leagues/${leagueId}/items`, {
-    method: 'POST',
-    body: JSON.stringify({
-      itemName: drop.name,
-      itemWikiTitle: wikiTitle,
-      itemImageUrl: wikiImage,
-      category: wikiCategory,
-      rarity: drop.rarity ?? null,
-      tier: drop.tier ?? null,
-      charName: drop.charName ?? null,
-    }),
-  })
+  let res
+  try {
+    res = await apiFetch(`/api/dashboard/leagues/${leagueId}/items`, {
+      method: 'POST',
+      body: JSON.stringify({
+        itemName: drop.name,
+        itemWikiTitle: wikiTitle,
+        itemImageUrl: wikiImage,
+        category: wikiCategory,
+        rarity: drop.rarity ?? null,
+        tier: drop.tier ?? null,
+        charName: drop.charName ?? null,
+      }),
+    })
+  } catch (err) {
+    sendLog('error', `✘ Erro de rede ao registrar ${drop.name}: ${err.message}`, drop)
+    return
+  }
 
   if (res.ok) {
     const charPart = drop.charName || myDiscordUsername || ''
@@ -542,68 +548,72 @@ ipcMain.handle('monitor:start', async (_e, leagueId) => {
   // Ler drops linha a linha do stdout
   const rl = readline.createInterface({ input: snifferProc.stdout })
   rl.on('line', async (line) => {
-    let msg
-    try { msg = JSON.parse(line) } catch { return }
-    if (!msg || typeof msg !== 'object') return
+    try {
+      let msg
+      try { msg = JSON.parse(line) } catch { return }
+      if (!msg || typeof msg !== 'object') return
 
-    // Erro explícito do sniffer
-    if (msg.error) {
-      sendLog('error', `❌ Sniffer: ${msg.error}`)
-      stopMonitor()
-      return
-    }
-
-    // Evento de login: mapear UID → nome do personagem
-    if (msg.type === 'player_login') {
-      charMap[msg.accountUID] = msg.charName
-      if (!charIdentified) {
-        charIdentified = true
-        sendState()
-        sendLog('info', `✅ Personagem identificado: ${msg.charName} — monitorando drops!`)
-      }
-      return
-    }
-
-    const drop = msg
-    if (!drop.name) return
-
-    // Runes e materiais de craft vão direto ao inventário (ground=false, sem sighting no chão).
-    // Drops legítimos (Satanic, Set, etc.) sempre aparecem no chão primeiro → ground=true.
-    if (!drop.ground) return
-
-    // Anexar nome do personagem a partir do fingerprint (99-UID-ts-slot)
-    const uid = parseInt((drop.fp || '').split('-')[1] || '0', 10)
-    if (uid && charMap[uid]) drop.charName = charMap[uid]
-
-    const matches = LOOT_FILTER.some((w) => {
-      const wl = w.toLowerCase()
-      return (
-        drop.rarity?.toLowerCase() === wl ||
-        drop.name?.toLowerCase().includes(wl)
-      )
-    })
-
-    if (matches) {
-      // Filtro pessoal → overlay (independente do filtro do ADM)
-      if (personalFilter.size > 0 && personalFilter.has(drop.name)) {
-        sendOverlay(drop)
-      }
-
-      // Sempre registrar em "Meus Drops" (tudo que eu dropei que está no meu filtro)
-      const tierValMeus = serverTierMap[drop.name] ?? null
-      const tierTagMeus = tierValMeus ? ` [${tierValMeus}]` : ''
-      const charPartMeus = drop.charName ? ` [${drop.charName}]` : ''
-      sendLog('detect', `⚔ ${drop.name}${tierTagMeus} (${drop.rarity})${charPartMeus}`, drop, 'meus')
-
-      // Filtro do ADM → registrar em Liga como oculto, não postar no servidor
-      if (serverEnabledItems !== null && !serverEnabledItems.has(drop.name)) {
-        const tierTag = tierTagMeus
-        sendLog('info', `⊘ ${drop.name}${tierTag} filtrado pelo ADM`, drop, 'liga-filtrado')
+      // Erro explícito do sniffer
+      if (msg.error) {
+        sendLog('error', `❌ Sniffer: ${msg.error}`)
+        stopMonitor()
         return
       }
-      if (charIdentified) {
-        await postDrop(currentLeagueId, drop)
+
+      // Evento de login: mapear UID → nome do personagem
+      if (msg.type === 'player_login') {
+        charMap[msg.accountUID] = msg.charName
+        if (!charIdentified) {
+          charIdentified = true
+          sendState()
+          sendLog('info', `✅ Personagem identificado: ${msg.charName} — monitorando drops!`)
+        }
+        return
       }
+
+      const drop = msg
+      if (!drop.name) return
+
+      // Runes e materiais de craft vão direto ao inventário (ground=false, sem sighting no chão).
+      // Drops legítimos (Satanic, Set, etc.) sempre aparecem no chão primeiro → ground=true.
+      if (!drop.ground) return
+
+      // Anexar nome do personagem a partir do fingerprint (99-UID-ts-slot)
+      const uid = parseInt((drop.fp || '').split('-')[1] || '0', 10)
+      if (uid && charMap[uid]) drop.charName = charMap[uid]
+
+      const matches = LOOT_FILTER.some((w) => {
+        const wl = w.toLowerCase()
+        return (
+          drop.rarity?.toLowerCase() === wl ||
+          drop.name?.toLowerCase().includes(wl)
+        )
+      })
+
+      if (matches) {
+        // Filtro pessoal → overlay (independente do filtro do ADM)
+        if (personalFilter.size > 0 && personalFilter.has(drop.name)) {
+          sendOverlay(drop)
+        }
+
+        // Sempre registrar em "Meus Drops" (tudo que eu dropei que está no meu filtro)
+        const tierValMeus = serverTierMap[drop.name] ?? null
+        const tierTagMeus = tierValMeus ? ` [${tierValMeus}]` : ''
+        const charPartMeus = drop.charName ? ` [${drop.charName}]` : ''
+        sendLog('detect', `⚔ ${drop.name}${tierTagMeus} (${drop.rarity})${charPartMeus}`, drop, 'meus')
+
+        // Filtro do ADM → registrar em Liga como oculto, não postar no servidor
+        if (serverEnabledItems !== null && !serverEnabledItems.has(drop.name)) {
+          const tierTag = tierTagMeus
+          sendLog('info', `⊘ ${drop.name}${tierTag} filtrado pelo ADM`, drop, 'liga-filtrado')
+          return
+        }
+        if (charIdentified) {
+          await postDrop(currentLeagueId, drop)
+        }
+      }
+    } catch (err) {
+      sendLog('error', `❌ Erro ao processar drop: ${err.message}`)
     }
   })
 
