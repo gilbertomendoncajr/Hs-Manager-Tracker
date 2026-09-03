@@ -22,6 +22,12 @@ const tabLigaBtn    = document.getElementById('tabLiga')
 const cntMeus            = document.getElementById('cntMeus')
 const cntLiga            = document.getElementById('cntLiga')
 const btnToggleFiltered  = document.getElementById('btnToggleFiltered')
+const uaSection     = document.getElementById('uaSection')
+const uaBody        = document.getElementById('uaBody')
+const uaCount       = document.getElementById('uaCount')
+
+// fp → true (só para saber se a linha existe)
+const uaMap = new Map()
 
 const RARE_RARITIES = new Set(['Satanic', 'Angelic', 'Unholy', 'Heroic', 'Blessed', 'Set'])
 
@@ -156,6 +162,13 @@ function addLogEntry({ type, message, item, ts, tab = 'both' }) {
   updateEmptyState()
 }
 
+function clearUATable() {
+  uaBody.innerHTML = ''
+  uaMap.clear()
+  uaSection.style.display = 'none'
+  uaCount.textContent = '0'
+}
+
 function setMonitorUI(watching, charIdentified) {
   isMonitoring = watching
   if (!watching) {
@@ -173,6 +186,7 @@ function setMonitorUI(watching, charIdentified) {
     cntLiga.textContent = '0'
     statDrops.style.display = 'none'
     statRares.style.display = 'none'
+    clearUATable()
     if (btnToggleFiltered) btnToggleFiltered.style.display = 'none'
   } else if (!charIdentified) {
     btnToggle.textContent = '■ PAUSAR'
@@ -303,6 +317,7 @@ btnClearLog.addEventListener('click', () => {
   rareCount.textContent = '0'
   cntMeus.textContent = '0'
   cntLiga.textContent = '0'
+  clearUATable()
   if (btnToggleFiltered) btnToggleFiltered.style.display = 'none'
 })
 
@@ -348,6 +363,36 @@ window.api.onUpdateReady((data) => {
 tabMeusBtn.addEventListener('click', () => switchTab('meus'))
 tabLigaBtn.addEventListener('click', () => switchTab('liga'))
 if (btnToggleFiltered) btnToggleFiltered.addEventListener('click', toggleFiltered)
+
+// ── Tabela Unholy / Angelic ──────────────────────────────────────────────────
+window.api.onDropPending((drop) => {
+  const color = RARITY_COLORS[drop.rarity] || 'var(--text)'
+  const safeId = (drop.fp || '').replace(/[^a-zA-Z0-9-]/g, '_')
+  const row = document.createElement('tr')
+  row.dataset.fp = drop.fp
+  row.innerHTML = `
+    <td class="ua-name" style="color:${color}">${drop.name}</td>
+    <td class="ua-time">${fmtTime(drop.ts_ms)}</td>
+    <td class="ua-collect" id="ua-c-${safeId}">⏳</td>
+  `
+  uaBody.insertBefore(row, uaBody.firstChild)
+  uaMap.set(drop.fp, safeId)
+  uaSection.style.display = 'block'
+  uaCount.textContent = uaBody.children.length
+})
+
+window.api.onDropCollected((drop) => {
+  const safeId = uaMap.get(drop.fp)
+  if (safeId) {
+    const cell = document.getElementById(`ua-c-${safeId}`)
+    if (cell) {
+      cell.textContent = fmtTime(drop.ts_ms)
+      cell.classList.add('done')
+    }
+    const row = uaBody.querySelector(`[data-fp="${CSS.escape(drop.fp)}"]`)
+    if (row) row.classList.add('collected')
+  }
+})
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 initAuth()

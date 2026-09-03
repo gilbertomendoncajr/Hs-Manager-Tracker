@@ -21,6 +21,8 @@ contextBridge.exposeInMainWorld('api', {
   onLog: (cb) => ipcRenderer.on('log:entry', (_e, entry) => cb(entry)),
   onStateChange: (cb) => ipcRenderer.on('monitor:stateChange', (_e, state) => cb(state)),
   onSessionExpired: (cb) => ipcRenderer.on('auth:sessionExpired', () => cb()),
+  onDropPending: (cb) => ipcRenderer.on('drop:pending', (_e, drop) => cb(drop)),
+  onDropCollected: (cb) => ipcRenderer.on('drop:collected', (_e, drop) => cb(drop)),
 
   // Auto-update
   onUpdateAvailable: (cb) => ipcRenderer.on('update:available', (_e, info) => cb(info)),

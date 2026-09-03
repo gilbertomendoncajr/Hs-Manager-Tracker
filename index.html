@@ -383,6 +383,49 @@
     }
     .tab-btn.active .tab-count { background: rgba(200,168,64,.18); color: var(--gold); }
 
+    /* ── Tabela Unholy / Angelic ── */
+    #uaSection {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      max-height: 160px;
+      overflow-y: auto;
+    }
+    .ua-header {
+      display: flex; align-items: center; gap: 8px;
+      padding: 5px 12px 4px;
+      background: linear-gradient(90deg, rgba(208,72,136,.08) 0%, transparent 100%);
+      border-bottom: 1px solid rgba(208,72,136,.2);
+    }
+    .ua-header-label {
+      font-family: 'Chakra Petch', sans-serif;
+      font-size: 9px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+      color: var(--muted);
+    }
+    #uaTable { width: 100%; border-collapse: collapse; }
+    #uaTable thead th {
+      font-family: 'Chakra Petch', sans-serif;
+      font-size: 9px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+      color: var(--muted); padding: 3px 12px; text-align: left;
+      background: var(--bg3);
+    }
+    #uaTable thead th:not(:first-child) { text-align: center; }
+    #uaTable tbody tr { border-bottom: 1px solid rgba(30,26,56,.5); }
+    #uaTable tbody tr.collected { opacity: .7; }
+    .ua-name {
+      font-family: 'Exo 2', sans-serif; font-size: 12px; font-weight: 600;
+      padding: 5px 12px;
+    }
+    .ua-time {
+      font-family: 'Exo 2', sans-serif; font-size: 11px;
+      color: var(--muted); text-align: center; padding: 5px 8px;
+    }
+    .ua-collect {
+      font-family: 'Exo 2', sans-serif; font-size: 11px;
+      color: var(--muted); text-align: center; padding: 5px 8px;
+    }
+    .ua-collect.done { color: var(--green); }
+
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border2); }
@@ -482,6 +525,24 @@
         <button id="btnToggleFiltered" style="display:none;background:none;border:1px solid var(--border2);color:var(--muted);cursor:pointer;font-family:'Chakra Petch',sans-serif;font-size:9px;font-weight:600;padding:3px 8px;transition:color .15s,border-color .15s;letter-spacing:.04em;flex-shrink:0;">⊘ ver filtrados (0)</button>
         <div class="spacer"></div>
         <button id="btnClearLog">LIMPAR</button>
+      </div>
+
+      <!-- Tabela Unholy / Angelic (aparece ao receber floor_drop) -->
+      <div id="uaSection" style="display:none">
+        <div class="ua-header">
+          <span class="ua-header-label">⚡ Unholy / Angelic</span>
+          <span id="uaCount" class="tab-count">0</span>
+        </div>
+        <table id="uaTable">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Dropou</th>
+              <th>Coletou</th>
+            </tr>
+          </thead>
+          <tbody id="uaBody"></tbody>
+        </table>
       </div>
 
       <div id="logList">

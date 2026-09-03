@@ -214,8 +214,9 @@ def item_sources(d: dict) -> list[tuple]:
 
 # ─── identidade + deduplicação (stats.rs) ───────────────────────────────────
 
-_seen_fp: set[str] = set()
-_told:    set[str] = set()
+_seen_fp:      set[str]        = set()
+_told:         set[str]        = set()
+_pending_drops: dict[str, dict] = {}   # ident → {name, rarity, ts_ms, fp}
 
 def _identity(item: dict, fingerprint) -> str:
     h  = str(_f(item, ["sh"]) or "")
@@ -228,22 +229,6 @@ def _identity(item: dict, fingerprint) -> str:
     if h:  return f"h:{h}"
     if seed or item_type or item_id: return f"g:{seed}:{item_type}:{item_id}"
     return "c:" + hashlib.md5(json.dumps(item, sort_keys=True).encode()).hexdigest()[:16]
-
-def _dedup_ok(item: dict, fingerprint, ground: bool) -> bool:
-    global _seen_fp, _told
-    ident = _identity(item, fingerprint)
-    sighting = f"{'d' if ground else 'p'}:{ident}"
-    if sighting in _seen_fp:
-        log_debug(f"  [dedup sighting] {sighting}")
-        return False
-    _seen_fp.add(sighting)
-    if ident in _told:
-        log_debug(f"  [dedup told] {ident}")
-        return False
-    _told.add(ident)
-    if len(_seen_fp) > 20000:
-        _seen_fp.clear(); _told.clear()
-    return True
 
 # ─── FlowBuffer — carry mechanism (parser.rs Reassembler) ───────────────────
 
@@ -460,18 +445,58 @@ def process_messages(messages: list[dict], src_ip: str):
                 log_debug(f"  raridade comum ignorada: {rarity} name={name}")
                 continue
 
-            if not _dedup_ok(item, fp, ground):
+            ident    = _identity(item, fp)
+            sighting = f"{'d' if ground else 'p'}:{ident}"
+            if sighting in _seen_fp:
+                log_debug(f"  [dedup sighting] {sighting}")
                 continue
+            _seen_fp.add(sighting)
 
-            drop = {
-                "name":   name or "?",
-                "rarity": rarity,
-                "ground": ground,
-                "ts_ms":  int(time.time() * 1000),
-                "fp":     str(fp or ""),
-            }
-            log_debug(f"  DROP: {name} [{rarity}] ground={ground}")
-            emit(drop)
+            if ground:
+                # Ainda não sabemos se o jogador vai pegar — aguarda pickup
+                if ident in _told or ident in _pending_drops:
+                    log_debug(f"  [skip already pending/told] {ident}")
+                    continue
+                _pending_drops[ident] = {
+                    "name":   name or "?",
+                    "rarity": rarity,
+                    "ts_ms":  int(time.time() * 1000),
+                    "fp":     str(fp or ""),
+                }
+                log_debug(f"  PENDING: {name} [{rarity}] ident={ident}")
+                # Unholy/Angelic: emite floor_drop imediatamente para o dashboard
+                if rarity in {"Unholy", "Angelic"}:
+                    emit({
+                        "name":      name or "?",
+                        "rarity":    rarity,
+                        "ground":    True,
+                        "collected": False,
+                        "event":     "floor_drop",
+                        "ts_ms":     int(time.time() * 1000),
+                        "fp":        str(fp or ""),
+                    })
+            else:
+                # Pickup — item chegou ao inventário
+                if ident in _told:
+                    log_debug(f"  [dedup told] {ident}")
+                    continue
+                _told.add(ident)
+                pending = _pending_drops.pop(ident, None)
+                drop = {
+                    "name":      name or (pending["name"] if pending else "?"),
+                    "rarity":    rarity,
+                    "ground":    pending is not None,
+                    "collected": True,
+                    "ts_ms":     int(time.time() * 1000),
+                    "fp":        str(fp or ""),
+                }
+                if rarity in {"Unholy", "Angelic"}:
+                    drop["event"] = "collected"
+                log_debug(f"  DROP: {drop['name']} [{rarity}] ground={pending is not None}")
+                emit(drop)
+
+            if len(_seen_fp) > 20000:
+                _seen_fp.clear(); _told.clear(); _pending_drops.clear()
 
 _emitted_logins: set = set()
 _my_uid: int | None = None
