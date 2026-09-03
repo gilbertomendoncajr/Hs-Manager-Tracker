@@ -396,6 +396,10 @@ def process_messages(messages: list[dict], src_ip: str):
         if not sources: continue
         log_debug(f"item_sources: {len(sources)} candidatos de {src_ip}")
         for fp, item, ground in sources:
+            # [DEBUG-ATTRS] log completo do item no chão para análise de atributos
+            if ground:
+                log_debug(f"  [FLOOR_ITEM] fp={fp} item={json.dumps(item)}")
+
             rarity = _get_rarity(item)
             if not rarity:
                 name = _get_name(item, fp)
