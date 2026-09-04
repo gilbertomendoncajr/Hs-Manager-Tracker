@@ -1,8 +1,8 @@
-const { app, BrowserWindow, ipcMain } = require('electron')
+const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } = require('electron')
 const { autoUpdater } = require('electron-updater')
 const path = require('path')
 const fs = require('fs')
-const { spawn } = require('child_process')
+const { spawn, exec } = require('child_process')
 const readline = require('readline')
 
 // electron-store v8 é ESM — usar dynamic import
@@ -14,6 +14,9 @@ async function getStore() {
       defaults: {
         sessionToken: null,
         selectedLeagueId: null,
+        closeBehavior: 'tray',
+        appTheme: 'dark',
+        appLang: 'pt',
       },
     })
   }
@@ -31,11 +34,19 @@ const SNIFFER_EXE = isPackaged
 const SNIFFER_PY = path.join(__dirname, 'sniffer.py')
 
 let mainWin = null
+let tray = null
+let compactWin = null
 let flourishWin = null
 let tickerWin = null
 let filterWin = null
 let serverEnabledItems = null   // Set<string> | null — null = not loaded yet (allow all)
 let serverTierMap = {}          // Record<string, string> — name → tier
+let serverCategoryMap = {}      // Record<string, string> — name → category (item type)
+let dropHistory = []            // Array of {ch, payload} — replayed to compact on open
+const DROP_HISTORY_MAX = 300
+let currentLang = 'pt'
+
+function t(pt, en) { return currentLang === 'en' ? en : pt }
 
 // ── Filtro pessoal (local) ───────────────────────────────────────────────────
 let personalFilter = new Set()  // Set<string> — nomes de itens que ativam o overlay
@@ -75,8 +86,9 @@ function createMainWindow() {
     height: 580,
     minWidth: 680,
     minHeight: 480,
-    title: 'HS Drop Logger',
-    backgroundColor: '#0e0b0b',
+    frame: false,
+    icon: path.join(__dirname, 'icon.png'),
+    backgroundColor: '#08060b',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -86,6 +98,61 @@ function createMainWindow() {
   mainWin.loadFile('index.html')
   mainWin.setMenuBarVisibility(false)
 }
+
+function createTray() {
+  const icon = nativeImage.createFromPath(path.join(__dirname, 'icon.png')).resize({ width: 16, height: 16 })
+  tray = new Tray(icon)
+  tray.setToolTip('HS Drop Logger')
+  tray.on('click', () => { if (mainWin) { mainWin.show(); mainWin.focus() } })
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: 'Abrir / Open', click: () => { if (mainWin) { mainWin.show(); mainWin.focus() } } },
+    { type: 'separator' },
+    { label: 'Fechar / Quit', click: () => app.quit() },
+  ]))
+}
+
+ipcMain.on('win:minimize', () => mainWin && mainWin.minimize())
+ipcMain.on('win:close', async () => {
+  if (!mainWin) return
+  const s = await getStore()
+  const pref = s.get('closeBehavior', 'tray')
+  if (pref === 'tray') {
+    mainWin.hide()
+    if (!tray) createTray()
+  } else {
+    app.quit()
+  }
+})
+
+ipcMain.handle('settings:getCloseBehavior', async () => {
+  const s = await getStore()
+  return s.get('closeBehavior', 'tray')
+})
+ipcMain.handle('settings:setCloseBehavior', async (e, val) => {
+  const s = await getStore()
+  s.set('closeBehavior', val)
+})
+ipcMain.handle('settings:getStartup', () => app.getLoginItemSettings().openAtLogin)
+ipcMain.handle('settings:setStartup', (e, val) => {
+  app.setLoginItemSettings({ openAtLogin: !!val })
+})
+ipcMain.handle('settings:getTheme', async () => {
+  const s = await getStore()
+  return s.get('appTheme', 'dark')
+})
+ipcMain.handle('settings:setTheme', async (e, val) => {
+  const s = await getStore()
+  s.set('appTheme', val)
+})
+ipcMain.handle('settings:getLang', async () => {
+  const s = await getStore()
+  return s.get('appLang', 'pt')
+})
+ipcMain.handle('settings:setLang', async (e, val) => {
+  const s = await getStore()
+  s.set('appLang', val)
+  currentLang = val
+})
 
 // ── Janelas overlay ─────────────────────────────────────────────────────────
 function createOverlays() {
@@ -120,7 +187,9 @@ function sendOverlay(drop) {
   if (tickerWin && !tickerWin.isDestroyed()) tickerWin.webContents.send('overlay:drop', drop)
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  const s = await getStore()
+  currentLang = s.get('appLang', 'pt')
   loadPersonalFilter()
   createMainWindow()
   createOverlays()
@@ -255,20 +324,89 @@ async function apiFetch(urlPath, options = {}) {
 
   // Sessão expirou — avisar o usuário para relogar
   if (res.status === 401) {
-    sendLog('error', '⚠ Sessão expirada. Faça login novamente.')
+    sendLog('error', t('⚠ Sessão expirada. Faça login novamente.', '⚠ Session expired. Please log in again.'))
     if (mainWin) mainWin.webContents.send('auth:sessionExpired')
   }
 
   return res
 }
 
+function sendToWin(win, channel, payload) {
+  if (win && !win.isDestroyed()) win.webContents.send(channel, payload)
+}
+
 function sendLog(type, message, item = null, tab = 'both') {
-  if (mainWin) mainWin.webContents.send('log:entry', { type, message, item, ts: Date.now(), tab })
+  const entry = { type, message, item, ts: Date.now(), tab }
+  sendToWin(mainWin, 'log:entry', entry)
+  sendToWin(compactWin, 'log:entry', entry)
 }
 
 function sendState() {
-  if (mainWin) mainWin.webContents.send('monitor:stateChange', { isMonitoring, leagueId: currentLeagueId, charIdentified })
+  const knownChars = Object.values(charMap)
+  const charName = knownChars.length > 0 ? knownChars[knownChars.length - 1] : null
+  const state = { isMonitoring, leagueId: currentLeagueId, charIdentified, charName }
+  sendToWin(mainWin, 'monitor:stateChange', state)
+  sendToWin(compactWin, 'monitor:stateChange', state)
 }
+
+function pushHistory(ch, payload) {
+  dropHistory.push({ ch, payload })
+  if (dropHistory.length > DROP_HISTORY_MAX) dropHistory.shift()
+}
+
+function createCompactWindow() {
+  const { screen } = require('electron')
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize
+  compactWin = new BrowserWindow({
+    width: 320,
+    height: 460,
+    minWidth: 260,
+    maxWidth: 720,
+    minHeight: 200,
+    x: width - 340,
+    y: Math.round(height / 2 - 230),
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    skipTaskbar: false,
+    resizable: true,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload-compact.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  })
+  compactWin.loadFile('compact.html')
+  compactWin.webContents.once('did-finish-load', () => {
+    for (const { ch, payload } of dropHistory) {
+      sendToWin(compactWin, ch, payload)
+    }
+  })
+  compactWin.on('closed', () => {
+    compactWin = null
+    // Restore main window when compact closes for any reason
+    if (mainWin && !mainWin.isDestroyed()) { mainWin.show(); mainWin.focus() }
+  })
+}
+
+ipcMain.handle('compact:toggle', () => {
+  if (compactWin && !compactWin.isDestroyed()) {
+    compactWin.close()
+    // main window restored via 'closed' handler
+  } else {
+    createCompactWindow()
+    if (mainWin) mainWin.hide()
+  }
+})
+
+ipcMain.on('compact:close', () => {
+  if (compactWin && !compactWin.isDestroyed()) {
+    compactWin.close()
+    // main window restored via 'closed' handler
+  } else {
+    if (mainWin && !mainWin.isDestroyed()) { mainWin.show(); mainWin.focus() }
+  }
+})
 
 // ── Auth: OAuth via BrowserWindow separada ──────────────────────────────────
 ipcMain.handle('auth:login', () => {
@@ -377,7 +515,7 @@ async function postDrop(leagueId, drop) {
       }),
     })
   } catch (err) {
-    sendLog('error', `✘ Erro de rede ao registrar ${drop.name}: ${err.message}`, drop)
+    sendLog('error', t(`✘ Erro de rede ao registrar ${drop.name}: ${err.message}`, `✘ Network error posting ${drop.name}: ${err.message}`), drop)
     return
   }
 
@@ -390,7 +528,7 @@ async function postDrop(leagueId, drop) {
     sendLog('detect', `🎯 ${drop.name}${tier} (${drop.rarity})${who}`, drop, 'liga')
   } else {
     const err = await res.json().catch(() => ({}))
-    sendLog('error', `✘ Falha ao registrar ${drop.name}: ${err.error ?? res.status}`, drop)
+    sendLog('error', t(`✘ Falha ao registrar ${drop.name}: ${err.error ?? res.status}`, `✘ Failed to post ${drop.name}: ${err.error ?? res.status}`), drop)
   }
 }
 
@@ -444,7 +582,7 @@ async function connectSSE(leagueId) {
           const who = evt.charName && evt.dropper?.username
             ? `${evt.charName} (${evt.dropper.username})`
             : (evt.charName ?? evt.dropper?.username ?? 'Alguém')
-          sendLog('detect', `🌐 ${who} dropou: ${drop.name} (${drop.rarity || '?'})`, drop, 'liga')
+          sendLog('detect', t(`🌐 ${who} dropou: ${drop.name} (${drop.rarity || '?'})`, `🌐 ${who} dropped: ${drop.name} (${drop.rarity || '?'})`), drop, 'liga')
           sendOverlay(drop)
         } catch { /* linha malformada */ }
       }
@@ -460,8 +598,78 @@ async function connectSSE(leagueId) {
   }
 }
 
+// ── Connection monitor (detects area transitions via netstat — equiv. ao netstat2 do HS Tracker) ──
+let _connMonitor = null
+let _lastGameIPs = new Set()
+let _cachedGamePid = null
+let _pidCacheMs = 0
+
+async function _getHeroSiegePid() {
+  if (Date.now() - _pidCacheMs < 5_000 && _cachedGamePid !== null) return _cachedGamePid
+  return new Promise((resolve) => {
+    exec('tasklist /FI "IMAGENAME eq HeroSiege.exe" /FO CSV /NH 2>NUL', (err, stdout) => {
+      _pidCacheMs = Date.now()
+      const match = (stdout || '').match(/"HeroSiege\.exe","(\d+)"/)
+      _cachedGamePid = match ? parseInt(match[1]) : null
+      resolve(_cachedGamePid)
+    })
+  })
+}
+
+async function _getGameRemoteIPs(pid) {
+  return new Promise((resolve) => {
+    exec('netstat -ano -p TCP', (err, stdout) => {
+      if (!stdout) return resolve(new Set())
+      const ips = new Set()
+      const pidStr = String(pid)
+      for (const line of stdout.split('\n')) {
+        const cols = line.trim().split(/\s+/)
+        if (cols.length < 5 || cols[0] !== 'TCP' || cols[3] !== 'ESTABLISHED' || cols[4] !== pidStr) continue
+        const lastColon = cols[2].lastIndexOf(':')
+        if (lastColon < 1) continue
+        const ip = cols[2].slice(0, lastColon)
+        if (ip && ip !== '0.0.0.0' && !ip.startsWith('127.')) ips.add(ip)
+      }
+      resolve(ips)
+    })
+  })
+}
+
+function _startConnMonitor() {
+  if (_connMonitor) return
+  _lastGameIPs = new Set()
+  _cachedGamePid = null
+  _pidCacheMs = 0
+  _connMonitor = setInterval(async () => {
+    if (!isMonitoring) return
+    try {
+      const pid = await _getHeroSiegePid()
+      if (!pid) return
+      const ips = await _getGameRemoteIPs(pid)
+      if (ips.size === 0) return
+      const added = [...ips].filter(ip => !_lastGameIPs.has(ip))
+      if (_lastGameIPs.size > 0 && added.length > 0) {
+        lastSnifferEventMs = Date.now()
+        spawnSniffer()
+      }
+      _lastGameIPs = ips
+    } catch { /* ignore */ }
+  }, 2_000)
+}
+
+function _stopConnMonitor() {
+  if (_connMonitor) { clearInterval(_connMonitor); _connMonitor = null }
+  _lastGameIPs = new Set()
+  _cachedGamePid = null
+}
+
 // ── Monitor via sniffer Python ──────────────────────────────────────────────
+let lastSnifferEventMs = 0
+let snifferWatchdog = null
+
 function stopMonitor() {
+  _stopConnMonitor()
+  if (snifferWatchdog) { clearInterval(snifferWatchdog); snifferWatchdog = null }
   if (sseAbort) { sseAbort.abort(); sseAbort = null }
   if (snifferProc) {
     snifferProc.kill()
@@ -471,6 +679,144 @@ function stopMonitor() {
   charIdentified = false
   currentLeagueId = null
   sendState()
+}
+
+function spawnSniffer() {
+  if (snifferProc) {
+    snifferProc.kill()
+    snifferProc = null
+  }
+
+  try {
+    if (isPackaged) {
+      snifferProc = spawn(SNIFFER_EXE, [], { cwd: RESOURCES, stdio: ['ignore', 'pipe', 'pipe'] })
+    } else {
+      snifferProc = spawn('python', [SNIFFER_PY], { cwd: __dirname, stdio: ['ignore', 'pipe', 'pipe'] })
+    }
+  } catch (err) {
+    stopMonitor()
+    sendLog('error', t(`❌ Falha ao iniciar sniffer: ${err.message}`, `❌ Failed to start sniffer: ${err.message}`))
+    return
+  }
+
+  lastSnifferEventMs = Date.now()
+
+  const rl = readline.createInterface({ input: snifferProc.stdout })
+  rl.on('line', async (line) => {
+    try {
+      let msg
+      try { msg = JSON.parse(line) } catch { return }
+      if (!msg || typeof msg !== 'object') return
+
+      if (msg.error) {
+        sendLog('error', `❌ Sniffer: ${msg.error}`)
+        stopMonitor()
+        return
+      }
+
+      lastSnifferEventMs = Date.now()
+
+      if (msg.type === 'player_login') {
+        charMap[msg.accountUID] = msg.charName
+        if (!charIdentified) {
+          charIdentified = true
+          sendState()
+          sendLog('info', t(`✅ Personagem identificado: ${msg.charName} — monitorando drops!`, `✅ Character identified: ${msg.charName} — monitoring drops!`))
+        }
+        return
+      }
+
+      sendToWin(mainWin, 'sniffer:heartbeat', { ts: Date.now() })
+
+      const drop = msg
+      if (!drop.name) return
+      if (drop.resource) return
+
+      const uid = parseInt((drop.fp || '').split('-')[1] || '0', 10)
+      if (uid && charMap[uid]) drop.charName = charMap[uid]
+
+      const matches = LOOT_FILTER.some((w) => {
+        const wl = w.toLowerCase()
+        return (
+          drop.rarity?.toLowerCase() === wl ||
+          drop.name?.toLowerCase().includes(wl)
+        )
+      })
+      if (!matches) return
+
+      const tierVal    = serverTierMap[drop.name] ?? null
+      const tierTag    = tierVal ? ` [${tierVal}]` : ''
+      const charPart   = drop.charName ? ` [${drop.charName}]` : ''
+      const categoryVal = serverCategoryMap[drop.name] ?? null
+
+      if (drop.type === 'floor_drop') {
+        if (personalFilter.size > 0 && personalFilter.has(drop.name)) sendOverlay(drop)
+        const isPendingSiteFiltered = serverEnabledItems !== null && !serverEnabledItems.has(drop.name)
+        const pendingPayload = { ...drop, _tierTag: tierTag, _category: categoryVal, _siteFiltered: isPendingSiteFiltered }
+        pushHistory('drop:pending', pendingPayload)
+        sendToWin(mainWin, 'drop:pending', pendingPayload)
+        sendToWin(compactWin, 'drop:pending', pendingPayload)
+        return
+      }
+
+      if (drop.type === 'collected') {
+        const isSiteFiltered = serverEnabledItems !== null && !serverEnabledItems.has(drop.name)
+        const logMsg = `⚔ ${drop.name}${tierTag} (${drop.rarity})${charPart} ✓`
+        const collectedPayload = { ...drop, _logMsg: logMsg, _tierTag: tierTag, _category: categoryVal, _siteFiltered: isSiteFiltered }
+        pushHistory('drop:collected', collectedPayload)
+        sendToWin(mainWin, 'drop:collected', collectedPayload)
+        sendToWin(compactWin, 'drop:collected', collectedPayload)
+        if (isSiteFiltered) {
+          sendLog('info', t(`⊘ ${drop.name}${tierTag} filtrado pelo ADM`, `⊘ ${drop.name}${tierTag} filtered by ADM`), drop, 'liga-filtrado')
+          return
+        }
+        if (charIdentified) await postDrop(currentLeagueId, drop)
+        return
+      }
+
+      // fallback: tipo antigo sem field "type"
+      const isSiteFilteredFallback = serverEnabledItems !== null && !serverEnabledItems.has(drop.name)
+      const fallbackPayload = { ...drop, had_floor: false, _logMsg: '', _tierTag: tierTag, _category: categoryVal, _siteFiltered: isSiteFilteredFallback }
+      pushHistory('drop:collected', fallbackPayload)
+      sendToWin(mainWin, 'drop:collected', fallbackPayload)
+      sendToWin(compactWin, 'drop:collected', fallbackPayload)
+      if (isSiteFilteredFallback) {
+        sendLog('info', `⊘ ${drop.name}${tierTag} filtrado pelo ADM`, drop, 'liga-filtrado')
+        return
+      }
+      if (charIdentified) await postDrop(currentLeagueId, drop)
+    } catch (err) {
+      sendLog('error', t(`❌ Erro ao processar drop: ${err.message}`, `❌ Error processing drop: ${err.message}`))
+    }
+  })
+
+  snifferProc.stderr.on('data', (data) => {
+    const msg = data.toString().trim()
+    if (!msg) return
+    if (msg.includes('PermissionError') || msg.includes('Access is denied')) {
+      sendLog('error', t('❌ Sem permissão — reinicie o app como Administrador', '❌ No permission — restart the app as Administrator'))
+      stopMonitor()
+    } else if (msg.includes('No libpcap provider') || msg.includes("pcap won't be used")) {
+      const { shell } = require('electron')
+      sendLog('error', t('❌ Npcap não instalado. Abrindo site de download...', '❌ Npcap not installed. Opening download page...'))
+      shell.openExternal('https://npcap.com/#download')
+      stopMonitor()
+    } else if (msg.includes('No module named')) {
+      sendLog('error', `❌ Python: ${msg}`)
+      stopMonitor()
+    } else {
+      sendLog('info', `[py] ${msg.slice(0, 120)}`)
+    }
+  })
+
+  const thisProc = snifferProc
+  snifferProc.on('exit', (code) => {
+    if (snifferProc !== thisProc) return
+    if (isMonitoring) {
+      sendLog('error', t(`❌ Sniffer encerrou inesperadamente (code ${code})`, `❌ Sniffer exited unexpectedly (code ${code})`))
+      stopMonitor()
+    }
+  })
 }
 
 function hasNpcap() {
@@ -505,6 +851,7 @@ ipcMain.handle('monitor:start', async (_e, leagueId) => {
   currentLeagueId = leagueId
   isMonitoring = true
   charIdentified = false
+  dropHistory = []
   sendState()
 
   // Carregar filtro do servidor
@@ -512,154 +859,49 @@ ipcMain.handle('monitor:start', async (_e, leagueId) => {
     if (data?.enabledNames) {
       serverEnabledItems = new Set(data.enabledNames)
       const newTierMap = {}
-      for (const items of Object.values(data.grouped ?? {})) {
+      const newCategoryMap = {}
+      for (const [category, items] of Object.entries(data.grouped ?? {})) {
         for (const item of items) {
           if (item.tier) newTierMap[item.name] = item.tier
+          newCategoryMap[item.name] = category
         }
       }
       serverTierMap = newTierMap
-      sendLog('info', `📋 Filtro carregado: ${serverEnabledItems.size} itens ativos`)
+      serverCategoryMap = newCategoryMap
+      sendLog('info', t(`📋 Filtro carregado: ${serverEnabledItems.size} itens ativos`, `📋 Filter loaded: ${serverEnabledItems.size} active items`))
+      sendToWin(mainWin, 'filter:loaded', { count: serverEnabledItems.size })
     }
   }).catch(() => {})
 
   // Conectar SSE para drops de outros membros da guilda
   connectSSE(leagueId)
 
-  sendLog('warn', `▶ Entre ou relogue no jogo para iniciar o monitoramento`)
+  sendLog('warn', t('▶ Entre ou relogue no jogo para iniciar o monitoramento', '▶ Enter or relog in game to start monitoring'))
 
-  // Spawn sniffer (exe em produção, python em dev)
-  try {
-    if (isPackaged) {
-      snifferProc = spawn(SNIFFER_EXE, [], {
-        cwd: RESOURCES,
-        stdio: ['ignore', 'pipe', 'pipe'],
-      })
-    } else {
-      snifferProc = spawn('python', [SNIFFER_PY], {
-        cwd: __dirname,
-        stdio: ['ignore', 'pipe', 'pipe'],
-      })
+  spawnSniffer()
+
+  // Monitor de conexão: detecta mudança de área via netstat (equiv. ao netstat2 do HS Tracker).
+  // Quando o IP remoto do HeroSiege.exe muda → reinicia sniffer imediatamente (gap ~2s vs 30s).
+  _startConnMonitor()
+
+  // Watchdog de silêncio: fallback para falhas desconhecidas do sniffer.
+  // Threshold alto (30s) pois o connection monitor já cuida das transições de área.
+  snifferWatchdog = setInterval(() => {
+    if (!isMonitoring) return
+    const elapsed = Date.now() - lastSnifferEventMs
+    if (elapsed > 30_000) {
+      sendLog('warn', t('⚠ Sniffer silencioso — reconectando...', '⚠ Sniffer silent — reconnecting...'))
+      lastSnifferEventMs = Date.now()
+      spawnSniffer()
     }
-  } catch (err) {
-    stopMonitor()
-    return { ok: false, error: `Falha ao iniciar sniffer: ${err.message}` }
-  }
-
-  // Ler drops linha a linha do stdout
-  const rl = readline.createInterface({ input: snifferProc.stdout })
-  rl.on('line', async (line) => {
-    try {
-      let msg
-      try { msg = JSON.parse(line) } catch { return }
-      if (!msg || typeof msg !== 'object') return
-
-      // Erro explícito do sniffer
-      if (msg.error) {
-        sendLog('error', `❌ Sniffer: ${msg.error}`)
-        stopMonitor()
-        return
-      }
-
-      // Evento de login: mapear UID → nome do personagem
-      if (msg.type === 'player_login') {
-        charMap[msg.accountUID] = msg.charName
-        if (!charIdentified) {
-          charIdentified = true
-          sendState()
-          sendLog('info', `✅ Personagem identificado: ${msg.charName} — monitorando drops!`)
-        }
-        return
-      }
-
-      const drop = msg
-      if (!drop.name) return
-
-      // Runes/materiais conhecidos — sempre ignorar
-      if (drop.resource) return
-
-      // Anexar nome do personagem a partir do fingerprint (99-UID-ts-slot)
-      const uid = parseInt((drop.fp || '').split('-')[1] || '0', 10)
-      if (uid && charMap[uid]) drop.charName = charMap[uid]
-
-      const matches = LOOT_FILTER.some((w) => {
-        const wl = w.toLowerCase()
-        return (
-          drop.rarity?.toLowerCase() === wl ||
-          drop.name?.toLowerCase().includes(wl)
-        )
-      })
-      if (!matches) return
-
-      const tierVal    = serverTierMap[drop.name] ?? null
-      const tierTag    = tierVal ? ` [${tierVal}]` : ''
-      const charPart   = drop.charName ? ` [${drop.charName}]` : ''
-
-      // ── floor_drop: item apareceu no chão, aguarda coleta ──────────────────
-      if (drop.type === 'floor_drop') {
-        if (personalFilter.size > 0 && personalFilter.has(drop.name)) sendOverlay(drop)
-        if (mainWin) mainWin.webContents.send('drop:pending', drop)
-        return
-      }
-
-      // ── collected: item coletado (via pickup ou missed-floor) ──────────────
-      if (drop.type === 'collected') {
-        if (personalFilter.size > 0 && personalFilter.has(drop.name)) sendOverlay(drop)
-        // Renderer atualiza a linha existente com ⏳ → ✓; se não existir, cria nova
-        const logMsg = `⚔ ${drop.name}${tierTag} (${drop.rarity})${charPart} ✓`
-        if (mainWin) mainWin.webContents.send('drop:collected', { ...drop, _logMsg: logMsg })
-        if (serverEnabledItems !== null && !serverEnabledItems.has(drop.name)) {
-          sendLog('info', `⊘ ${drop.name}${tierTag} filtrado pelo ADM`, drop, 'liga-filtrado')
-          return
-        }
-        if (charIdentified) await postDrop(currentLeagueId, drop)
-        return
-      }
-
-      // ── fallback: tipo antigo sem field "type" (compat) ───────────────────
-      if (mainWin) mainWin.webContents.send('drop:collected', { ...drop, had_floor: false, _logMsg: '' })
-      if (serverEnabledItems !== null && !serverEnabledItems.has(drop.name)) {
-        sendLog('info', `⊘ ${drop.name}${tierTag} filtrado pelo ADM`, drop, 'liga-filtrado')
-        return
-      }
-      if (charIdentified) await postDrop(currentLeagueId, drop)
-    } catch (err) {
-      sendLog('error', `❌ Erro ao processar drop: ${err.message}`)
-    }
-  })
-
-  // Stderr (erros do sniffer)
-  snifferProc.stderr.on('data', (data) => {
-    const msg = data.toString().trim()
-    if (!msg) return
-    if (msg.includes('PermissionError') || msg.includes('Access is denied')) {
-      sendLog('error', '❌ Sem permissão — reinicie o app como Administrador')
-      stopMonitor()
-    } else if (msg.includes('No libpcap provider') || msg.includes("pcap won't be used")) {
-      const { shell } = require('electron')
-      sendLog('error', '❌ Npcap não instalado. Abrindo site de download...')
-      shell.openExternal('https://npcap.com/#download')
-      stopMonitor()
-    } else if (msg.includes('No module named')) {
-      sendLog('error', `❌ Python: ${msg}`)
-      stopMonitor()
-    } else {
-      sendLog('info', `[py] ${msg.slice(0, 120)}`)
-    }
-  })
-
-  snifferProc.on('exit', (code) => {
-    if (isMonitoring) {
-      sendLog('error', `❌ Sniffer encerrou inesperadamente (code ${code})`)
-      stopMonitor()
-    }
-  })
+  }, 5_000)
 
   return { ok: true }
 })
 
 ipcMain.handle('monitor:stop', () => {
   stopMonitor()
-  sendLog('info', '■ Monitor pausado')
+  sendLog('info', t('■ Monitor pausado', '■ Monitor paused'))
 })
 
 // ── Filtro de Itens ─────────────────────────────────────────────────────────

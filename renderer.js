@@ -107,6 +107,11 @@ function updateEmptyState() {
   logEmpty.style.display = hasVisible ? 'none' : 'flex'
 }
 
+function _refreshUaCount() {
+  const visible = uaBody.querySelectorAll('tr:not([style*="display: none"]):not([style*="display:none"])').length
+  uaCount.textContent = visible
+}
+
 function switchTab(tab) {
   currentTab = tab
   tabMeusBtn.classList.toggle('active', tab === 'meus')
@@ -115,6 +120,11 @@ function switchTab(tab) {
     const entryTab = el.dataset.tab || 'both'
     el.style.display = isEntryVisible(entryTab) ? '' : 'none'
   })
+  // Hide site-filtered rows in Liga tab, show in My Drops tab
+  uaBody.querySelectorAll('tr.ua-site-filtered').forEach(r => {
+    r.style.display = tab === 'liga' ? 'none' : ''
+  })
+  _refreshUaCount()
   updateEmptyState()
   updateStatsBar()
   // Show/hide stats bar based on tab
@@ -130,6 +140,7 @@ function addLogEntry({ type, message, item, ts, tab = 'both' }) {
     if (tab === 'meus' || tab === 'both') {
       meusDrops++
       if (isRare) meusRares++
+      if (rarity && rarity in rarityCounters) rarityCounters[rarity]++
     }
     if (tab === 'liga' || tab === 'both') {
       ligaDrops++
@@ -137,6 +148,7 @@ function addLogEntry({ type, message, item, ts, tab = 'both' }) {
     }
     updateTabCounts()
     updateStatsBar()
+    updateStatsTiles()
   } else if (tab === 'liga-filtrado') {
     ligaFilteredCount++
     updateStatsBar()
@@ -169,14 +181,329 @@ function clearUATable() {
   uaCount.textContent = '0'
 }
 
+// ── Stats data ───────────────────────────────────────────────────────────────
+const rarityCounters = { Satanic: 0, Set: 0, Heroic: 0, Angelic: 0, Unholy: 0 }
+let collectedCount = 0
+
+function updateStatsTiles() {
+  const elapsed = _sessionStart ? (Date.now() - _sessionStart) / 3600000 : 0
+
+  const totalEl = document.getElementById('statDropsTotal')
+  const rateEl  = document.getElementById('statDropsRate')
+  const colEl   = document.getElementById('statCollectedTotal')
+  const rateHour = tr('tiles.rateHour')
+  if (totalEl) totalEl.textContent = meusDrops
+  if (rateEl)  rateEl.textContent  = elapsed > 0.01 ? `${Math.round(meusDrops / elapsed)} ${rateHour}` : `— ${rateHour}`
+  if (colEl)   colEl.textContent   = collectedCount
+
+  const maxCount = Math.max(...Object.values(rarityCounters), 1)
+  for (const [rarity, count] of Object.entries(rarityCounters)) {
+    const cEl = document.getElementById(`rct-${rarity}`)
+    const rrEl = document.getElementById(`rrate-${rarity}`)
+    const fEl = document.getElementById(`rfill-${rarity}`)
+    if (cEl)  cEl.textContent  = count
+    if (rrEl) rrEl.textContent = elapsed > 0.01 && count > 0 ? `${Math.round(count / elapsed)} ${rateHour}` : `— ${rateHour}`
+    if (fEl)  fEl.style.width  = `${(count / maxCount) * 100}%`
+  }
+}
+
+function resetStats() {
+  for (const k of Object.keys(rarityCounters)) rarityCounters[k] = 0
+  collectedCount = 0
+  updateStatsTiles()
+}
+
+// ── Session timer ────────────────────────────────────────────────────────────
+let _timerInterval = null
+let _sessionStart  = null
+const sessionTimerEl  = document.getElementById('sessionTimer')
+const statsBigTimerEl = document.getElementById('statsBigTimer')
+
+function _fmtElapsed(e) {
+  const h = Math.floor(e / 3600000)
+  const m = Math.floor((e % 3600000) / 60000)
+  const s = Math.floor((e % 60000) / 1000)
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
+}
+
+function startSessionTimer() {
+  stopSessionTimer()
+  _sessionStart = Date.now()
+  _timerInterval = setInterval(() => {
+    const e = Date.now() - _sessionStart
+    const str = _fmtElapsed(e)
+    if (sessionTimerEl)  sessionTimerEl.textContent  = str
+    if (statsBigTimerEl) statsBigTimerEl.textContent = str
+    updateStatsTiles()
+  }, 1000)
+}
+
+function stopSessionTimer() {
+  clearInterval(_timerInterval)
+  _timerInterval = null
+  _sessionStart  = null
+  if (sessionTimerEl)  sessionTimerEl.textContent  = '00:00:00'
+  if (statsBigTimerEl) statsBigTimerEl.textContent = '00:00:00'
+}
+
+// ── Navigation ───────────────────────────────────────────────────────────────
+function navTo(page) {
+  document.querySelectorAll('.nav-btn[data-page]').forEach(b => b.classList.remove('active'))
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'))
+
+  const btn = document.querySelector(`.nav-btn[data-page="${page}"]`)
+  if (btn) btn.classList.add('active')
+
+  if (page === 'drops' || page === 'liga') {
+    const pg = document.getElementById('p-drops')
+    if (pg) pg.classList.add('active')
+    switchTab(page === 'liga' ? 'liga' : 'meus')
+    return
+  }
+
+  const pg = document.getElementById(`p-${page}`)
+  if (pg) pg.classList.add('active')
+}
+
+document.querySelectorAll('.nav-btn[data-page]').forEach(btn => {
+  btn.addEventListener('click', () => navTo(btn.dataset.page))
+})
+
+// ── i18n ─────────────────────────────────────────────────────────────────────
+const I18N = {
+  pt: {
+    'nav.drops': 'Meus Drops', 'nav.liga': 'Liga', 'nav.stats': 'Estatísticas',
+    'nav.filter': 'Filtro', 'nav.compact': 'Modo Compacto',
+    'nav.config': 'Configurações', 'nav.about': 'Sobre',
+    'cfg.account': 'Conta', 'cfg.appearance': 'Aparência', 'cfg.system': 'Sistema',
+    'cfg.theme': 'Tema', 'cfg.themeDesc': 'Aparência geral do app',
+    'cfg.dark': 'Escuro', 'cfg.light': 'Claro',
+    'cfg.lang': 'Idioma',
+    'cfg.startup': 'Iniciar com Windows', 'cfg.startupDesc': 'Abre automaticamente ao ligar o PC',
+    'cfg.onClose': 'Ao fechar', 'cfg.onCloseDesc': 'O que acontece ao fechar a janela',
+    'cfg.tray': 'Bandeja', 'cfg.exit': 'Fechar',
+    'cfg.overlay': 'Overlay', 'cfg.showOverlay': 'Mostrar overlay',
+    'cfg.showOverlayDesc': 'Exibe drops em tempo real sobre o jogo',
+    'hdr.logout': 'Sair',
+    'login.desc': 'Faça login com sua conta Discord para sincronizar drops com o HS Manager.',
+    'stat.drops': 'drops', 'stat.rares': 'raros',
+    'btn.clear': 'Limpar', 'btn.start': '▶ INICIAR', 'btn.stop': '■ PAUSAR',
+    'btn.installRestart': 'INSTALAR E REINICIAR',
+    'status.idle': 'Aguardando', 'status.monitoring': 'Monitorando',
+    'status.waitRelog': 'Aguardando relog...',
+    'th.item': 'Item', 'th.dropped': 'Dropou', 'th.collected': 'Coletou',
+    'tiles.totalDrops': 'Total de Drops', 'tiles.totalCollected': 'Total Coletados',
+    'tiles.itemsCollected': 'itens coletados', 'tiles.rateHour': '/ hora',
+    'btn.login': 'Entrar com Discord', 'btn.loginOpening': 'Abrindo Discord...',
+    'msg.npcapInstalling': '⚙ Instalando Npcap... Após instalar, clique INICIAR novamente.',
+    'empty.line1': 'Nenhuma atividade ainda.', 'empty.line2': 'Selecione uma liga e inicie o monitor.',
+    'update.available': '🔄 Nova versão {v} disponível', 'update.downloading': '🔄 Baixando... {p}%',
+    'update.ready': '✅ Atualização pronta!', 'update.btn': 'ATUALIZAR', 'update.btnDl': 'BAIXANDO...',
+    'update.initial': '🔄 Nova versão disponível...',
+    'timer.label': 'TEMPO DE SESSÃO',
+    'filter.title': 'Filtro de Itens', 'filter.desc': 'Configure quais itens serão monitorados',
+    'filter.openDesc': 'Abra o painel de filtro para gerenciar raridades e itens detectados.',
+    'filter.openBtn': 'Abrir Filtro',
+    'cfg.title': 'Configurações',
+    'nav.status': 'Status',
+    'status.title': 'Status da Conexão',
+    'status.monitor': 'Monitor', 'status.filter': 'Filtro do Servidor', 'status.char': 'Personagem',
+    'status.loading': 'Carregando...', 'status.waitLogin': 'Entre ou relogue no jogo',
+    'status.active': 'Monitorando', 'status.stopped': 'Parado',
+    'status.filterOk': '{n} itens ativos', 'status.charOk': '✓ {name}',
+    'status.lastEvt': 'Último evento do sniffer',
+  },
+  en: {
+    'nav.drops': 'My Drops', 'nav.liga': 'League', 'nav.stats': 'Statistics',
+    'nav.filter': 'Filter', 'nav.compact': 'Compact Mode',
+    'nav.config': 'Settings', 'nav.about': 'About',
+    'cfg.account': 'Account', 'cfg.appearance': 'Appearance', 'cfg.system': 'System',
+    'cfg.theme': 'Theme', 'cfg.themeDesc': 'Overall app appearance',
+    'cfg.dark': 'Dark', 'cfg.light': 'Light',
+    'cfg.lang': 'Language',
+    'cfg.startup': 'Start with Windows', 'cfg.startupDesc': 'Opens automatically at startup',
+    'cfg.onClose': 'On Close', 'cfg.onCloseDesc': 'What happens when you close the window',
+    'cfg.tray': 'Tray', 'cfg.exit': 'Quit',
+    'cfg.overlay': 'Overlay', 'cfg.showOverlay': 'Show overlay',
+    'cfg.showOverlayDesc': 'Displays drops in real time over the game',
+    'hdr.logout': 'Sign Out',
+    'login.desc': 'Sign in with your Discord account to sync drops with HS Manager.',
+    'stat.drops': 'drops', 'stat.rares': 'rares',
+    'btn.clear': 'Clear', 'btn.start': '▶ START', 'btn.stop': '■ PAUSE',
+    'btn.installRestart': 'INSTALL AND RESTART',
+    'status.idle': 'Waiting', 'status.monitoring': 'Monitoring',
+    'status.waitRelog': 'Waiting for relog...',
+    'th.item': 'Item', 'th.dropped': 'Dropped', 'th.collected': 'Collected',
+    'tiles.totalDrops': 'Total Drops', 'tiles.totalCollected': 'Total Collected',
+    'tiles.itemsCollected': 'items collected', 'tiles.rateHour': '/ hr',
+    'btn.login': 'Sign in with Discord', 'btn.loginOpening': 'Opening Discord...',
+    'msg.npcapInstalling': '⚙ Installing Npcap... After installing, click START again.',
+    'empty.line1': 'No activity yet.', 'empty.line2': 'Select a league and start the monitor.',
+    'update.available': '🔄 Version {v} available', 'update.downloading': '🔄 Downloading... {p}%',
+    'update.ready': '✅ Update ready!', 'update.btn': 'UPDATE', 'update.btnDl': 'DOWNLOADING...',
+    'update.initial': '🔄 New version available...',
+    'timer.label': 'SESSION TIME',
+    'filter.title': 'Item Filter', 'filter.desc': 'Configure which items will be monitored',
+    'filter.openDesc': 'Open the filter panel to manage rarities and detected items.',
+    'filter.openBtn': 'Open Filter',
+    'cfg.title': 'Settings',
+    'nav.status': 'Status',
+    'status.title': 'Connection Status',
+    'status.monitor': 'Monitor', 'status.filter': 'Server Filter', 'status.char': 'Character',
+    'status.loading': 'Loading...', 'status.waitLogin': 'Enter or relog in game',
+    'status.active': 'Monitoring', 'status.stopped': 'Stopped',
+    'status.filterOk': '{n} active items', 'status.charOk': '✓ {name}',
+    'status.lastEvt': 'Last sniffer event',
+  },
+}
+
+let _currentLang = 'pt'
+let _charIdentifiedLocal = false
+
+function tr(key) {
+  return (I18N[_currentLang] || I18N.pt)[key] || (I18N.pt)[key] || key
+}
+
+function applyLang(lang) {
+  _currentLang = lang
+  const strings = I18N[lang] || I18N.pt
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n
+    if (strings[key]) el.textContent = strings[key]
+  })
+  document.querySelectorAll('.opt-btn[data-lang]').forEach(b => {
+    b.classList.toggle('on', b.dataset.lang === lang)
+  })
+  // Re-apply dynamic texts that depend on monitoring state
+  setMonitorUI(isMonitoring, _charIdentifiedLocal)
+  updateStatsBar()
+}
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme
+  document.querySelectorAll('.opt-btn[data-theme-btn]').forEach(b => {
+    b.classList.toggle('on', b.dataset.themeBtn === theme)
+  })
+}
+
+// ── Config interactions ───────────────────────────────────────────────────────
+document.querySelectorAll('.opt-btn[data-theme-btn]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const theme = btn.dataset.themeBtn
+    applyTheme(theme)
+    window.api.setTheme && window.api.setTheme(theme)
+  })
+})
+
+document.querySelectorAll('.opt-btn[data-lang]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const lang = btn.dataset.lang
+    applyLang(lang)
+    window.api.setLang && window.api.setLang(lang)
+  })
+})
+
+document.querySelectorAll('.opt-btn[data-close]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    btn.closest('.opt-group').querySelectorAll('.opt-btn').forEach(b => b.classList.remove('on'))
+    btn.classList.add('on')
+    window.api.setCloseBehavior && window.api.setCloseBehavior(btn.dataset.close)
+  })
+})
+
+document.querySelectorAll('.cfg-toggle').forEach(tog => {
+  if (tog.id === 'togStartup') return  // handled separately with IPC
+  tog.addEventListener('click', () => {
+    tog.classList.toggle('on')
+  })
+})
+
+const btnLogoutCfg = document.getElementById('btnLogoutCfg')
+if (btnLogoutCfg) btnLogoutCfg.addEventListener('click', () => btnLogout.click())
+
+const btnOpenFilter = document.getElementById('btnOpenFilter')
+if (btnOpenFilter) btnOpenFilter.addEventListener('click', () => window.api.openFilter())
+
+// ── Status tab elements ───────────────────────────────────────────────────────
+const stMonDot = document.getElementById('st-mon-dot')
+const stMonVal = document.getElementById('st-mon-val')
+const stFltDot = document.getElementById('st-flt-dot')
+const stFltVal = document.getElementById('st-flt-val')
+const stChrDot = document.getElementById('st-chr-dot')
+const stChrVal = document.getElementById('st-chr-val')
+const stEvtDot = document.getElementById('st-evt-dot')
+const stEvtVal = document.getElementById('st-evt-val')
+
+let _lastSnifferTs = null
+let _heartbeatTimer = null
+
+function _startHeartbeatDisplay() {
+  if (_heartbeatTimer) return
+  _heartbeatTimer = setInterval(() => {
+    if (!stEvtVal || !_lastSnifferTs) return
+    const ago = Math.round((Date.now() - _lastSnifferTs) / 1000)
+    if (ago < 5) {
+      stEvtVal.textContent = '< 5s atrás'
+      if (stEvtDot) stEvtDot.className = 'st-dot active'
+    } else if (ago < 60) {
+      stEvtVal.textContent = `${ago}s atrás`
+      if (stEvtDot) stEvtDot.className = ago > 30 ? 'st-dot pending' : 'st-dot active'
+    } else {
+      const min = Math.round(ago / 60)
+      stEvtVal.textContent = `${min}min atrás`
+      if (stEvtDot) stEvtDot.className = 'st-dot err'
+    }
+  }, 1000)
+}
+
+if (window.api.onSnifferHeartbeat) {
+  window.api.onSnifferHeartbeat(({ ts }) => {
+    _lastSnifferTs = ts
+    _startHeartbeatDisplay()
+  })
+}
+
+const NAV_LOCKABLE = ['drops', 'liga', 'stats', 'filtro']
+
+function _setNavLock(locked) {
+  document.querySelectorAll('.nav-btn[data-page]').forEach(btn => {
+    if (NAV_LOCKABLE.includes(btn.dataset.page)) {
+      btn.classList.toggle('nav-locked', locked)
+    }
+  })
+}
+
+function _updateStatusTab(watching, charIdentified) {
+  if (!stMonDot) return
+  if (!watching) {
+    stMonDot.className = 'st-dot'
+    stMonVal.textContent = tr('status.stopped')
+    stFltDot.className = 'st-dot pending'
+    stFltVal.textContent = tr('status.loading')
+    stChrDot.className = 'st-dot pending'
+    stChrVal.textContent = tr('status.waitLogin')
+  } else if (!charIdentified) {
+    stMonDot.className = 'st-dot active'
+    stMonVal.textContent = tr('status.active')
+    stChrDot.className = 'st-dot pending'
+    stChrVal.textContent = tr('status.waitLogin')
+  } else {
+    stMonDot.className = 'st-dot active'
+    stMonVal.textContent = tr('status.active')
+    stChrDot.className = 'st-dot active'
+  }
+}
+
 function setMonitorUI(watching, charIdentified) {
   isMonitoring = watching
+  _charIdentifiedLocal = charIdentified
   if (!watching) {
-    btnToggle.textContent = '▶ INICIAR'
+    btnToggle.textContent = tr('btn.start')
     btnToggle.className = 'start'
     btnToggle.disabled = false
     statusDot.className = 'stat idle'
-    statusText.textContent = 'Aguardando'
+    statusText.textContent = tr('status.idle')
+    stopSessionTimer()
     meusDrops = 0; meusRares = 0
     ligaDrops = 0; ligaRares = 0
     ligaFilteredCount = 0; showFiltered = false
@@ -188,23 +515,38 @@ function setMonitorUI(watching, charIdentified) {
     statRares.style.display = 'none'
     clearUATable()
     if (btnToggleFiltered) btnToggleFiltered.style.display = 'none'
+    resetStats()
+    _setNavLock(false)
+    // Reset heartbeat display
+    _lastSnifferTs = null
+    if (_heartbeatTimer) { clearInterval(_heartbeatTimer); _heartbeatTimer = null }
+    if (stEvtDot) stEvtDot.className = 'st-dot'
+    if (stEvtVal) stEvtVal.textContent = '—'
   } else if (!charIdentified) {
-    btnToggle.textContent = '■ PAUSAR'
+    btnToggle.textContent = tr('btn.stop')
     btnToggle.className = 'stop'
     btnToggle.disabled = false
     statusDot.className = 'stat waiting'
-    statusText.textContent = 'Aguardando relog...'
+    statusText.textContent = tr('status.waitRelog')
     statDrops.style.display = 'none'
     statRares.style.display = 'none'
+    _setNavLock(true)
+    navTo('status')
   } else {
-    btnToggle.textContent = '■ PAUSAR'
+    btnToggle.textContent = tr('btn.stop')
     btnToggle.className = 'stop'
     btnToggle.disabled = false
     statusDot.className = 'stat watching'
-    statusText.textContent = 'Monitorando'
+    statusText.textContent = tr('status.monitoring')
     statDrops.style.display = 'flex'
     statRares.style.display = 'flex'
+    startSessionTimer()
+    _setNavLock(false)
+    // Navigate away from status tab now that char is identified
+    const activePage = document.querySelector('.page.active')
+    if (activePage && activePage.id === 'p-status') navTo('drops')
   }
+  _updateStatusTab(watching, charIdentified)
 }
 
 // ── Ligas ────────────────────────────────────────────────────────────────────
@@ -239,7 +581,10 @@ async function initAuth() {
     showScreen('login')
     return
   }
-  userNameText.textContent = session.discordUsername || session.discordId
+  const displayName = session.discordUsername || session.discordId
+  userNameText.textContent = displayName
+  const cfgUsername = document.getElementById('cfgUsername')
+  if (cfgUsername) cfgUsername.textContent = displayName
   userBadge.style.display = 'flex'
   showScreen('app')
   await loadLeagues()
@@ -247,17 +592,44 @@ async function initAuth() {
   setMonitorUI(state.isMonitoring, state.charIdentified)
 }
 
+async function loadSettings() {
+  if (!window.api.getTheme) return
+  const [theme, lang, startup, closeBehavior] = await Promise.all([
+    window.api.getTheme(),
+    window.api.getLang(),
+    window.api.getStartup(),
+    window.api.getCloseBehavior(),
+  ])
+  applyTheme(theme || 'dark')
+  applyLang(lang || 'pt')
+
+  const togStartup = document.getElementById('togStartup')
+  if (togStartup) togStartup.classList.toggle('on', !!startup)
+
+  document.querySelectorAll('.opt-btn[data-close]').forEach(b => {
+    b.classList.toggle('on', b.dataset.close === (closeBehavior || 'tray'))
+  })
+}
+
+const togStartupEl = document.getElementById('togStartup')
+if (togStartupEl) {
+  togStartupEl.addEventListener('click', async () => {
+    togStartupEl.classList.toggle('on')
+    window.api.setStartup && window.api.setStartup(togStartupEl.classList.contains('on'))
+  })
+}
+
 btnLogin.addEventListener('click', async () => {
   btnLogin.disabled = true
-  btnLogin.textContent = 'Abrindo Discord...'
+  btnLogin.textContent = tr('btn.loginOpening')
   const result = await window.api.login()
   if (result.ok) {
     await initAuth()
   } else if (!result.cancelled) {
-    btnLogin.textContent = 'Entrar com Discord'
+    btnLogin.textContent = tr('btn.login')
     btnLogin.disabled = false
   } else {
-    btnLogin.textContent = 'Entrar com Discord'
+    btnLogin.textContent = tr('btn.login')
     btnLogin.disabled = false
   }
 })
@@ -269,7 +641,7 @@ btnLogout.addEventListener('click', async () => {
   userBadge.style.display = 'none'
   setMonitorUI(false)
   showScreen('login')
-  btnLogin.textContent = 'Entrar com Discord'
+  btnLogin.textContent = tr('btn.login')
   btnLogin.disabled = false
 })
 
@@ -284,10 +656,12 @@ btnToggle.addEventListener('click', async () => {
     const result = await window.api.startMonitor(parseInt(leagueId))
     btnToggle.disabled = false
     if (result.needsNpcap) {
-      const install = confirm('O Npcap precisa estar instalado para capturar pacotes.\n\nDeseja instalar agora?')
+      const install = confirm(_currentLang === 'en'
+        ? 'Npcap must be installed to capture packets.\n\nInstall it now?'
+        : 'O Npcap precisa estar instalado para capturar pacotes.\n\nDeseja instalar agora?')
       if (install) {
         await window.api.installNpcap()
-        addLogEntry({ type: 'info', message: '⚙ Instalando Npcap... Após instalar, clique INICIAR novamente.', ts: Date.now() })
+        addLogEntry({ type: 'info', message: tr('msg.npcapInstalling'), ts: Date.now() })
       }
     } else if (!result.ok) {
       addLogEntry({ type: 'error', message: result.error, ts: Date.now() })
@@ -297,12 +671,22 @@ btnToggle.addEventListener('click', async () => {
 
 // ── Eventos do main ──────────────────────────────────────────────────────────
 window.api.onLog((entry) => addLogEntry(entry))
-window.api.onStateChange((state) => setMonitorUI(state.isMonitoring, state.charIdentified))
+window.api.onStateChange((state) => {
+  setMonitorUI(state.isMonitoring, state.charIdentified)
+  if (state.charIdentified && state.charName && stChrVal) {
+    stChrVal.textContent = tr('status.charOk').replace('{name}', state.charName)
+  }
+})
+window.api.onFilterLoaded((data) => {
+  if (!stFltDot) return
+  stFltDot.className = 'st-dot active'
+  stFltVal.textContent = tr('status.filterOk').replace('{n}', data.count)
+})
 window.api.onSessionExpired(() => {
   userBadge.style.display = 'none'
   setMonitorUI(false)
   showScreen('login')
-  btnLogin.textContent = 'Entrar com Discord'
+  btnLogin.textContent = tr('btn.login')
   btnLogin.disabled = false
 })
 
@@ -332,13 +716,13 @@ let pendingFilePath = null
 
 window.api.onUpdateAvailable((info) => {
   updateBanner.style.display = 'flex'
-  updateText.textContent = `🔄 Nova versão ${info.version} disponível`
-  btnInstallUpdate.textContent = 'ATUALIZAR'
+  updateText.textContent = tr('update.available').replace('{v}', info.version)
+  btnInstallUpdate.textContent = tr('update.btn')
   btnInstallUpdate.style.display = 'block'
   btnInstallUpdate.disabled = false
   btnInstallUpdate.onclick = async () => {
     btnInstallUpdate.disabled = true
-    btnInstallUpdate.textContent = 'BAIXANDO...'
+    btnInstallUpdate.textContent = tr('update.btnDl')
     updateProgress.style.display = 'block'
     await window.api.downloadUpdate()
   }
@@ -346,16 +730,16 @@ window.api.onUpdateAvailable((info) => {
 
 window.api.onUpdateProgress((data) => {
   updateBar.style.width = `${data.percent}%`
-  updateText.textContent = `🔄 Baixando... ${data.percent}%`
+  updateText.textContent = tr('update.downloading').replace('{p}', data.percent)
 })
 
 window.api.onUpdateReady((data) => {
   pendingFilePath = data.filePath
   updateBar.style.width = '100%'
-  updateText.textContent = '✅ Atualização pronta!'
+  updateText.textContent = tr('update.ready')
   updateProgress.style.display = 'none'
   btnInstallUpdate.disabled = false
-  btnInstallUpdate.textContent = 'INSTALAR E REINICIAR'
+  btnInstallUpdate.textContent = tr('btn.installRestart')
   btnInstallUpdate.onclick = () => window.api.installUpdate(pendingFilePath)
 })
 
@@ -371,8 +755,10 @@ function _addPendingRow(drop, collected = false) {
   const row = document.createElement('tr')
   row.dataset.fp = drop.fp
   if (collected) row.classList.add('collected')
+  const tierPart = drop._tierTag || ''
+  const catPart = drop._category ? `<span class="ua-cat">${drop._category}</span>` : ''
   row.innerHTML = `
-    <td class="ua-name" style="color:${color}">${drop.name}</td>
+    <td class="ua-name" style="color:${color}">${drop.name}${tierPart}${catPart}</td>
     <td class="ua-time">${fmtTime(drop.ts_ms)}</td>
     <td class="ua-collect" id="ua-c-${safeId}">${collected ? fmtTime(drop.ts_ms) : '⏳'}</td>
   `
@@ -392,9 +778,19 @@ function _addPendingRow(drop, collected = false) {
 
 window.api.onDropPending((drop) => {
   _addPendingRow(drop, false)
+  if (drop._siteFiltered) {
+    const row = uaBody.querySelector(`[data-fp="${CSS.escape(drop.fp)}"]`)
+    if (row) {
+      row.classList.add('ua-site-filtered')
+      if (currentTab === 'liga') row.style.display = 'none'
+    }
+  }
+  _refreshUaCount()
 })
 
 window.api.onDropCollected((drop) => {
+  collectedCount++
+  updateStatsTiles()
   const safeId = uaMap.get(drop.fp)
   if (safeId) {
     // Item tinha floor_drop → atualiza linha existente
@@ -404,12 +800,41 @@ window.api.onDropCollected((drop) => {
       cell.classList.add('done')
     }
     const row = uaBody.querySelector(`[data-fp="${CSS.escape(drop.fp)}"]`)
-    if (row) row.classList.add('collected')
+    if (row) {
+      row.classList.add('collected')
+      if (drop._siteFiltered) {
+        row.classList.add('ua-site-filtered')
+        if (currentTab === 'liga') row.style.display = 'none'
+      }
+    }
   } else {
     // Missed floor (vote reset etc.) → adiciona linha já como coletada
     _addPendingRow(drop, true)
+    if (drop._siteFiltered) {
+      const row = uaBody.querySelector(`[data-fp="${CSS.escape(drop.fp)}"]`)
+      if (row) {
+        row.classList.add('ua-site-filtered')
+        if (currentTab === 'liga') row.style.display = 'none'
+      }
+    }
   }
+  _refreshUaCount()
 })
 
+// ── Window controls ──────────────────────────────────────────────────────────
+const btnWinMinimize = document.getElementById('btnWinMinimize')
+const btnWinClose    = document.getElementById('btnWinClose')
+if (btnWinMinimize) btnWinMinimize.addEventListener('click', () => window.api.winMinimize())
+if (btnWinClose)    btnWinClose.addEventListener('click',    () => window.api.winClose())
+
+const btnCompact = document.getElementById('btnCompact')
+if (btnCompact) {
+  btnCompact.addEventListener('click', async () => {
+    // Main window will be hidden by main.js — no toggle needed here
+    await window.api.toggleCompact()
+  })
+}
+
 // ── Init ─────────────────────────────────────────────────────────────────────
+loadSettings()
 initAuth()

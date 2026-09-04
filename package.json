@@ -10,6 +10,7 @@
   "build": {
     "appId": "com.bloodpact.hs-drop-logger",
     "productName": "HS Drop Logger",
+    "icon": "icon.png",
     "directories": {
       "output": "dist-installer"
     },
@@ -17,11 +18,13 @@
       "main.js",
       "preload.js",
       "preload-overlay.js",
+      "preload-compact.js",
       "index.html",
       "filter.html",
       "filter-renderer.js",
       "flourish.html",
       "ticker.html",
+      "compact.html",
       "renderer.js",
       "package.json",
       "node_modules/**/*"

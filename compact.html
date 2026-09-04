@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy"
+  content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;600&display=swap">
+<title>HS Drops</title>
+<style>
+  :root {
+    --bg:      rgba(8,6,11,0.92);
+    --header:  rgba(13,10,18,0.97);
+    --border:  rgba(39,26,62,0.9);
+    --accent:  #b84455;
+    --teal:    #3dc8a0;
+    --amber:   #e8b84a;
+    --text:    #ede5f6;
+    --text2:   #7a6890;
+    --text3:   #3c2e52;
+    --satanic: #e05050;
+    --set:     #40c870;
+    --heroic:  #00d4a0;
+    --angelic: #e8d840;
+    --unholy:  #c840a0;
+    --blessed: #9b7af0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: transparent;
+    font-family: 'DM Sans', 'Segoe UI', system-ui, sans-serif;
+    overflow: hidden;
+    width: 100vw; height: 100vh;
+    user-select: none;
+  }
+  .window {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  /* ── Header ─────────────────────────────── */
+  .header {
+    -webkit-app-region: drag;
+    background: var(--header);
+    border-bottom: 1px solid var(--border);
+    padding: 6px 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .window.locked .header { -webkit-app-region: no-drag; }
+
+  .header-icon { color: var(--accent); font-size: 12px; flex-shrink: 0; }
+  .header-title {
+    font-size: 9px; font-weight: 700; letter-spacing: .14em;
+    color: var(--text); text-transform: uppercase; flex: 1; min-width: 0;
+  }
+  .header-timer {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--text2);
+    font-variant-numeric: tabular-nums; flex-shrink: 0;
+  }
+  .header-timer.running { color: var(--teal); }
+
+  .lock-hint {
+    font-size: 9px; color: var(--text3); flex-shrink: 0;
+    transition: opacity .2s;
+  }
+  .window:not(.locked) .lock-hint { display: none; }
+  .window.locked:hover .lock-hint { opacity: 0; }
+
+  .header-controls {
+    -webkit-app-region: no-drag;
+    display: flex; gap: 2px; flex-shrink: 0;
+    transition: opacity .2s;
+  }
+  .window.locked .header-controls { opacity: 0; pointer-events: none; }
+  .window.locked:hover .header-controls { opacity: 1; pointer-events: auto; }
+
+  .hdr-btn {
+    width: 20px; height: 20px;
+    background: none; border: none; cursor: pointer;
+    color: var(--text2);
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 4px; padding: 0;
+    transition: color .15s, background .15s;
+  }
+  .hdr-btn svg { width: 12px; height: 12px; }
+  .hdr-btn:hover { color: var(--text); background: rgba(255,255,255,.08); }
+  #btnLock:hover { color: var(--amber); }
+  #btnBack:hover { color: var(--teal); }
+  #btnLock.locked { color: var(--amber); }
+
+  /* ── Status ─────────────────────────────── */
+  .status-row {
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .status-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--text3); flex-shrink: 0;
+    transition: background .3s, box-shadow .3s;
+  }
+  .status-dot.active  { background: var(--teal);  box-shadow: 0 0 5px var(--teal); }
+  .status-dot.waiting { background: var(--amber); box-shadow: 0 0 4px var(--amber); }
+  .status-label { font-size: 10px; color: var(--text2); }
+
+  /* ── Stats ──────────────────────────────── */
+  .stats-bar {
+    display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .stat-chip {
+    flex: 1; padding: 4px 8px;
+    display: flex; align-items: center; gap: 4px;
+    font-size: 10px; color: var(--text2);
+    border-right: 1px solid var(--border);
+  }
+  .stat-chip:last-child { border-right: none; }
+  .stat-chip .val {
+    color: var(--text); font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  }
+
+  /* ── Rarity bar ─────────────────────────── */
+  .rarity-bar {
+    display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .rc {
+    flex: 1; padding: 3px 4px;
+    display: flex; align-items: center; justify-content: center;
+    gap: 4px; border-right: 1px solid var(--border);
+  }
+  .rc:last-child { border-right: none; }
+  .rc .dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+  .rc .val {
+    font-size: 10px; font-variant-numeric: tabular-nums;
+    font-weight: 600; color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ── Log list ───────────────────────────── */
+  .log-wrap { flex: 1; overflow: hidden; }
+  .log-list {
+    height: 100%; overflow-y: auto; overflow-x: hidden;
+    padding: 3px 0;
+    display: flex; flex-direction: column;
+  }
+  .log-list::-webkit-scrollbar { width: 3px; }
+  .log-list::-webkit-scrollbar-track { background: transparent; }
+  .log-list::-webkit-scrollbar-thumb { background: var(--text3); border-radius: 2px; }
+
+  .log-empty {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 6px; color: var(--text2); font-size: 11px;
+    padding: 20px; opacity: .4; flex: 1;
+  }
+  .log-empty svg { width: 20px; height: 20px; }
+
+  /* ── Log entry — matches main app style ─── */
+  .log-entry {
+    display: grid;
+    grid-template-columns: 8px 1fr auto;
+    gap: 6px;
+    align-items: baseline;
+    padding: 3px 10px;
+    transition: background .1s;
+    min-width: 0;
+  }
+  .log-entry:hover { background: rgba(255,255,255,.025); }
+
+  .le-dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--text3); margin-top: 5px; flex-shrink: 0;
+  }
+  .le-msg {
+    font-family: 'DM Sans', 'Segoe UI', system-ui, sans-serif;
+    font-size: 12px; font-weight: 500;
+    color: var(--text); line-height: 1.4;
+    word-break: break-word; min-width: 0;
+  }
+  .le-ts {
+    font-size: 9px; color: var(--text2);
+    font-variant-numeric: tabular-nums;
+    font-family: 'JetBrains Mono', monospace;
+    white-space: nowrap;
+  }
+
+  /* Rarity dot + text colors */
+  .log-entry[data-rarity="Satanic"] .le-dot { background: var(--satanic); }
+  .log-entry[data-rarity="Set"]     .le-dot { background: var(--set); }
+  .log-entry[data-rarity="Heroic"]  .le-dot { background: var(--heroic); }
+  .log-entry[data-rarity="Angelic"] .le-dot { background: var(--angelic); }
+  .log-entry[data-rarity="Unholy"]  .le-dot { background: var(--unholy); }
+  .log-entry[data-rarity="Blessed"] .le-dot { background: var(--blessed); }
+
+  .log-entry[data-rarity="Satanic"] .le-msg { color: var(--satanic); }
+  .log-entry[data-rarity="Set"]     .le-msg { color: var(--set); }
+  .log-entry[data-rarity="Heroic"]  .le-msg { color: var(--heroic); }
+  .log-entry[data-rarity="Angelic"] .le-msg { color: var(--angelic); }
+  .log-entry[data-rarity="Unholy"]  .le-msg { color: var(--unholy); }
+  .log-entry[data-rarity="Blessed"] .le-msg { color: var(--blessed); }
+
+  /* Info/status entries (no item) */
+  .log-entry.info .le-msg { color: var(--text2); font-size: 11px; font-weight: 400; }
+  .log-entry.info .le-dot { opacity: .35; }
+</style>
+</head>
+<body>
+<div class="window" id="win">
+  <div class="header">
+    <span class="header-icon">⚔</span>
+    <span class="header-title">HS Drops</span>
+    <span class="header-timer" id="timer">00:00:00</span>
+    <span class="lock-hint">🔒</span>
+    <div class="header-controls">
+      <button class="hdr-btn" id="btnLock" title="Travar posição">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      </button>
+      <button class="hdr-btn" id="btnBack" title="Voltar para o app">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="3" width="20" height="14" rx="2"/>
+          <path d="M8 21h8M12 17v4"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="status-row">
+    <div class="status-dot" id="statusDot"></div>
+    <span class="status-label" id="statusLabel">Aguardando...</span>
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat-chip"><span>Drops</span><span class="val" id="totalDrops">0</span></div>
+    <div class="stat-chip"><span>Raros</span><span class="val" id="totalRares">0</span></div>
+    <div class="stat-chip"><span>Coletados</span><span class="val" id="totalCollected">0</span></div>
+  </div>
+
+  <div class="rarity-bar">
+    <div class="rc"><div class="dot" style="background:var(--satanic)"></div><span class="val" id="rc-Satanic">0</span></div>
+    <div class="rc"><div class="dot" style="background:var(--set)"></div><span class="val" id="rc-Set">0</span></div>
+    <div class="rc"><div class="dot" style="background:var(--heroic)"></div><span class="val" id="rc-Heroic">0</span></div>
+    <div class="rc"><div class="dot" style="background:var(--angelic)"></div><span class="val" id="rc-Angelic">0</span></div>
+    <div class="rc"><div class="dot" style="background:var(--unholy)"></div><span class="val" id="rc-Unholy">0</span></div>
+  </div>
+
+  <div class="log-wrap">
+    <div class="log-list" id="logList">
+      <div class="log-empty" id="logEmpty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+        Aguardando drops...
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const winEl        = document.getElementById('win')
+  const logList      = document.getElementById('logList')
+  const logEmpty     = document.getElementById('logEmpty')
+  const timerEl      = document.getElementById('timer')
+  const statusDot    = document.getElementById('statusDot')
+  const statusLabel  = document.getElementById('statusLabel')
+  const totalDropsEl = document.getElementById('totalDrops')
+  const totalRaresEl = document.getElementById('totalRares')
+  const totalCollEl  = document.getElementById('totalCollected')
+  const btnLock      = document.getElementById('btnLock')
+  const btnBack      = document.getElementById('btnBack')
+
+  const RARES = new Set(['Satanic', 'Set', 'Heroic', 'Angelic', 'Unholy', 'Blessed'])
+  let totalDrops = 0, totalRares = 0, totalCollected = 0
+  const rarityCount = { Satanic:0, Set:0, Heroic:0, Angelic:0, Unholy:0 }
+  let _sessionStart = null, _timerInterval = null
+  let isLocked = false
+
+  // Queue of pending DOM elements per item key — supports multiples of same item
+  // key: `${name}||${rarity}||${charName}`
+  const pendingQueues = new Map()
+
+  function pendingKey(drop) {
+    return `${drop.name}||${drop.rarity || ''}||${drop.charName || ''}`
+  }
+  function enqueuePending(key, el) {
+    if (!pendingQueues.has(key)) pendingQueues.set(key, [])
+    pendingQueues.get(key).push(el)
+  }
+  function dequeuePending(key) {
+    const q = pendingQueues.get(key)
+    if (!q || q.length === 0) return null
+    const el = q.shift()
+    if (q.length === 0) pendingQueues.delete(key)
+    return el
+  }
+
+  // ── Lock ─────────────────────────────────
+  const SVG_OPEN   = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`
+  const SVG_CLOSED = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>`
+
+  function setLocked(v) {
+    isLocked = v
+    winEl.classList.toggle('locked', v)
+    btnLock.innerHTML = v ? SVG_CLOSED : SVG_OPEN
+    btnLock.title = v ? 'Destravar posição' : 'Travar posição'
+    btnLock.classList.toggle('locked', v)
+  }
+  btnLock.addEventListener('click', () => setLocked(!isLocked))
+  btnBack.addEventListener('click', () => window.__compact.closeCompact())
+
+  // ── Timer ────────────────────────────────
+  function fmtElapsed(ms) {
+    const h = Math.floor(ms/3600000)
+    const m = Math.floor((ms%3600000)/60000)
+    const s = Math.floor((ms%60000)/1000)
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
+  }
+  function fmtTs(ts) {
+    return new Date(ts).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit',second:'2-digit'})
+  }
+  function startTimer() {
+    if (_timerInterval) return
+    _sessionStart = Date.now()
+    timerEl.classList.add('running')
+    _timerInterval = setInterval(() => { timerEl.textContent = fmtElapsed(Date.now() - _sessionStart) }, 1000)
+  }
+  function stopTimer() {
+    clearInterval(_timerInterval); _timerInterval = null; _sessionStart = null
+    timerEl.textContent = '00:00:00'; timerEl.classList.remove('running')
+    resetAll()
+  }
+  function resetAll() {
+    totalDrops = totalRares = totalCollected = 0
+    totalDropsEl.textContent = totalRaresEl.textContent = totalCollEl.textContent = '0'
+    for (const k of Object.keys(rarityCount)) {
+      rarityCount[k] = 0
+      const el = document.getElementById('rc-' + k)
+      if (el) el.textContent = '0'
+    }
+    pendingQueues.clear()
+    logList.querySelectorAll('.log-entry').forEach(e => e.remove())
+    logEmpty.style.display = ''
+  }
+
+  // ── Create entry DOM (returns element) ───
+  function createEntry(msg, rarity, ts, isInfo) {
+    const div = document.createElement('div')
+    div.className = 'log-entry' + (isInfo ? ' info' : '')
+    if (rarity) div.dataset.rarity = rarity
+    div.innerHTML = `<div class="le-dot"></div><div class="le-msg"></div><div class="le-ts">${fmtTs(ts)}</div>`
+    div.querySelector('.le-msg').textContent = msg
+    return div
+  }
+
+  function appendEntry(div) {
+    logEmpty.style.display = 'none'
+    logList.insertBefore(div, logList.firstChild)  // newest always at top
+    // Trim oldest (last) if over 150
+    const all = logList.querySelectorAll('.log-entry')
+    if (all.length > 150) all[all.length - 1].remove()
+  }
+
+  // ── State change ─────────────────────────
+  window.__compact.onStateChange(state => {
+    if (state.isMonitoring && state.charIdentified) {
+      statusDot.className = 'status-dot active'
+      statusLabel.textContent = 'Monitorando'
+      startTimer()
+    } else if (state.isMonitoring) {
+      statusDot.className = 'status-dot waiting'
+      statusLabel.textContent = 'Aguardando relog...'
+      startTimer()
+    } else {
+      statusDot.className = 'status-dot'
+      statusLabel.textContent = 'Aguardando...'
+      stopTimer()
+    }
+  })
+
+  // ── Log entries (status/info only) ───────
+  window.__compact.onLog(entry => {
+    if (!entry) return
+    // Skip drop-filter messages — they're noise in the compact view
+    if (entry.tab === 'liga-filtrado') return
+    // Skip if this is about a specific item (those come via drop:pending/collected)
+    if (entry.item) return
+    const div = createEntry(entry.message || '', '', entry.ts || Date.now(), true)
+    appendEntry(div)
+  })
+
+  // ── Drop pending (floor) ─────────────────
+  window.__compact.onDropPending(drop => {
+    if (!drop) return
+    const tierTag = drop._tierTag || (drop.tier ? ` [${drop.tier}]` : '')
+    const catTag = drop._category ? ` · ${drop._category}` : ''
+    const msg = `⏳ ${drop.name}${tierTag}${catTag} (${drop.rarity})`
+    const div = createEntry(msg, drop.rarity || '', Date.now(), false)
+    appendEntry(div)
+    enqueuePending(pendingKey(drop), div)
+  })
+
+  // ── Drop collected (update pending line) ──
+  window.__compact.onDropCollected(drop => {
+    if (!drop) return
+    const tierTag = drop._tierTag || (drop.tier ? ` [${drop.tier}]` : '')
+    const catTag = drop._category ? ` · ${drop._category}` : ''
+    const collectedMsg = `⚔ ${drop.name}${tierTag}${catTag} (${drop.rarity}) ✓`
+    const rarity = drop.rarity || ''
+
+    const existing = dequeuePending(pendingKey(drop))
+    if (existing && existing.isConnected) {
+      // Update the pending line in-place
+      existing.querySelector('.le-msg').textContent = collectedMsg
+      existing.querySelector('.le-ts').textContent = fmtTs(Date.now())
+      // Update rarity class (should already be set, but ensure it's right)
+      if (rarity) existing.dataset.rarity = rarity
+    } else {
+      // No pending found — old format or missed, add new line
+      appendEntry(createEntry(collectedMsg, rarity, Date.now(), false))
+    }
+
+    // Update counters
+    totalDrops++; totalDropsEl.textContent = totalDrops
+    totalCollected++; totalCollEl.textContent = totalCollected
+    if (RARES.has(rarity)) {
+      totalRares++; totalRaresEl.textContent = totalRares
+      rarityCount[rarity] = (rarityCount[rarity] || 0) + 1
+      const el = document.getElementById('rc-' + rarity)
+      if (el) el.textContent = rarityCount[rarity]
+    }
+  })
+</script>
+</body>
+</html>

@@ -23,6 +23,8 @@ contextBridge.exposeInMainWorld('api', {
   onSessionExpired: (cb) => ipcRenderer.on('auth:sessionExpired', () => cb()),
   onDropPending: (cb) => ipcRenderer.on('drop:pending', (_e, drop) => cb(drop)),
   onDropCollected: (cb) => ipcRenderer.on('drop:collected', (_e, drop) => cb(drop)),
+  onFilterLoaded: (cb) => ipcRenderer.on('filter:loaded', (_e, data) => cb(data)),
+  onSnifferHeartbeat: (cb) => ipcRenderer.on('sniffer:heartbeat', (_e, data) => cb(data)),
 
   // Auto-update
   onUpdateAvailable: (cb) => ipcRenderer.on('update:available', (_e, info) => cb(info)),
@@ -37,6 +39,23 @@ contextBridge.exposeInMainWorld('api', {
   getFilterItems: () => ipcRenderer.invoke('filter:getItems'),
   getFilterPrefs: () => ipcRenderer.invoke('filter:getPrefs'),
   saveFilterPrefs: (prefs) => ipcRenderer.invoke('filter:savePrefs', prefs),
+
+  // Controles de janela
+  winMinimize: () => ipcRenderer.send('win:minimize'),
+  winClose:    () => ipcRenderer.send('win:close'),
+
+  // Configurações persistidas
+  getCloseBehavior: () => ipcRenderer.invoke('settings:getCloseBehavior'),
+  setCloseBehavior: (val) => ipcRenderer.invoke('settings:setCloseBehavior', val),
+  getStartup: () => ipcRenderer.invoke('settings:getStartup'),
+  setStartup: (val) => ipcRenderer.invoke('settings:setStartup', val),
+  getTheme: () => ipcRenderer.invoke('settings:getTheme'),
+  setTheme: (val) => ipcRenderer.invoke('settings:setTheme', val),
+  getLang: () => ipcRenderer.invoke('settings:getLang'),
+  setLang: (val) => ipcRenderer.invoke('settings:setLang', val),
+
+  // Janela compacta
+  toggleCompact: () => ipcRenderer.invoke('compact:toggle'),
 
   // Filtro pessoal (local — controla overlay)
   getPersonalEnabled: () => ipcRenderer.invoke('personal:getEnabled'),
