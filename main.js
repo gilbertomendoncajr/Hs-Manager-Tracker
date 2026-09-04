@@ -2,7 +2,7 @@ const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } = require('electr
 const { autoUpdater } = require('electron-updater')
 const path = require('path')
 const fs = require('fs')
-const { spawn, exec } = require('child_process')
+const { spawn } = require('child_process')
 const readline = require('readline')
 
 // electron-store v8 é ESM — usar dynamic import
@@ -598,77 +598,22 @@ async function connectSSE(leagueId) {
   }
 }
 
-// ── Connection monitor (detects area transitions via netstat — equiv. ao netstat2 do HS Tracker) ──
-let _connMonitor = null
-let _lastGameIPs = new Set()
-let _cachedGamePid = null
-let _pidCacheMs = 0
-
-async function _getHeroSiegePid() {
-  if (Date.now() - _pidCacheMs < 5_000 && _cachedGamePid !== null) return _cachedGamePid
-  return new Promise((resolve) => {
-    exec('tasklist /FI "IMAGENAME eq HeroSiege.exe" /FO CSV /NH 2>NUL', (err, stdout) => {
-      _pidCacheMs = Date.now()
-      const match = (stdout || '').match(/"HeroSiege\.exe","(\d+)"/)
-      _cachedGamePid = match ? parseInt(match[1]) : null
-      resolve(_cachedGamePid)
-    })
-  })
-}
-
-async function _getGameRemoteIPs(pid) {
-  return new Promise((resolve) => {
-    exec('netstat -ano -p TCP', (err, stdout) => {
-      if (!stdout) return resolve(new Set())
-      const ips = new Set()
-      const pidStr = String(pid)
-      for (const line of stdout.split('\n')) {
-        const cols = line.trim().split(/\s+/)
-        if (cols.length < 5 || cols[0] !== 'TCP' || cols[3] !== 'ESTABLISHED' || cols[4] !== pidStr) continue
-        const lastColon = cols[2].lastIndexOf(':')
-        if (lastColon < 1) continue
-        const ip = cols[2].slice(0, lastColon)
-        if (ip && ip !== '0.0.0.0' && !ip.startsWith('127.')) ips.add(ip)
-      }
-      resolve(ips)
-    })
-  })
-}
-
-function _startConnMonitor() {
-  if (_connMonitor) return
-  _lastGameIPs = new Set()
-  _cachedGamePid = null
-  _pidCacheMs = 0
-  _connMonitor = setInterval(async () => {
-    if (!isMonitoring) return
-    try {
-      const pid = await _getHeroSiegePid()
-      if (!pid) return
-      const ips = await _getGameRemoteIPs(pid)
-      if (ips.size === 0) return
-      const added = [...ips].filter(ip => !_lastGameIPs.has(ip))
-      if (_lastGameIPs.size > 0 && added.length > 0) {
-        lastSnifferEventMs = Date.now()
-        spawnSniffer()
-      }
-      _lastGameIPs = ips
-    } catch { /* ignore */ }
-  }, 2_000)
-}
-
-function _stopConnMonitor() {
-  if (_connMonitor) { clearInterval(_connMonitor); _connMonitor = null }
-  _lastGameIPs = new Set()
-  _cachedGamePid = null
-}
+// ── Sem monitor de conexão por netstat ─────────────────────────────────────
+// O filtro BPF do sniffer é "tcp and len > 30", sem cláusula de host: uma
+// conexão nova (troca de área ou de servidor) é capturada sem reiniciar nada.
+// Reiniciar o processo aqui só criava um buraco de vários segundos exatamente
+// quando o servidor manda a lista de itens da área nova — e apagava o estado
+// de dedup do sniffer. O hs-tracker (Rust) nunca reinicia nessa situação.
 
 // ── Monitor via sniffer Python ──────────────────────────────────────────────
-let lastSnifferEventMs = 0
+let lastSnifferEventMs = 0      // último heartbeat/linha recebida do sniffer
+let lastSnifferPackets = -1     // contagem de pacotes no último heartbeat
+let snifferSpawnedMs = 0
+let snifferCrashes = 0          // saídas prematuras seguidas (para não ficar em loop)
 let snifferWatchdog = null
+const SNIFFER_SILENCE_MS = 15_000   // heartbeat vem a cada 2s; 15s sem nada = processo travado
 
 function stopMonitor() {
-  _stopConnMonitor()
   if (snifferWatchdog) { clearInterval(snifferWatchdog); snifferWatchdog = null }
   if (sseAbort) { sseAbort.abort(); sseAbort = null }
   if (snifferProc) {
@@ -700,6 +645,8 @@ function spawnSniffer() {
   }
 
   lastSnifferEventMs = Date.now()
+  lastSnifferPackets = -1
+  snifferSpawnedMs = Date.now()
 
   const rl = readline.createInterface({ input: snifferProc.stdout })
   rl.on('line', async (line) => {
@@ -715,6 +662,22 @@ function spawnSniffer() {
       }
 
       lastSnifferEventMs = Date.now()
+
+      if (msg.type === 'heartbeat') {
+        snifferCrashes = 0
+        // A UI mostra "último evento": só avança quando chegou tráfego de verdade.
+        if (lastSnifferPackets >= 0 && msg.packets > lastSnifferPackets) {
+          sendToWin(mainWin, 'sniffer:heartbeat', { ts: Date.now(), packets: msg.packets })
+        }
+        lastSnifferPackets = msg.packets
+        return
+      }
+
+      if (msg.type === 'info') {
+        if (msg.ifaces) sendLog('info', t(`🔌 Capturando em: ${msg.ifaces.join(', ')}`, `🔌 Capturing on: ${msg.ifaces.join(', ')}`))
+        if (msg.warn) sendLog('warn', `⚠ ${msg.warn}`)
+        return
+      }
 
       if (msg.type === 'player_login') {
         charMap[msg.accountUID] = msg.charName
@@ -812,10 +775,18 @@ function spawnSniffer() {
   const thisProc = snifferProc
   snifferProc.on('exit', (code) => {
     if (snifferProc !== thisProc) return
-    if (isMonitoring) {
-      sendLog('error', t(`❌ Sniffer encerrou inesperadamente (code ${code})`, `❌ Sniffer exited unexpectedly (code ${code})`))
+    if (!isMonitoring) return
+    // Morreu sozinho: esse é o único caso em que reiniciar faz sentido.
+    // Se cair 3 vezes seguidas logo após subir, algo está errado de verdade.
+    if (Date.now() - snifferSpawnedMs < 10_000) snifferCrashes++
+    if (snifferCrashes >= 3) {
+      sendLog('error', t(`❌ Sniffer encerrou 3 vezes seguidas (code ${code}) — monitor parado`, `❌ Sniffer exited 3 times in a row (code ${code}) — monitor stopped`))
       stopMonitor()
+      return
     }
+    sendLog('warn', t(`⚠ Sniffer encerrou (code ${code}) — reiniciando...`, `⚠ Sniffer exited (code ${code}) — restarting...`))
+    snifferProc = null
+    setTimeout(() => { if (isMonitoring && !snifferProc) spawnSniffer() }, 1000)
   })
 }
 
@@ -880,18 +851,14 @@ ipcMain.handle('monitor:start', async (_e, leagueId) => {
 
   spawnSniffer()
 
-  // Monitor de conexão: detecta mudança de área via netstat (equiv. ao netstat2 do HS Tracker).
-  // Quando o IP remoto do HeroSiege.exe muda → reinicia sniffer imediatamente (gap ~2s vs 30s).
-  _startConnMonitor()
-
-  // Watchdog de silêncio: fallback para falhas desconhecidas do sniffer.
-  // Threshold alto (30s) pois o connection monitor já cuida das transições de área.
+  // Watchdog: o sniffer manda heartbeat a cada 2s mesmo sem nenhum drop.
+  // Só reinicia se o heartbeat parar (processo travado). Ausência de drops
+  // nunca é motivo para reiniciar — era isso que causava os buracos.
   snifferWatchdog = setInterval(() => {
-    if (!isMonitoring) return
+    if (!isMonitoring || !snifferProc) return
     const elapsed = Date.now() - lastSnifferEventMs
-    if (elapsed > 30_000) {
-      sendLog('warn', t('⚠ Sniffer silencioso — reconectando...', '⚠ Sniffer silent — reconnecting...'))
-      lastSnifferEventMs = Date.now()
+    if (elapsed > SNIFFER_SILENCE_MS) {
+      sendLog('warn', t(`⚠ Sniffer sem heartbeat há ${Math.round(elapsed / 1000)}s — reiniciando...`, `⚠ No sniffer heartbeat for ${Math.round(elapsed / 1000)}s — restarting...`))
       spawnSniffer()
     }
   }, 5_000)

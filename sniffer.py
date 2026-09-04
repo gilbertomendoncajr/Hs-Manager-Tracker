@@ -9,16 +9,41 @@ sniffer.rs → filtro BPF dinâmico, deduplicação de pacotes
 Reassembly: carry mechanism do hs-tracker — cada byte processado exatamente uma vez.
 """
 
-import json, sys, re, base64, hashlib, time
+import json, sys, re, base64, hashlib, time, os, threading
 from collections import defaultdict
 from datetime import datetime
 
 # ─── logging ────────────────────────────────────────────────────────────────
 
+# Opt-in (HS_SNIFFER_DEBUG=1): o log roda dentro do callback de captura, e abrir
+# o arquivo a cada linha atrasava o scapy o bastante para o Npcap descartar
+# pacotes nas rajadas de entrada de área. Ligado, o arquivo fica aberto uma vez.
+
+_DEBUG = os.environ.get("HS_SNIFFER_DEBUG", "").lower() in ("1", "true")
+_debug_fh = None
+
 def log_debug(msg: str):
+    global _debug_fh
+    if not _DEBUG: return
+    if _debug_fh is None:
+        _debug_fh = open("sniffer_debug.txt", "a", encoding="utf-8", buffering=1)
     ts = datetime.now().strftime("%H:%M:%S.%f")[:-3]
-    with open("sniffer_debug.txt", "a", encoding="utf-8") as f:
-        f.write(f"[{ts}] {msg}\n")
+    _debug_fh.write(f"[{ts}] {msg}" + chr(10))
+
+# ─── saída (stdout → main.js) ────────────────────────────────────────────────
+# Uma linha JSON por evento. O heartbeat sai de outra thread, então a escrita é
+# serializada para nunca misturar duas linhas.
+
+_out_lock = threading.Lock()
+
+def emit_line(obj: dict):
+    line = json.dumps(obj, ensure_ascii=False) + chr(10)
+    with _out_lock:
+        sys.stdout.write(line)
+        sys.stdout.flush()
+
+# contadores lidos pelo heartbeat
+_stats = {"packets": 0, "msgs": 0}
 
 # ─── RARITIES (stats.rs) ────────────────────────────────────────────────────
 
@@ -434,7 +459,7 @@ def _rarity_from_name(name: str | None) -> str | None:
 # ─── processamento ───────────────────────────────────────────────────────────
 
 def emit(drop: dict):
-    print(json.dumps(drop, ensure_ascii=False), flush=True)
+    emit_line(drop)
 
 def process_messages(messages: list[dict], src_ip: str):
     for msg in messages:
@@ -538,7 +563,7 @@ def process_all(msgs: list[dict], src_ip: str):
             if char and uid and uid not in _emitted_logins:
                 _emitted_logins.add(uid)
                 _my_uid = uid
-                print(json.dumps({"type": "player_login", "charName": char, "accountUID": uid}), flush=True)
+                emit_line({"type": "player_login", "charName": char, "accountUID": uid})
                 log_debug(f"PLAYER_LOGIN: {char} uid={uid}")
     process_messages(msgs, src_ip)
 
@@ -553,10 +578,20 @@ def main():
         from scapy.all import sniff
         from scapy.layers.inet import TCP, IP
     except ImportError:
-        print(json.dumps({"error": "scapy nao instalado"}), flush=True)
+        emit_line({"error": "scapy nao instalado"})
         sys.exit(1)
+    from scapy.all import conf
 
     log_debug("=== Sniffer iniciado ===")
+
+    # Heartbeat a cada 2s: é isso que o main.js usa para saber que o processo
+    # está vivo e capturando. Silêncio de drops não significa nada.
+    def _heartbeat():
+        while True:
+            emit_line({"type": "heartbeat", "packets": _stats["packets"],
+                       "msgs": _stats["msgs"], "ts_ms": int(time.time() * 1000)})
+            time.sleep(2)
+    threading.Thread(target=_heartbeat, daemon=True).start()
     log_debug(f"ITEM_DB: {len(ITEM_DB)} itens, RARITY_BY_NAME: {len(RARITY_BY_NAME)} nomes")
 
     # Dedup de pacotes duplicados capturados em múltiplas interfaces
@@ -565,6 +600,7 @@ def main():
     def on_packet(pkt):
         try:
             if not pkt.haslayer(IP) or not pkt.haslayer(TCP): return
+            _stats["packets"] += 1
             payload = bytes(pkt[TCP].payload)
             if len(payload) < 20: return
 
@@ -591,20 +627,48 @@ def main():
                 msgs.extend(_query_payload(payload))
 
             if msgs:
+                _stats["msgs"] += len(msgs)
                 process_all(msgs, src)
 
         except Exception as e:
             log_debug(f"ERRO on_packet: {e}")
 
+    # Todas as interfaces menos loopback, como o hs-tracker: com VPN ou split
+    # tunnel o jogo pode aparecer em outro adaptador que não o da rota padrão.
+    # Nenhuma cláusula de host no filtro: uma conexão nova (troca de área ou de
+    # servidor) é capturada sem reiniciar nada. Duplicatas entre interfaces são
+    # removidas em _seen_seqs.
+    ifaces = []
+    for i in conf.ifaces.values():
+        net_name = str(getattr(i, "network_name", "") or "")
+        ip = str(getattr(i, "ip", "") or "")
+        if "Loopback" in net_name or "Loopback" in str(i.name) or ip.startswith("127."):
+            continue
+        ifaces.append(i)
+
+    def run(iface):
+        names = [str(i.name) for i in iface] if isinstance(iface, list) else [str(iface)]
+        emit_line({"type": "info", "ifaces": names})
+        log_debug(f"capturando em: {names}")
+        sniff(iface=iface, filter="tcp and len > 30", prn=on_packet, store=False)
+
     try:
-        sniff(filter="tcp and len > 30", prn=on_packet, store=False)
+        try:
+            run(ifaces if ifaces else conf.iface)
+        except PermissionError:
+            raise
+        except Exception as e:
+            # Alguma interface não abriu: cai para a interface padrão sozinha.
+            log_debug(f"captura em todas as interfaces falhou ({e}); usando {conf.iface}")
+            emit_line({"type": "info", "warn": f"multi-iface falhou ({str(e)[:80]}), usando interface padrão"})
+            run(conf.iface)
     except PermissionError:
         log_debug("ERRO: permissao negada — execute como administrador")
-        print(json.dumps({"error": "permissao negada — execute como admin"}), flush=True)
+        emit_line({"error": "permissao negada — execute como admin"})
         sys.exit(1)
     except Exception as e:
         log_debug(f"ERRO fatal: {e}")
-        print(json.dumps({"error": str(e)}), flush=True)
+        emit_line({"error": str(e)})
         sys.exit(1)
 
 if __name__ == "__main__":
