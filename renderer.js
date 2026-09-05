@@ -12,6 +12,8 @@ const statusDot     = document.getElementById('statusDot')
 const statusText    = document.getElementById('statusText')
 const logList       = document.getElementById('logList')
 const logEmpty      = document.getElementById('logEmpty')
+const logBody       = document.getElementById('logBody')
+const logTable      = document.getElementById('logTable')
 const btnClearLog   = document.getElementById('btnClearLog')
 const statDrops     = document.getElementById('statDrops')
 const statRares     = document.getElementById('statRares')
@@ -101,10 +103,9 @@ function toggleFiltered() {
 }
 
 function updateEmptyState() {
-  const hasVisible = Array.from(logList.children).some(
-    el => !el.classList.contains('log-empty') && el.style.display !== 'none'
-  )
-  logEmpty.style.display = hasVisible ? 'none' : 'flex'
+  const hasVisible = logBody && Array.from(logBody.children).some(r => r.style.display !== 'none')
+  if (logEmpty) logEmpty.style.display = hasVisible ? 'none' : 'flex'
+  if (logTable) logTable.style.display = hasVisible ? '' : 'none'
 }
 
 function _refreshUaCount() {
@@ -119,10 +120,11 @@ function switchTab(tab) {
   currentTab = tab
   tabMeusBtn.classList.toggle('active', tab === 'meus')
   tabLigaBtn.classList.toggle('active', tab === 'liga')
-  document.querySelectorAll('.log-entry').forEach(el => {
-    const entryTab = el.dataset.tab || 'both'
-    el.style.display = isEntryVisible(entryTab) ? '' : 'none'
+  if (logBody) logBody.querySelectorAll('tr').forEach(row => {
+    const entryTab = row.dataset.tab || 'both'
+    row.style.display = isEntryVisible(entryTab) ? '' : 'none'
   })
+  updateEmptyState()
   // Hide site-filtered rows in Liga tab, show in My Drops tab
   uaBody.querySelectorAll('tr.ua-site-filtered').forEach(r => {
     r.style.display = tab === 'liga' ? 'none' : ''
@@ -152,28 +154,18 @@ function addLogEntry({ type, message, item, ts, tab = 'both' }) {
     updateTabCounts()
     updateStatsBar()
     updateStatsTiles()
+    return  // já aparece na tabela UA — não duplicar no log
   } else if (tab === 'liga-filtrado') {
     ligaFilteredCount++
     updateStatsBar()
   }
 
-  const rarity = item?.rarity || rarityFromMsg(message)
-  const rarityColor = (rarity && RARITY_COLORS[rarity]) ? RARITY_COLORS[rarity] : null
-  const stripeColor = rarityColor || 'transparent'
-  const msgStyle = (type === 'detect' && rarityColor) ? ` style="color:${rarityColor}"` : ''
-
-  const el = document.createElement('div')
-  el.className = `log-entry ${type}`
-  el.dataset.tab = tab
-  el.style.display = isEntryVisible(tab) ? '' : 'none'
-  el.innerHTML = `
-    <div class="log-stripe" style="background:${stripeColor}"></div>
-    <div class="log-inner">
-      <span class="log-time">${fmtTime(ts)}</span>
-      <span class="log-msg"${msgStyle}>${message}</span>
-    </div>
-  `
-  logList.insertBefore(el, logList.firstChild)
+  const tr = document.createElement('tr')
+  tr.className = `log-tr log-tr-${type}`
+  tr.dataset.tab = tab
+  tr.style.display = isEntryVisible(tab) ? '' : 'none'
+  tr.innerHTML = `<td class="log-tr-time">${fmtTime(ts)}</td><td class="log-tr-msg">${message}</td>`
+  if (logBody) logBody.insertBefore(tr, logBody.firstChild)
   updateEmptyState()
 }
 
@@ -295,7 +287,7 @@ const I18N = {
     'btn.installRestart': 'INSTALAR E REINICIAR',
     'status.idle': 'Aguardando', 'status.monitoring': 'Monitorando',
     'status.waitRelog': 'Aguardando relog...',
-    'th.item': 'Item', 'th.dropped': 'Dropou', 'th.collected': 'Coletou',
+    'th.item': 'Item', 'th.dropped': 'Dropou', 'th.collected': 'Coletou', 'th.time': 'Hora', 'th.event': 'Evento',
     'tiles.totalDrops': 'Total de Drops', 'tiles.totalCollected': 'Total Coletados',
     'tiles.itemsCollected': 'itens coletados', 'tiles.rateHour': '/ hora',
     'btn.login': 'Entrar com Discord', 'btn.loginOpening': 'Abrindo Discord...',
@@ -342,7 +334,7 @@ const I18N = {
     'btn.installRestart': 'INSTALL AND RESTART',
     'status.idle': 'Waiting', 'status.monitoring': 'Monitoring',
     'status.waitRelog': 'Waiting for relog...',
-    'th.item': 'Item', 'th.dropped': 'Dropped', 'th.collected': 'Collected',
+    'th.item': 'Item', 'th.dropped': 'Dropped', 'th.collected': 'Collected', 'th.time': 'Time', 'th.event': 'Event',
     'tiles.totalDrops': 'Total Drops', 'tiles.totalCollected': 'Total Collected',
     'tiles.itemsCollected': 'items collected', 'tiles.rateHour': '/ hr',
     'btn.login': 'Sign in with Discord', 'btn.loginOpening': 'Opening Discord...',
@@ -520,8 +512,9 @@ function resetSessionData() {
   clearUATable()
   if (btnToggleFiltered) btnToggleFiltered.style.display = 'none'
   resetStats()
-  logList.innerHTML = ''
-  if (logEmpty) { logEmpty.style.display = 'flex'; logList.appendChild(logEmpty) }
+  if (logBody) logBody.innerHTML = ''
+  if (logTable) logTable.style.display = 'none'
+  if (logEmpty) logEmpty.style.display = 'flex'
 }
 
 function setMonitorUI(watching, charIdentified) {
@@ -796,8 +789,9 @@ function _addPendingRow(drop, collected = false) {
   const tierPart = drop._tierTag || ''
   const catPart = drop._category ? `<span class="ua-cat">${drop._category}</span>` : ''
   const iconHtml = drop._iconPath ? `<img class="ua-item-icon" src="${drop._iconPath}" onerror="this.style.display='none'" alt="">` : ''
+  const playerPart = drop.charName ? `<span class="ua-player">${drop.charName}</span>` : ''
   row.innerHTML = `
-    <td class="ua-name" style="color:${color}">${iconHtml}${drop.name}${tierPart}${catPart}</td>
+    <td class="ua-name" style="color:${color}">${iconHtml}${drop.name}${tierPart}${catPart}${playerPart}</td>
     <td class="ua-time">${fmtTime(drop.ts_ms)}</td>
     <td class="ua-collect" id="ua-c-${safeId}">${collected ? fmtTime(drop.ts_ms) : '⏳'}</td>
   `

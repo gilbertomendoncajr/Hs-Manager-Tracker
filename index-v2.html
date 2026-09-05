@@ -527,6 +527,8 @@ header button, header select, header a,
   object-fit: contain;
   border-radius: 3px;
   flex-shrink: 0;
+  background: rgba(0,0,0,0.3);
+  padding: 1px;
 }
 .ua-cat {
   display: block;
@@ -534,15 +536,21 @@ header button, header select, header a,
   color: var(--text2); margin-top: 2px;
   letter-spacing: .04em;
 }
+.ua-player {
+  display: block;
+  font-size: var(--fs-xs); font-weight: 500;
+  color: #8A7070; margin-top: 1px;
+  letter-spacing: .04em;
+}
 .ua-time {
   font-family: 'IBM Plex Mono', monospace;
-  font-size: var(--fs-sm); color: var(--text2);
+  font-size: var(--fs-sm); color: #8A7070;
   text-align: center; padding: 7px 8px;
   letter-spacing: .04em;
 }
 .ua-collect {
   font-family: 'IBM Plex Mono', monospace;
-  font-size: var(--fs-sm); color: var(--text2);
+  font-size: var(--fs-sm); color: #8A7070;
   text-align: center; padding: 7px 8px;
   letter-spacing: .04em;
 }
@@ -551,8 +559,8 @@ header button, header select, header a,
 
 /* Log list */
 #logList {
-  flex: 1; overflow-y: auto; padding: 2px 0;
-  min-height: 0;
+  flex: 1; overflow-y: auto;
+  min-height: 0; display: flex; flex-direction: column;
 }
 .log-empty {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -592,33 +600,44 @@ header button, header select, header a,
   0%, 100% { transform: translateY(0); opacity: .6; }
   50%       { transform: translateY(5px); opacity: 1; }
 }
-.log-entry {
-  display: flex !important; align-items: stretch;
-  padding: 0 12px;
-  min-height: 28px;
-  border-bottom: 1px solid rgba(35,24,32,.5);
+@keyframes fadeIn { from { opacity:0; transform:translateY(-2px); } to { opacity:1; } }
+
+/* Log table */
+#logTable { width: 100%; border-collapse: collapse; display: none; }
+#logTable thead th {
+  font-size: var(--fs-xs); font-weight: 700;
+  letter-spacing: .1em; text-transform: uppercase;
+  color: var(--text3);
+  padding: 4px 12px; text-align: left;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 1;
+}
+#logTable tbody tr {
+  border-bottom: 1px solid rgba(35,24,32,.4);
+  transition: background .1s;
   animation: fadeIn .15s ease;
 }
-@keyframes fadeIn { from { opacity:0; transform:translateY(-2px); } to { opacity:1; } }
-.log-stripe { width: 2px; flex-shrink: 0; margin-right: 10px; align-self: stretch; }
-.log-inner { display: flex; align-items: center; gap: 8px; flex: 1; padding: 5px 0; }
-.log-time {
+#logTable tbody tr:hover { background: var(--surf-hi); }
+.log-tr-time {
+  width: 80px;
   font-family: 'IBM Plex Mono', monospace;
-  font-size: var(--fs-sm); color: var(--text3);
-  white-space: nowrap; flex-shrink: 0;
-  letter-spacing: .04em;
+  font-size: var(--fs-sm); color: #7A6060;
+  padding: 6px 8px 6px 14px;
+  white-space: nowrap;
+  border-left: 2px solid transparent;
 }
-.log-msg { flex: 1; line-height: 1.4; font-size: var(--fs-md); }
-.log-entry.detect .log-stripe  { background: var(--amber); }
-.log-entry.detect .log-msg     { font-size: var(--fs-body); font-weight: 600; color: var(--text); }
-.log-entry.success .log-stripe { background: var(--teal); }
-.log-entry.success .log-msg    { color: var(--teal); font-size: var(--fs-md); }
-.log-entry.error .log-stripe   { background: var(--satanic); }
-.log-entry.error .log-msg      { color: var(--satanic); font-size: var(--fs-md); }
-.log-entry.info .log-stripe    { background: var(--text3); }
-.log-entry.info .log-msg       { color: var(--text2); font-size: var(--fs-sm); }
-.log-entry.warn .log-stripe    { background: var(--amber); }
-.log-entry.warn .log-msg       { color: var(--amber); font-size: var(--fs-md); font-weight: 600; }
+.log-tr-msg { font-size: var(--fs-md); padding: 6px 12px; line-height: 1.4; }
+.log-tr-success .log-tr-time { border-color: var(--teal); }
+.log-tr-success .log-tr-msg  { color: var(--teal); }
+.log-tr-error   .log-tr-time { border-color: var(--satanic); }
+.log-tr-error   .log-tr-msg  { color: var(--satanic); }
+.log-tr-info    .log-tr-time { border-color: var(--text3); }
+.log-tr-info    .log-tr-msg  { color: var(--text2); font-size: var(--fs-sm); }
+.log-tr-warn    .log-tr-time { border-color: var(--amber); }
+.log-tr-warn    .log-tr-msg  { color: var(--amber); font-weight: 600; }
+.log-tr-liga-filtrado .log-tr-time { border-color: var(--text3); }
+.log-tr-liga-filtrado .log-tr-msg  { color: var(--text2); font-size: var(--fs-sm); }
 
 /* ── Stats page ────────────────────────────────────────────────────────── */
 .page-header {
@@ -1146,6 +1165,15 @@ header button, header select, header a,
 
         <!-- Activity log -->
         <div id="logList">
+          <table id="logTable">
+            <thead>
+              <tr>
+                <th data-i18n="th.time">Hora</th>
+                <th data-i18n="th.event">Evento</th>
+              </tr>
+            </thead>
+            <tbody id="logBody"></tbody>
+          </table>
           <div class="log-empty" id="logEmpty">
             <div class="log-empty-icon"><img src="icon.png" alt=""></div>
             <div class="log-empty-title" data-i18n="empty.title">Monitor inativo</div>
