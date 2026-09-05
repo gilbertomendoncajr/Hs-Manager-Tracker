@@ -105,7 +105,7 @@ function toggleFiltered() {
 function updateEmptyState() {
   const hasVisible = logBody && Array.from(logBody.children).some(r => r.style.display !== 'none')
   if (logEmpty) logEmpty.style.display = hasVisible ? 'none' : 'flex'
-  if (logTable) logTable.style.display = hasVisible ? '' : 'none'
+  if (logTable) logTable.style.display = hasVisible ? 'table' : 'none'
 }
 
 function _refreshUaCount() {
@@ -118,6 +118,7 @@ function _refreshUaCount() {
 
 function switchTab(tab) {
   currentTab = tab
+  document.body.classList.toggle('tab-liga', tab === 'liga')
   tabMeusBtn.classList.toggle('active', tab === 'meus')
   tabLigaBtn.classList.toggle('active', tab === 'liga')
   if (logBody) logBody.querySelectorAll('tr').forEach(row => {
@@ -789,7 +790,7 @@ function _addPendingRow(drop, collected = false) {
   const tierPart = drop._tierTag || ''
   const catPart = drop._category ? `<span class="ua-cat">${drop._category}</span>` : ''
   const iconHtml = drop._iconPath ? `<img class="ua-item-icon" src="${drop._iconPath}" onerror="this.style.display='none'" alt="">` : ''
-  const playerPart = drop.charName ? `<span class="ua-player">${drop.charName}</span>` : ''
+  const playerPart = drop._charDisplay ? `<span class="ua-player">${drop._charDisplay}</span>` : ''
   row.innerHTML = `
     <td class="ua-name" style="color:${color}">${iconHtml}${drop.name}${tierPart}${catPart}${playerPart}</td>
     <td class="ua-time">${fmtTime(drop.ts_ms)}</td>

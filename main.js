@@ -762,7 +762,10 @@ function spawnSniffer() {
       if (drop.type === 'floor_drop') {
         if (personalFilter.size > 0 && personalFilter.has(drop.name)) sendOverlay(drop)
         const isPendingSiteFiltered = serverEnabledItems !== null && !serverEnabledItems.has(drop.name)
-        const pendingPayload = { ...drop, _tierTag: tierTag, _category: categoryVal, _siteFiltered: isPendingSiteFiltered, _iconPath: itemIconRelPath(drop.name) }
+        const _charDisplay = drop.charName && myDiscordUsername
+          ? `${drop.charName} / ${myDiscordUsername}`
+          : (drop.charName || myDiscordUsername || null)
+        const pendingPayload = { ...drop, _tierTag: tierTag, _category: categoryVal, _siteFiltered: isPendingSiteFiltered, _iconPath: itemIconRelPath(drop.name), _charDisplay }
         pushHistory('drop:pending', pendingPayload)
         sendToWin(mainWin, 'drop:pending', pendingPayload)
         sendToWin(compactWin, 'drop:pending', pendingPayload)
@@ -786,7 +789,8 @@ function spawnSniffer() {
 
       // fallback: tipo antigo sem field "type"
       const isSiteFilteredFallback = serverEnabledItems !== null && !serverEnabledItems.has(drop.name)
-      const fallbackPayload = { ...drop, had_floor: false, _logMsg: '', _tierTag: tierTag, _category: categoryVal, _siteFiltered: isSiteFilteredFallback }
+      const _charDisplayFb = drop.charName && myDiscordUsername ? `${drop.charName} / ${myDiscordUsername}` : (drop.charName || myDiscordUsername || null)
+      const fallbackPayload = { ...drop, had_floor: false, _logMsg: '', _tierTag: tierTag, _category: categoryVal, _siteFiltered: isSiteFilteredFallback, _iconPath: itemIconRelPath(drop.name), _charDisplay: _charDisplayFb }
       pushHistory('drop:collected', fallbackPayload)
       sendToWin(mainWin, 'drop:collected', fallbackPayload)
       sendToWin(compactWin, 'drop:collected', fallbackPayload)
