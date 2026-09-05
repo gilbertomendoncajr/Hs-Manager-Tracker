@@ -795,8 +795,9 @@ function _addPendingRow(drop, collected = false) {
   if (collected) row.classList.add('collected')
   const tierPart = drop._tierTag || ''
   const catPart = drop._category ? `<span class="ua-cat">${drop._category}</span>` : ''
+  const iconHtml = drop._iconPath ? `<img class="ua-item-icon" src="${drop._iconPath}" onerror="this.style.display='none'" alt="">` : ''
   row.innerHTML = `
-    <td class="ua-name" style="color:${color}">${drop.name}${tierPart}${catPart}</td>
+    <td class="ua-name" style="color:${color}">${iconHtml}${drop.name}${tierPart}${catPart}</td>
     <td class="ua-time">${fmtTime(drop.ts_ms)}</td>
     <td class="ua-collect" id="ua-c-${safeId}">${collected ? fmtTime(drop.ts_ms) : '⏳'}</td>
   `

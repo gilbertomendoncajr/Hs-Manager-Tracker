@@ -6,7 +6,8 @@
   "scripts": {
     "start": "electron .",
     "start:v2": "cross-env HSDL_UI=v2 electron .",
-    "build": "electron-builder --win --x64"
+    "build": "electron-builder --win --x64",
+    "download-icons": "node scripts/download-icons.js"
   },
   "build": {
     "appId": "com.bloodpact.hs-drop-logger",
@@ -21,6 +22,8 @@
       "preload-overlay.js",
       "preload-compact.js",
       "index.html",
+      "index-v2.html",
+      "v2-shim.js",
       "filter.html",
       "filter-renderer.js",
       "flourish.html",
@@ -28,6 +31,7 @@
       "compact.html",
       "renderer.js",
       "package.json",
+      "assets/**/*",
       "node_modules/**/*"
     ],
     "extraResources": [

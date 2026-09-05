@@ -200,6 +200,7 @@ app.whenReady().then(async () => {
   const s = await getStore()
   currentLang = s.get('appLang', 'pt')
   loadPersonalFilter()
+  ensureIconsDir().catch(() => {})
   createMainWindow()
   createOverlays()
 
@@ -319,6 +320,43 @@ app.on('window-all-closed', () => {
 })
 
 // ── Helpers de API ──────────────────────────────────────────────────────────
+// ── Icon cache local ─────────────────────────────────────────────────────────
+const ICONS_DIR = path.join(__dirname, 'assets', 'icons', 'items')
+
+function sanitizeIconName(name) {
+  return name.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/, '').toLowerCase()
+}
+
+function itemIconRelPath(name) {
+  return `assets/icons/items/${sanitizeIconName(name)}.png`
+}
+
+async function ensureIconsDir() {
+  await fs.promises.mkdir(ICONS_DIR, { recursive: true })
+}
+
+async function downloadOneIcon(itemName, imageUrl) {
+  if (!imageUrl) return
+  const filePath = path.join(ICONS_DIR, sanitizeIconName(itemName) + '.png')
+  try { await fs.promises.access(filePath); return } catch {}
+  try {
+    const imgRes = await fetch(imageUrl, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; hs-drop-logger/1.0)' } })
+    if (!imgRes.ok) return
+    const buf = await imgRes.arrayBuffer()
+    await fs.promises.writeFile(filePath, Buffer.from(buf))
+  } catch {}
+}
+
+async function downloadMissingIcons(iconEntries) {
+  // iconEntries: [{name, imageUrl}]
+  await ensureIconsDir()
+  const BATCH = 5
+  for (let i = 0; i < iconEntries.length; i += BATCH) {
+    await Promise.all(iconEntries.slice(i, i + BATCH).map(e => downloadOneIcon(e.name, e.imageUrl)))
+    if (i + BATCH < iconEntries.length) await new Promise(r => setTimeout(r, 100))
+  }
+}
+
 async function apiFetch(urlPath, options = {}) {
   const s = await getStore()
   const token = s.get('sessionToken')
@@ -724,7 +762,7 @@ function spawnSniffer() {
       if (drop.type === 'floor_drop') {
         if (personalFilter.size > 0 && personalFilter.has(drop.name)) sendOverlay(drop)
         const isPendingSiteFiltered = serverEnabledItems !== null && !serverEnabledItems.has(drop.name)
-        const pendingPayload = { ...drop, _tierTag: tierTag, _category: categoryVal, _siteFiltered: isPendingSiteFiltered }
+        const pendingPayload = { ...drop, _tierTag: tierTag, _category: categoryVal, _siteFiltered: isPendingSiteFiltered, _iconPath: itemIconRelPath(drop.name) }
         pushHistory('drop:pending', pendingPayload)
         sendToWin(mainWin, 'drop:pending', pendingPayload)
         sendToWin(compactWin, 'drop:pending', pendingPayload)
@@ -844,16 +882,19 @@ ipcMain.handle('monitor:start', async (_e, leagueId) => {
       serverEnabledItems = new Set(data.enabledNames)
       const newTierMap = {}
       const newCategoryMap = {}
+      const iconEntries = []
       for (const [category, items] of Object.entries(data.grouped ?? {})) {
         for (const item of items) {
           if (item.tier) newTierMap[item.name] = item.tier
           newCategoryMap[item.name] = category
+          if (item.image_url) iconEntries.push({ name: item.name, imageUrl: item.image_url })
         }
       }
       serverTierMap = newTierMap
       serverCategoryMap = newCategoryMap
       sendLog('info', t(`📋 Filtro carregado: ${serverEnabledItems.size} itens ativos`, `📋 Filter loaded: ${serverEnabledItems.size} active items`))
       sendToWin(mainWin, 'filter:loaded', { count: serverEnabledItems.size })
+      downloadMissingIcons(iconEntries).catch(() => {})
     }
   }).catch(() => {})
 
