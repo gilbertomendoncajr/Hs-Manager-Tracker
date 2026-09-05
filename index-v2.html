@@ -477,22 +477,49 @@ header button, header select, header a,
 #btnClearLog:hover { color: var(--text); border-color: var(--brt); }
 
 /* UA table (Unholy/Angelic pending drops) */
-#uaSection {
-  background: var(--surf);
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-  max-height: 260px;
-  overflow-y: auto;
+/* Drops page layout */
+.drops-body {
+  display: flex; flex: 1; overflow: hidden; min-height: 0;
 }
-.ua-header {
-  display: flex; align-items: center; gap: 8px;
-  padding: 5px 12px 4px;
-  background: linear-gradient(90deg, rgba(200,64,160,.08) 0%, transparent 100%);
-  border-bottom: 1px solid rgba(200,64,160,.15);
+.drops-main {
+  flex: 1; overflow-y: auto; min-height: 0;
 }
-.ua-header-label {
+.drops-log-sidebar {
+  width: 210px; flex-shrink: 0;
+  border-left: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow: hidden; background: var(--sidebar);
+}
+.log-sidebar-hdr {
+  padding: 5px 12px;
   font-size: var(--fs-xs); font-weight: 700;
-  letter-spacing: .12em; text-transform: uppercase; color: var(--text2);
+  letter-spacing: .14em; text-transform: uppercase;
+  color: var(--text3);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0; background: var(--bg);
+}
+.drops-log-sidebar #logList {
+  flex: 1; overflow-y: auto; min-height: 0;
+  display: flex; flex-direction: column;
+}
+/* Sidebar empty state: compact */
+.drops-log-sidebar .log-empty {
+  padding: 20px 10px; align-items: center; gap: 8px;
+}
+.drops-log-sidebar .log-empty-title {
+  font-size: var(--fs-xs); margin-bottom: 0;
+}
+/* Sidebar log table */
+.drops-log-sidebar .log-tr-time {
+  width: 52px; font-size: 10px; padding: 4px 4px 4px 10px;
+}
+.drops-log-sidebar .log-tr-msg {
+  font-size: 10px; padding: 4px 8px 4px 4px;
+  line-height: 1.35; word-break: break-word;
+}
+
+#uaSection {
+  background: var(--surf); width: 100%;
 }
 #uaCount {
   font-family: 'Space Mono', monospace;
@@ -558,10 +585,9 @@ body.tab-liga .ua-player { display: block; }
 .ua-collect.done { color: var(--teal); }
 .ua-site-filtered { opacity: .4; }
 
-/* Log list */
+/* Log list — now lives inside .drops-log-sidebar; sizing handled by sidebar CSS */
 #logList {
-  flex: 1; overflow-y: auto;
-  min-height: 0; display: flex; flex-direction: column;
+  display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto;
 }
 .log-empty {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -1147,50 +1173,46 @@ body.tab-liga .ua-player { display: block; }
           <button id="btnClearLog" data-i18n="btn.clear">Limpar</button>
         </div>
 
-        <!-- Unholy/Angelic table -->
-        <div id="uaSection" style="display:none">
-          <div class="ua-header">
-            <span class="ua-header-label">⚡ Unholy / Angelic</span>
-          </div>
-          <table id="uaTable">
-            <thead>
-              <tr>
-                <th data-i18n="th.item">Item</th>
-                <th data-i18n="th.dropped">Dropou</th>
-                <th data-i18n="th.collected">Coletou</th>
-              </tr>
-            </thead>
-            <tbody id="uaBody"></tbody>
-          </table>
-        </div>
+        <!-- Body: items (main) + log (sidebar) -->
+        <div class="drops-body">
 
-        <!-- Activity log -->
-        <div id="logList">
-          <table id="logTable">
-            <thead>
-              <tr>
-                <th data-i18n="th.time">Hora</th>
-                <th data-i18n="th.event">Evento</th>
-              </tr>
-            </thead>
-            <tbody id="logBody"></tbody>
-          </table>
-          <div class="log-empty" id="logEmpty">
-            <div class="log-empty-icon"><img src="icon.png" alt=""></div>
-            <div class="log-empty-title" data-i18n="empty.title">Monitor inativo</div>
-            <div class="log-empty-desc">
-              <span data-i18n="empty.desc1">Selecione uma liga no rodapé</span><br>
-              <span data-i18n="empty.desc2">e pressione INICIAR para começar a registrar drops.</span>
-            </div>
-            <div class="log-empty-arrow">
-              <div class="log-empty-arrow-label" data-i18n="empty.cta">INICIAR</div>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"/>
-                <polyline points="19 12 12 19 5 12"/>
-              </svg>
+          <!-- Main: UA items table, full height -->
+          <div class="drops-main">
+            <div id="uaSection" style="display:none">
+              <table id="uaTable">
+                <thead>
+                  <tr>
+                    <th data-i18n="th.item">Item</th>
+                    <th data-i18n="th.dropped">Dropou</th>
+                    <th data-i18n="th.collected">Coletou</th>
+                  </tr>
+                </thead>
+                <tbody id="uaBody"></tbody>
+              </table>
             </div>
           </div>
-        </div>
+
+          <!-- Sidebar: activity log -->
+          <div class="drops-log-sidebar">
+            <div class="log-sidebar-hdr">LOG</div>
+            <div id="logList">
+              <table id="logTable">
+                <tbody id="logBody"></tbody>
+              </table>
+              <div class="log-empty" id="logEmpty">
+                <div class="log-empty-title" data-i18n="empty.title">Monitor inativo</div>
+                <div class="log-empty-arrow">
+                  <div class="log-empty-arrow-label" data-i18n="empty.cta">INICIAR</div>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <polyline points="19 12 12 19 5 12"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /.drops-body -->
 
       </div><!-- /#p-drops -->
 
