@@ -23,6 +23,8 @@ const uaSection     = document.getElementById('uaSection')
 const uaBody        = document.getElementById('uaBody')
 const uaCount       = document.getElementById('uaCount')
 const dropHint      = document.getElementById('dropHint')
+const dropHintTitle = document.getElementById('dropHintTitle')
+const dropHintArrow = document.getElementById('dropHintArrow')
 
 // fp → true (só para saber se a linha existe)
 const uaMap = new Map()
@@ -304,6 +306,7 @@ const I18N = {
     'status.monitor': 'Monitor', 'status.filter': 'Filtro do Servidor', 'status.char': 'Personagem',
     'status.loading': 'Carregando...', 'status.waitLogin': 'Entre ou relogue no jogo',
     'hint.waitLogin': 'Entre ou relogue no jogo para iniciar o monitoramento',
+    'empty.title': 'Monitor inativo', 'empty.cta': 'INICIAR',
     'status.active': 'Monitorando', 'status.stopped': 'Parado',
     'status.filterOk': '{n} itens ativos', 'status.charOk': '✓ {name}',
     'status.lastEvt': 'Último evento do sniffer',
@@ -352,6 +355,7 @@ const I18N = {
     'status.monitor': 'Monitor', 'status.filter': 'Server Filter', 'status.char': 'Character',
     'status.loading': 'Loading...', 'status.waitLogin': 'Enter or relog in game',
     'hint.waitLogin': 'Enter or relog in game to start monitoring',
+    'empty.title': 'Monitor inactive', 'empty.cta': 'START',
     'status.active': 'Monitoring', 'status.stopped': 'Stopped',
     'status.filterOk': '{n} active items', 'status.charOk': '✓ {name}',
     'status.lastEvt': 'Last sniffer event',
@@ -534,6 +538,8 @@ function setMonitorUI(watching, charIdentified) {
     if (_heartbeatTimer) { clearInterval(_heartbeatTimer); _heartbeatTimer = null }
     if (stEvtDot) stEvtDot.className = 'st-dot'
     if (stEvtVal) stEvtVal.textContent = '—'
+    if (dropHintTitle) dropHintTitle.textContent = tr('empty.title')
+    if (dropHintArrow) dropHintArrow.style.display = 'flex'
   } else if (!charIdentified) {
     btnToggle.textContent = tr('btn.stop')
     btnToggle.className = 'stop'
@@ -542,6 +548,8 @@ function setMonitorUI(watching, charIdentified) {
     statusText.textContent = tr('status.waitRelog')
     statDrops.style.display = 'none'
     statRares.style.display = 'none'
+    if (dropHintTitle) dropHintTitle.textContent = tr('status.waitLogin')
+    if (dropHintArrow) dropHintArrow.style.display = 'none'
     _setNavLock(true)
     navTo('status')
   } else {
