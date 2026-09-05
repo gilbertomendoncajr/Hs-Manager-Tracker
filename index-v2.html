@@ -470,6 +470,14 @@ header button, header select, header a,
   background: var(--surf); width: 100%;
   flex: 1; overflow-y: auto; min-height: 0;
 }
+.drop-hint {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 10px; color: var(--text3);
+  font-size: var(--fs-sm); letter-spacing: .06em;
+  pointer-events: none; user-select: none;
+}
+.drop-hint-icon { font-size: 1.6rem; opacity: .35; }
 #uaCount {
   font-family: 'Space Mono', monospace;
   font-size: var(--fs-sm); font-weight: 700;
@@ -1137,6 +1145,12 @@ body.tab-liga .ua-player { display: block; }
           <span class="filter-count" id="uaCount">0</span>
           <div class="filter-sp"></div>
           <button id="btnToggleFiltered" style="display:none">⊘ filtrados (0)</button>
+        </div>
+
+        <!-- Empty-state hint (visible until first drop appears) -->
+        <div id="dropHint" class="drop-hint">
+          <span class="drop-hint-icon">▶</span>
+          <span data-i18n="hint.waitLogin">Entre ou relogue no jogo para iniciar o monitoramento</span>
         </div>
 
         <!-- UA items table — takes all remaining height -->

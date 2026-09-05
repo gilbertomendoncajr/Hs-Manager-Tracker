@@ -22,6 +22,7 @@ const btnToggleFiltered  = document.getElementById('btnToggleFiltered')
 const uaSection     = document.getElementById('uaSection')
 const uaBody        = document.getElementById('uaBody')
 const uaCount       = document.getElementById('uaCount')
+const dropHint      = document.getElementById('dropHint')
 
 // fp → true (só para saber se a linha existe)
 const uaMap = new Map()
@@ -152,6 +153,7 @@ function clearUATable() {
   uaMap.clear()
   uaSection.style.display = 'none'
   uaCount.textContent = '0'
+  if (dropHint) dropHint.style.display = 'flex'
 }
 
 // ── Stats data ───────────────────────────────────────────────────────────────
@@ -301,6 +303,7 @@ const I18N = {
     'status.title': 'Status da Conexão',
     'status.monitor': 'Monitor', 'status.filter': 'Filtro do Servidor', 'status.char': 'Personagem',
     'status.loading': 'Carregando...', 'status.waitLogin': 'Entre ou relogue no jogo',
+    'hint.waitLogin': 'Entre ou relogue no jogo para iniciar o monitoramento',
     'status.active': 'Monitorando', 'status.stopped': 'Parado',
     'status.filterOk': '{n} itens ativos', 'status.charOk': '✓ {name}',
     'status.lastEvt': 'Último evento do sniffer',
@@ -348,6 +351,7 @@ const I18N = {
     'status.title': 'Connection Status',
     'status.monitor': 'Monitor', 'status.filter': 'Server Filter', 'status.char': 'Character',
     'status.loading': 'Loading...', 'status.waitLogin': 'Enter or relog in game',
+    'hint.waitLogin': 'Enter or relog in game to start monitoring',
     'status.active': 'Monitoring', 'status.stopped': 'Stopped',
     'status.filterOk': '{n} active items', 'status.charOk': '✓ {name}',
     'status.lastEvt': 'Last sniffer event',
@@ -785,6 +789,7 @@ function _addPendingRow(drop, collected = false) {
   uaBody.insertBefore(row, uaBody.firstChild)
   uaMap.set(drop.fp, safeId)
   uaSection.style.display = 'block'
+  if (dropHint) dropHint.style.display = 'none'
   uaCount.textContent = uaBody.children.length
 
   // Incrementar contadores de MEUS DROPS
