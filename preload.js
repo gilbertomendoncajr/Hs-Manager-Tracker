@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('api', {
   // Monitor
   startMonitor: (leagueId) => ipcRenderer.invoke('monitor:start', leagueId),
   stopMonitor: () => ipcRenderer.invoke('monitor:stop'),
+  resumeMonitor: () => ipcRenderer.invoke('monitor:resume'),
   getMonitorState: () => ipcRenderer.invoke('monitor:getState'),
 
   // Eventos do main → renderer
@@ -25,6 +26,7 @@ contextBridge.exposeInMainWorld('api', {
   onDropCollected: (cb) => ipcRenderer.on('drop:collected', (_e, drop) => cb(drop)),
   onFilterLoaded: (cb) => ipcRenderer.on('filter:loaded', (_e, data) => cb(data)),
   onSnifferHeartbeat: (cb) => ipcRenderer.on('sniffer:heartbeat', (_e, data) => cb(data)),
+  onSessionReset: (cb) => ipcRenderer.on('session:reset', () => cb()),
 
   // Auto-update
   onUpdateAvailable: (cb) => ipcRenderer.on('update:available', (_e, info) => cb(info)),
@@ -53,6 +55,8 @@ contextBridge.exposeInMainWorld('api', {
   setTheme: (val) => ipcRenderer.invoke('settings:setTheme', val),
   getLang: () => ipcRenderer.invoke('settings:getLang'),
   setLang: (val) => ipcRenderer.invoke('settings:setLang', val),
+  getLeague: () => ipcRenderer.invoke('settings:getLeague'),
+  setLeague: (val) => ipcRenderer.invoke('settings:setLeague', val),
 
   // Janela compacta
   toggleCompact: () => ipcRenderer.invoke('compact:toggle'),

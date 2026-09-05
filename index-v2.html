@@ -1,0 +1,1336 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta http-equiv="Content-Security-Policy"
+  content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'">
+<title>HS Drop Logger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+/* ════════════════════════════════════════════════════════════
+   TOKENS — Blood Pact palette
+════════════════════════════════════════════════════════════ */
+:root {
+  --bg:        #09080A;
+  --sidebar:   #0C0A0B;
+  --surf:      #141012;
+  --surf-hi:   #1D161A;
+  --border:    #231820;
+  --brt:       #3C2428;
+  --accent:    #C82020;
+  --accent-lo: rgba(200,32,32,.12);
+  --amber:     #C88820;
+  --amber-lo:  rgba(200,136,32,.10);
+  --teal:      #20A868;
+  --text:      #DDD0C4;
+  --text2:     #6A5050;
+  --text3:     #342828;
+  --satanic:   #E04040;
+  --set:       #40C870;
+  --heroic:    #00D4A0;
+  --angelic:   #E8D840;
+  --unholy:    #C840A0;
+  --blessed:   #9B7AF0;
+
+  /* font scale */
+  --fs-xs:     11px;   /* tiny labels, badges — was 8-9px */
+  --fs-sm:     12px;   /* secondary text — was 10-11px */
+  --fs-md:     13px;   /* primary body — was 12px */
+  --fs-body:   14px;   /* base body — was 13px */
+  --fs-lg:     15px;   /* section headers — was 14px */
+  --fs-xl:     17px;   /* large headings — was 16px */
+  --fs-stat-s: 26px;   /* stat display numbers */
+  --fs-stat-m: 30px;
+  --fs-stat-l: 38px;
+}
+
+/* ════════════════════════════════════════════════════════════
+   RESET & BASE
+════════════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Mono', 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--fs-body);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ════════════════════════════════════════════════════════════
+   SCREENS
+════════════════════════════════════════════════════════════ */
+.screen { display: none; flex: 1; flex-direction: column; overflow: hidden; min-height: 0; }
+.screen.active { display: flex; }
+
+/* ════════════════════════════════════════════════════════════
+   LOGIN
+════════════════════════════════════════════════════════════ */
+#screenLogin { align-items: center; justify-content: center; }
+
+.login-card {
+  background: var(--surf);
+  border: 1px solid var(--brt);
+  padding: 40px 44px;
+  text-align: center;
+  width: 340px;
+  position: relative;
+}
+.login-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+}
+.login-icon {
+  width: 72px; height: 72px;
+  border-radius: 50%;
+  overflow: hidden;
+  margin: 0 auto 20px;
+  border: 2px solid var(--brt);
+}
+.login-icon img { width: 100%; height: 100%; object-fit: cover; }
+.login-card h2 {
+  font-family: 'Space Mono', monospace;
+  font-size: var(--fs-lg); font-weight: 700;
+  color: var(--amber);
+  margin-bottom: 8px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.login-card p { color: var(--text2); line-height: 1.7; margin-bottom: 28px; font-size: var(--fs-md); }
+
+#btnLogin {
+  width: 100%;
+  background: #5865F2;
+  border: none; color: #fff;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: var(--fs-body); font-weight: 600;
+  padding: 11px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: opacity .15s;
+  letter-spacing: .04em;
+}
+#btnLogin:hover { opacity: .9; }
+#btnLogin:disabled { opacity: .4; cursor: default; }
+
+/* ════════════════════════════════════════════════════════════
+   APP FRAME
+════════════════════════════════════════════════════════════ */
+#screenApp { flex: 1; }
+
+.app-frame {
+  display: flex;
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+}
+
+/* ════════════════════════════════════════════════════════════
+   SIDEBAR
+════════════════════════════════════════════════════════════ */
+.sidenav {
+  width: 200px;
+  flex-shrink: 0;
+  background: var(--sidebar);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Brand block */
+.side-brand {
+  padding: 16px 14px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  flex-shrink: 0;
+  -webkit-app-region: drag;
+}
+.side-logo {
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid var(--brt);
+  flex-shrink: 0;
+  background: var(--surf);
+}
+.side-logo img { width: 100%; height: 100%; object-fit: cover; }
+.side-titles { display: flex; flex-direction: column; gap: 2px; }
+.side-name {
+  font-family: 'Space Mono', monospace;
+  font-size: var(--fs-xs); font-weight: 700;
+  color: var(--amber);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+.side-sub {
+  font-size: var(--fs-xs); font-weight: 600;
+  color: var(--accent);
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+
+/* Nav */
+.side-nav-wrap {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 6px;
+  gap: 1px;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.nav-btn {
+  width: 100%;
+  height: 36px;
+  background: none;
+  border: none;
+  border-radius: 2px;
+  color: var(--text2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 10px;
+  position: relative;
+  transition: color .12s, background .12s;
+  text-align: left;
+  font-family: inherit;
+  flex-shrink: 0;
+}
+.nav-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+.nav-btn-label {
+  font-size: var(--fs-sm); font-weight: 500;
+  white-space: nowrap;
+  letter-spacing: .02em;
+}
+.nav-btn:hover { color: var(--text); background: var(--surf-hi); }
+.nav-btn.active { color: var(--accent); background: var(--accent-lo); }
+.nav-btn.active::before {
+  content: '';
+  position: absolute; left: 0; top: 50%;
+  transform: translateY(-50%);
+  width: 2px; height: 20px;
+  background: var(--accent);
+}
+.nav-btn.nav-locked { opacity: .3; pointer-events: none; }
+
+.nav-div { height: 1px; background: var(--border); margin: 5px 8px; flex-shrink: 0; }
+.nav-sp { flex: 1; }
+
+.side-version {
+  padding: 8px 16px;
+  font-size: var(--fs-sm); color: var(--text3);
+  letter-spacing: .06em;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+/* ════════════════════════════════════════════════════════════
+   MAIN COLUMN
+════════════════════════════════════════════════════════════ */
+.main-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ════════════════════════════════════════════════════════════
+   HEADER
+════════════════════════════════════════════════════════════ */
+header {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px 0 12px;
+  background: var(--sidebar);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  -webkit-app-region: drag;
+}
+header button, header select, header a,
+#userBadge, .win-controls,
+.hdr-mon-card, #statDrops, #statRares {
+  -webkit-app-region: no-drag;
+}
+.hdr-sp { flex: 1; }
+
+/* Monitoring card */
+.hdr-mon-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  height: 38px;
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--brt);
+  background: var(--surf);
+  border-radius: 2px;
+  flex-shrink: 0;
+  min-width: 150px;
+}
+.hdr-mon-label {
+  font-size: var(--fs-xs); font-weight: 700;
+  letter-spacing: .18em; color: var(--text3);
+  text-transform: uppercase;
+  writing-mode: vertical-lr;
+  transform: rotate(180deg);
+  flex-shrink: 0;
+}
+
+/* statusDot lives inside hdr-mon-card */
+#statusDot {
+  display: flex; align-items: center; gap: 6px;
+  font-size: var(--fs-sm); color: var(--text2);
+  letter-spacing: .02em;
+}
+#statusDot .pulse {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--text3); flex-shrink: 0;
+  transition: background .3s;
+}
+#statusDot.watching .pulse  { background: var(--teal); animation: blink 1.5s infinite; }
+#statusDot.watching          { color: var(--teal); }
+#statusDot.waiting .pulse    { background: var(--amber); animation: blink 1s infinite; }
+#statusDot.waiting           { color: var(--amber); }
+
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+/* Mini status dots (filter + char) */
+.hdr-mini-dots { display: flex; gap: 5px; margin-left: 2px; }
+.st-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+  background: var(--text3);
+  transition: background .3s, box-shadow .3s;
+}
+.st-dot.active  { background: #4ade80; box-shadow: 0 0 6px rgba(74,222,128,.5); }
+.st-dot.pending { background: var(--amber); }
+.st-dot.err     { background: #ef4444; }
+
+/* Ghost count elements — hidden in v2; renderer still updates #dropCount/#rareCount,
+   v2-shim mirrors their text to the visible .hdr-card-vis cards */
+#statDrops, #statRares { display: none !important; }
+
+/* Visible header count cards (mirrored by v2-shim from hidden ghost elements) */
+.hdr-card-vis {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 6px;
+  padding: 0 12px;
+  height: 38px;
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--brt);
+  background: var(--surf);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.hdr-card-num {
+  font-family: 'Space Mono', monospace;
+  font-size: var(--fs-xl); font-weight: 700;
+  color: var(--text); line-height: 1;
+}
+.hdr-card-label-vis {
+  font-size: var(--fs-xs); font-weight: 700;
+  letter-spacing: .18em; color: var(--text3);
+  text-transform: uppercase; line-height: 1;
+}
+
+/* User badge */
+#userBadge {
+  display: flex; align-items: center; gap: 8px;
+  font-size: var(--fs-sm); color: var(--text2);
+  flex-shrink: 0;
+}
+.live-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--teal); animation: blink 2s infinite; flex-shrink: 0;
+}
+#userNameText { color: var(--text); font-weight: 600; letter-spacing: .02em; }
+
+#btnLogout {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text2);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: var(--fs-sm); font-weight: 600;
+  padding: 4px 10px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  transition: color .12s, border-color .12s;
+  border-radius: 2px;
+}
+#btnLogout:hover { color: var(--accent); border-color: var(--accent); }
+
+/* Window controls */
+.win-controls { display: flex; align-items: center; gap: 2px; margin-left: 4px; }
+.win-btn {
+  width: 26px; height: 26px;
+  background: none; border: none; border-radius: 2px;
+  color: var(--text3); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .1s, color .1s;
+}
+.win-btn:hover { background: var(--surf-hi); color: var(--text2); }
+.win-btn.close:hover { background: var(--accent); color: #fff; }
+.win-btn svg { width: 11px; height: 11px; }
+
+/* ════════════════════════════════════════════════════════════
+   UPDATE BANNER
+════════════════════════════════════════════════════════════ */
+#updateBanner {
+  background: rgba(32,168,104,.06);
+  border-bottom: 1px solid rgba(32,168,104,.18);
+  padding: 5px 14px;
+  align-items: center; gap: 10px;
+  font-size: var(--fs-sm); color: var(--teal);
+  flex-shrink: 0;
+}
+#updateProgress { flex: 1; background: var(--surf-hi); height: 2px; overflow: hidden; }
+#updateBar { height: 100%; background: var(--teal); width: 0%; transition: width .3s; }
+#btnInstallUpdate {
+  background: var(--teal); color: #000;
+  border: none; padding: 3px 12px; cursor: pointer;
+  font-family: inherit; font-size: var(--fs-sm); font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase;
+}
+
+/* ════════════════════════════════════════════════════════════
+   PAGES
+════════════════════════════════════════════════════════════ */
+.pages {
+  flex: 1; overflow: hidden;
+  display: flex; flex-direction: column; min-height: 0;
+}
+.page {
+  display: none; flex: 1; flex-direction: column;
+  overflow: hidden; min-height: 0;
+}
+.page.active { display: flex; }
+
+/* ════════════════════════════════════════════════════════════
+   DROPS PAGE
+════════════════════════════════════════════════════════════ */
+
+/* Filter bar */
+.filter-bar {
+  height: 38px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 12px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.filter-badge {
+  color: var(--amber); font-size: var(--fs-md);
+}
+.filter-label {
+  font-size: var(--fs-sm); font-weight: 700;
+  color: var(--text2); letter-spacing: .1em; text-transform: uppercase;
+}
+.filter-count {
+  font-family: 'Space Mono', monospace;
+  font-size: var(--fs-sm); font-weight: 700;
+  color: var(--amber);
+  background: var(--amber-lo);
+  border: 1px solid rgba(200,136,32,.25);
+  padding: 1px 7px;
+  border-radius: 2px;
+}
+.filter-sp { flex: 1; }
+
+#btnToggleFiltered {
+  background: none;
+  border: 1px solid var(--border); color: var(--text2);
+  cursor: pointer; font-family: inherit;
+  font-size: var(--fs-sm); font-weight: 600;
+  padding: 3px 9px; letter-spacing: .04em;
+  transition: color .12s, border-color .12s;
+  border-radius: 2px;
+}
+#btnToggleFiltered:hover { color: var(--text); border-color: var(--brt); }
+
+#btnClearLog {
+  background: none;
+  border: 1px solid var(--border); color: var(--text2);
+  cursor: pointer; font-family: inherit;
+  font-size: var(--fs-sm); font-weight: 600;
+  padding: 3px 9px; letter-spacing: .06em; text-transform: uppercase;
+  transition: color .12s, border-color .12s;
+  border-radius: 2px;
+}
+#btnClearLog:hover { color: var(--text); border-color: var(--brt); }
+
+/* UA table (Unholy/Angelic pending drops) */
+#uaSection {
+  background: var(--surf);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.ua-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 12px 4px;
+  background: linear-gradient(90deg, rgba(200,64,160,.08) 0%, transparent 100%);
+  border-bottom: 1px solid rgba(200,64,160,.15);
+}
+.ua-header-label {
+  font-size: var(--fs-xs); font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--text2);
+}
+#uaCount {
+  font-family: 'Space Mono', monospace;
+  font-size: var(--fs-sm); font-weight: 700;
+  color: var(--amber);
+  background: var(--amber-lo);
+  border: 1px solid rgba(200,136,32,.2);
+  padding: 1px 6px; border-radius: 2px;
+}
+
+#uaTable { width: 100%; border-collapse: collapse; }
+#uaTable thead th {
+  font-size: var(--fs-xs); font-weight: 700;
+  letter-spacing: .1em; text-transform: uppercase;
+  color: var(--text3);
+  padding: 4px 12px; text-align: left;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+#uaTable thead th:not(:first-child) { text-align: center; }
+#uaTable tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+#uaTable tbody tr:hover { background: var(--surf-hi); }
+#uaTable tbody tr.collected { opacity: .55; }
+.ua-name {
+  font-size: var(--fs-md); font-weight: 600;
+  padding: 7px 12px;
+  border-left: 2px solid currentColor;
+}
+.ua-cat {
+  display: block;
+  font-size: var(--fs-xs); font-weight: 400;
+  color: var(--text2); margin-top: 2px;
+  letter-spacing: .04em;
+}
+.ua-time {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: var(--fs-sm); color: var(--text2);
+  text-align: center; padding: 7px 8px;
+  letter-spacing: .04em;
+}
+.ua-collect {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: var(--fs-sm); color: var(--text2);
+  text-align: center; padding: 7px 8px;
+  letter-spacing: .04em;
+}
+.ua-collect.done { color: var(--teal); }
+.ua-site-filtered { opacity: .4; }
+
+/* Log list */
+#logList {
+  flex: 1; overflow-y: auto; padding: 2px 0;
+  min-height: 0;
+}
+.log-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  flex: 1; gap: 0; text-align: center; padding: 32px 24px;
+  user-select: none;
+}
+.log-empty-icon {
+  width: 64px; height: 64px; border-radius: 50%;
+  overflow: hidden; border: 2px solid var(--brt);
+  margin-bottom: 20px; opacity: .55;
+  background: var(--surf);
+}
+.log-empty-icon img { width: 100%; height: 100%; object-fit: cover; }
+.log-empty-title {
+  font-family: 'Space Mono', monospace;
+  font-size: var(--fs-body); font-weight: 700;
+  color: var(--text2); letter-spacing: .08em; text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.log-empty-desc {
+  font-size: var(--fs-sm); color: var(--text3);
+  line-height: 2; letter-spacing: .02em;
+  max-width: 240px;
+}
+.log-empty-arrow {
+  margin-top: 28px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  color: var(--accent); opacity: .6;
+  animation: arrowBounce 1.6s ease-in-out infinite;
+}
+.log-empty-arrow-label {
+  font-size: var(--fs-xs); font-weight: 700;
+  letter-spacing: .18em; text-transform: uppercase;
+}
+.log-empty-arrow svg { width: 18px; height: 18px; }
+@keyframes arrowBounce {
+  0%, 100% { transform: translateY(0); opacity: .6; }
+  50%       { transform: translateY(5px); opacity: 1; }
+}
+.log-entry {
+  display: flex !important; align-items: stretch;
+  padding: 0 12px;
+  min-height: 28px;
+  border-bottom: 1px solid rgba(35,24,32,.5);
+  animation: fadeIn .15s ease;
+}
+@keyframes fadeIn { from { opacity:0; transform:translateY(-2px); } to { opacity:1; } }
+.log-stripe { width: 2px; flex-shrink: 0; margin-right: 10px; align-self: stretch; }
+.log-inner { display: flex; align-items: center; gap: 8px; flex: 1; padding: 5px 0; }
+.log-time {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: var(--fs-sm); color: var(--text3);
+  white-space: nowrap; flex-shrink: 0;
+  letter-spacing: .04em;
+}
+.log-msg { flex: 1; line-height: 1.4; font-size: var(--fs-md); }
+.log-entry.detect .log-stripe  { background: var(--amber); }
+.log-entry.detect .log-msg     { font-size: var(--fs-body); font-weight: 600; color: var(--text); }
+.log-entry.success .log-stripe { background: var(--teal); }
+.log-entry.success .log-msg    { color: var(--teal); font-size: var(--fs-md); }
+.log-entry.error .log-stripe   { background: var(--satanic); }
+.log-entry.error .log-msg      { color: var(--satanic); font-size: var(--fs-md); }
+.log-entry.info .log-stripe    { background: var(--text3); }
+.log-entry.info .log-msg       { color: var(--text2); font-size: var(--fs-sm); }
+.log-entry.warn .log-stripe    { background: var(--amber); }
+.log-entry.warn .log-msg       { color: var(--amber); font-size: var(--fs-md); font-weight: 600; }
+
+/* ── Stats page ────────────────────────────────────────────────────────── */
+.page-header {
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.page-header h2 {
+  font-family: 'Space Mono', monospace;
+  font-size: var(--fs-md); font-weight: 700;
+  color: var(--amber); letter-spacing: .1em; text-transform: uppercase;
+}
+.page-header p { font-size: var(--fs-sm); color: var(--text2); margin-top: 4px; }
+
+.stats-timer-wrap {
+  text-align: center; padding: 20px 16px 14px;
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.stats-timer-label {
+  font-size: var(--fs-xs); font-weight: 700;
+  color: var(--text3); letter-spacing: .2em; text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.stats-timer-big {
+  font-family: 'Space Mono', monospace;
+  font-size: var(--fs-stat-l); font-weight: 700;
+  color: var(--text); letter-spacing: .06em; line-height: 1;
+}
+
+.rarity-tiles {
+  display: flex; gap: 6px; padding: 12px; flex-shrink: 0; flex-wrap: wrap;
+}
+.rarity-tile {
+  flex: 1; min-width: 80px;
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--rc);
+  padding: 10px 10px 8px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.rarity-tile-name {
+  font-size: var(--fs-xs); font-weight: 700; color: var(--rc);
+  letter-spacing: .14em; text-transform: uppercase;
+}
+.rarity-tile-count {
+  font-family: 'Space Mono', monospace;
+  font-size: var(--fs-stat-s); font-weight: 700;
+  color: var(--text); line-height: 1.1;
+}
+.rarity-tile-rate { font-size: var(--fs-sm); color: var(--text2); margin-top: 1px; }
+.rarity-tile-bar {
+  height: 2px; background: var(--surf-hi);
+  overflow: hidden; margin-top: 8px;
+}
+.rarity-tile-fill {
+  height: 100%; background: var(--rc);
+  width: 0; transition: width .5s;
+}
+
+.stats-bottom-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 6px; padding: 0 12px 12px;
+}
+.stat-tile {
+  background: var(--surf); border: 1px solid var(--border);
+  border-left: 2px solid var(--brt);
+  padding: 14px 14px 12px;
+}
+.stat-tile-label {
+  font-size: var(--fs-xs); font-weight: 700;
+  color: var(--text2); text-transform: uppercase; letter-spacing: .12em;
+  margin-bottom: 8px;
+}
+.stat-tile-value {
+  font-family: 'Space Mono', monospace;
+  font-size: var(--fs-stat-m); font-weight: 700; color: var(--text);
+}
+.stat-tile-sub { font-size: var(--fs-sm); color: var(--text2); margin-top: 4px; }
+
+/* ── Config page ─────────────────────────────────────────────────────── */
+.cfg-body { flex: 1; overflow-y: auto; padding: 14px 16px; }
+.cfg-section { margin-bottom: 20px; }
+.cfg-section-title {
+  font-size: var(--fs-xs); font-weight: 700;
+  color: var(--text3); text-transform: uppercase; letter-spacing: .16em;
+  margin-bottom: 6px; padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.cfg-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 0; gap: 12px;
+  border-bottom: 1px solid rgba(35,24,32,.4);
+}
+.cfg-row:last-child { border-bottom: none; }
+.cfg-left { flex: 1; min-width: 0; }
+.cfg-label { font-size: var(--fs-md); font-weight: 500; color: var(--text); }
+.cfg-desc { font-size: var(--fs-sm); color: var(--text2); margin-top: 3px; }
+
+.cfg-toggle {
+  width: 36px; height: 20px; background: var(--border);
+  border-radius: 10px; position: relative; cursor: pointer;
+  border: none; flex-shrink: 0; transition: background .2s;
+}
+.cfg-toggle::after {
+  content: ''; position: absolute; left: 3px; top: 3px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--text3); transition: transform .2s, background .2s;
+}
+.cfg-toggle.on { background: var(--accent); }
+.cfg-toggle.on::after { transform: translateX(16px); background: #fff; }
+
+.opt-group { display: flex; gap: 4px; flex-wrap: wrap; }
+.opt-btn {
+  padding: 4px 10px;
+  background: var(--surf-hi);
+  border: 1px solid var(--border); color: var(--text2);
+  font-family: inherit; font-size: var(--fs-sm); font-weight: 500;
+  cursor: pointer; border-radius: 2px;
+  transition: border-color .12s, color .12s, background .12s;
+}
+.opt-btn.on {
+  background: var(--accent-lo);
+  border-color: rgba(200,32,32,.4);
+  color: var(--accent);
+}
+.opt-btn:hover:not(.on) { border-color: var(--brt); color: var(--text); }
+
+.cfg-account { display: flex; align-items: center; gap: 10px; padding: 10px 0; }
+.cfg-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--surf-hi); border: 2px solid var(--border);
+  overflow: hidden; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: var(--fs-lg); color: var(--text3);
+}
+.cfg-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.cfg-username { font-size: var(--fs-md); font-weight: 600; color: var(--text); }
+.cfg-logout-btn {
+  margin-left: auto; background: none;
+  border: 1px solid rgba(200,32,32,.35);
+  color: var(--accent); font-family: inherit;
+  font-size: var(--fs-sm); font-weight: 600;
+  padding: 4px 10px; cursor: pointer; border-radius: 2px;
+  text-transform: uppercase; letter-spacing: .06em;
+  transition: background .12s;
+}
+.cfg-logout-btn:hover { background: var(--accent-lo); }
+
+/* ── Sobre page ──────────────────────────────────────────────────────── */
+#p-sobre { align-items: center; justify-content: center; }
+.sobre-card { text-align: center; padding: 32px; }
+.sobre-logo {
+  width: 80px; height: 80px; border-radius: 50%;
+  overflow: hidden; margin: 0 auto 20px;
+  border: 2px solid var(--brt);
+}
+.sobre-logo img { width: 100%; height: 100%; object-fit: cover; }
+.sobre-name {
+  font-family: 'Space Mono', monospace;
+  font-size: var(--fs-lg); font-weight: 700;
+  color: var(--amber); letter-spacing: .1em; text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.sobre-version {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: var(--fs-md); color: var(--accent); letter-spacing: .06em;
+}
+
+/* ── Filtro page ─────────────────────────────────────────────────────── */
+.filtro-launcher {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  flex: 1; gap: 14px; padding: 24px;
+}
+.filtro-launcher p {
+  color: var(--text2); font-size: var(--fs-md);
+  text-align: center; max-width: 240px; line-height: 1.8;
+}
+.filtro-open-btn {
+  background: var(--accent); color: #fff; border: none;
+  padding: 10px 28px;
+  font-family: inherit; font-size: var(--fs-md); font-weight: 700;
+  cursor: pointer; letter-spacing: .08em; text-transform: uppercase;
+  transition: opacity .12s;
+}
+.filtro-open-btn:hover { opacity: .85; }
+
+/* ── Status page (ghost) ─────────────────────────────────────────────── */
+/* Kept for renderer compat; content lives in header MONITORING card */
+#p-status { display: none !important; }
+/* Compat: st-* values used by renderer but displayed via hdr-mon-card */
+#st-mon-val, #st-flt-val, #st-chr-val, #st-evt-val { display: none !important; }
+
+/* ── Tab bar (hidden, compat only) ───────────────────────────────────── */
+.tab-bar { display: none !important; }
+
+/* ── Stats bar (hidden, indicators relocated to header) ──────────────── */
+.stats-bar { display: none !important; }
+
+/* ════════════════════════════════════════════════════════════
+   BOTTOM BAR
+════════════════════════════════════════════════════════════ */
+.bot {
+  height: 52px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 12px 0 10px;
+  background: var(--sidebar);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.bot-league {
+  display: flex; align-items: center;
+  background: var(--surf);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  flex: 1; max-width: 280px; min-width: 0;
+  height: 34px;
+}
+.bot-league-icon {
+  display: flex; align-items: center; justify-content: center;
+  width: 30px; flex-shrink: 0;
+  color: var(--text3);
+  border-right: 1px solid var(--border); height: 100%;
+}
+.bot-league-icon svg { width: 13px; height: 13px; }
+#leagueSelect {
+  background: transparent; border: none; color: var(--text);
+  font-family: inherit; font-size: var(--fs-sm); font-weight: 500;
+  padding: 0 8px; cursor: pointer; outline: none;
+  flex: 1; min-width: 0; height: 100%;
+  letter-spacing: .02em;
+}
+
+.bot-sep { width: 1px; height: 22px; background: var(--border); flex-shrink: 0; }
+
+.bot-timer {
+  font-family: 'Space Mono', monospace;
+  font-size: var(--fs-body); font-weight: 700;
+  color: var(--text2); letter-spacing: .06em; flex-shrink: 0;
+}
+.bot-sp { flex: 1; }
+
+#btnToggleMonitor {
+  border: none; cursor: pointer;
+  font-family: inherit; font-size: var(--fs-sm); font-weight: 700;
+  padding: 8px 22px; letter-spacing: .1em; text-transform: uppercase;
+  transition: opacity .1s;
+  flex-shrink: 0;
+}
+#btnToggleMonitor.start {
+  background: var(--accent); color: #fff;
+  box-shadow: 0 0 18px rgba(200,32,32,.3);
+}
+#btnToggleMonitor.start:hover { opacity: .88; }
+#btnToggleMonitor.stop {
+  background: var(--surf-hi); color: var(--amber);
+  border: 1px solid rgba(200,136,32,.3);
+}
+#btnToggleMonitor.stop:hover { background: rgba(200,136,32,.06); }
+#btnToggleMonitor.resume {
+  background: var(--surf-hi); color: #4caf7d;
+  border: 1px solid rgba(76,175,125,.3);
+  box-shadow: 0 0 14px rgba(76,175,125,.15);
+}
+#btnToggleMonitor.resume:hover { background: rgba(76,175,125,.08); }
+#btnToggleMonitor:disabled { opacity: .3; cursor: default; box-shadow: none; }
+
+/* ════════════════════════════════════════════════════════════
+   SCROLLBAR
+════════════════════════════════════════════════════════════ */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--brt); }
+</style>
+</head>
+<body>
+
+<!-- API stub: only active in browser (when Electron preload hasn't injected window.api) -->
+<script src="dev/api-stub.js"></script>
+
+<!-- ═══════════════════════════════════════════════════════════
+     LOGIN SCREEN
+═══════════════════════════════════════════════════════════ -->
+<div class="screen" id="screenLogin">
+  <div class="login-card">
+    <div class="login-icon"><img src="icon.png" alt="HS Drop Logger"></div>
+    <h2>HS Drop Logger</h2>
+    <p data-i18n="login.desc">Faça login com sua conta Discord para sincronizar drops com o HS Manager.</p>
+    <button id="btnLogin">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/>
+      </svg>
+      <span data-i18n="btn.login">Entrar com Discord</span>
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     APP SCREEN
+═══════════════════════════════════════════════════════════ -->
+<div class="screen" id="screenApp">
+<div class="app-frame">
+
+  <!-- ══ SIDEBAR ═══════════════════════════════════════════ -->
+  <nav class="sidenav">
+
+    <!-- Brand block -->
+    <div class="side-brand">
+      <div class="side-logo"><img src="icon.png" alt=""></div>
+      <div class="side-titles">
+        <div class="side-name">HS Drop Logger</div>
+        <div class="side-sub">Blood Pact</div>
+      </div>
+    </div>
+
+    <!-- Nav items -->
+    <div class="side-nav-wrap">
+
+      <!-- Hidden: kept for renderer.js compat; v2-shim redirects navTo('status') → drops -->
+      <button class="nav-btn" data-page="status" id="navStatus" style="display:none">
+        <span class="nav-btn-label" data-i18n="nav.status">Status</span>
+      </button>
+
+      <button class="nav-btn active" data-page="drops">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+        <span class="nav-btn-label" data-i18n="nav.drops">Meus Drops</span>
+      </button>
+
+      <button class="nav-btn" data-page="liga">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        <span class="nav-btn-label" data-i18n="nav.liga">Liga</span>
+      </button>
+
+      <div class="nav-div"></div>
+
+      <button class="nav-btn" data-page="stats">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="20" x2="18" y2="10"/>
+          <line x1="12" y1="20" x2="12" y2="4"/>
+          <line x1="6" y1="20" x2="6" y2="14"/>
+        </svg>
+        <span class="nav-btn-label" data-i18n="nav.stats">Estatísticas</span>
+      </button>
+
+      <button class="nav-btn" data-page="filtro">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+        </svg>
+        <span class="nav-btn-label" data-i18n="nav.filter">Filtro</span>
+      </button>
+
+      <button class="nav-btn nav-compact-btn" id="btnCompact">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="3" width="20" height="14" rx="2"/>
+          <rect x="13" y="8" width="7" height="5" rx="1"/>
+        </svg>
+        <span class="nav-btn-label" data-i18n="nav.compact">Modo Compacto</span>
+      </button>
+
+      <div class="nav-sp"></div>
+
+      <button class="nav-btn" data-page="config">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        <span class="nav-btn-label" data-i18n="nav.config">Configurações</span>
+      </button>
+
+      <button class="nav-btn" data-page="sobre">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="16" x2="12" y2="12"/>
+          <line x1="12" y1="8" x2="12.01" y2="8"/>
+        </svg>
+        <span class="nav-btn-label" data-i18n="nav.about">Sobre</span>
+      </button>
+
+    </div><!-- /side-nav-wrap -->
+
+    <div class="side-version">v1.9.2</div>
+  </nav>
+
+  <!-- ══ MAIN COLUMN ════════════════════════════════════════ -->
+  <div class="main-col">
+
+    <!-- ── HEADER ──────────────────────────────────────────── -->
+    <header>
+
+      <!-- MONITORING card: statusDot lives here -->
+      <div class="hdr-mon-card">
+        <div class="hdr-mon-label">MON</div>
+        <div id="statusDot" class="stat idle">
+          <div class="pulse"></div>
+          <span id="statusText">Aguardando</span>
+        </div>
+        <!-- Mini dots: filter + char status -->
+        <div class="hdr-mini-dots">
+          <div class="st-dot pending" id="st-flt-dot" title="Filtro do Servidor"></div>
+          <div class="st-dot pending" id="st-chr-dot" title="Personagem"></div>
+          <div class="st-dot" id="st-mon-dot" style="display:none"></div>
+          <div class="st-dot" id="st-evt-dot" style="display:none"></div>
+        </div>
+        <!-- Ghost values for renderer compat (invisible) -->
+        <span id="st-mon-val"></span>
+        <span id="st-flt-val"></span>
+        <span id="st-chr-val"></span>
+        <span id="st-evt-val"></span>
+      </div>
+
+      <!-- DROPS count card (renderer manages #statDrops and #dropCount) -->
+      <div id="statDrops" style="display:none">
+        <b id="dropCount">0</b>
+        <span data-i18n="stat.drops">drops</span>
+      </div>
+
+      <!-- RARES count card (renderer manages #statRares and #rareCount) -->
+      <div id="statRares" style="display:none">
+        <b id="rareCount">0</b>
+        <span data-i18n="stat.rares">raros</span>
+      </div>
+
+      <!-- Visible header count cards (mirrored by v2-shim.js) -->
+      <div class="hdr-card-vis" id="hdrDropsCard">
+        <div class="hdr-card-num" id="hdrDropCount">0</div>
+        <div class="hdr-card-label-vis">DROPS</div>
+      </div>
+      <div class="hdr-card-vis" id="hdrRaresCard">
+        <div class="hdr-card-num" id="hdrRareCount">0</div>
+        <div class="hdr-card-label-vis" data-i18n="hdr.rares">COLETADOS</div>
+      </div>
+
+      <div class="hdr-sp"></div>
+
+      <!-- User badge -->
+      <div id="userBadge" style="display:none">
+        <div class="live-dot"></div>
+        <span id="userNameText"></span>
+        <button id="btnLogout" data-i18n="hdr.logout">Sair</button>
+      </div>
+
+      <!-- Window controls -->
+      <div class="win-controls">
+        <button class="win-btn" id="btnWinMinimize" title="Minimizar">
+          <svg viewBox="0 0 12 12" fill="currentColor"><rect x="1" y="5.5" width="10" height="1.5" rx=".75"/></svg>
+        </button>
+        <button class="win-btn close" id="btnWinClose" title="Fechar">
+          <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+            <line x1="2" y1="2" x2="10" y2="10"/><line x1="10" y1="2" x2="2" y2="10"/>
+          </svg>
+        </button>
+      </div>
+
+    </header>
+
+    <!-- Hidden compat button -->
+    <button id="btnFilter" style="display:none"></button>
+
+    <!-- Update banner -->
+    <div id="updateBanner" style="display:none">
+      <span id="updateText" data-i18n="update.initial">🔄 Nova versão disponível...</span>
+      <div id="updateProgress" style="display:none"><div id="updateBar"></div></div>
+      <button id="btnInstallUpdate" style="display:none">ATUALIZAR</button>
+    </div>
+
+    <!-- ── PAGES ────────────────────────────────────────────── -->
+    <div class="pages">
+
+      <!-- STATUS — ghost page; content is in header MONITORING card -->
+      <div class="page" id="p-status"></div>
+
+      <!-- DROPS — default active page -->
+      <div class="page active" id="p-drops">
+
+        <!-- Hidden tab bar (compat) -->
+        <div class="tab-bar">
+          <button class="tab-btn active" id="tabMeus">
+            Meus Drops <span class="tab-count" id="cntMeus">0</span>
+          </button>
+          <button class="tab-btn" id="tabLiga">
+            Liga <span class="tab-count" id="cntLiga">0</span>
+          </button>
+        </div>
+
+        <!-- Hidden stats-bar (compat — indicators moved to header) -->
+        <div class="stats-bar">
+          <div class="spacer"></div>
+        </div>
+
+        <!-- Filter bar -->
+        <div class="filter-bar">
+          <span class="filter-badge">⚡</span>
+          <span class="filter-label">UNHOLY / ANGELIC</span>
+          <span class="filter-count" id="uaCount">0</span>
+          <div class="filter-sp"></div>
+          <button id="btnToggleFiltered" style="display:none">⊘ filtrados (0)</button>
+          <button id="btnClearLog" data-i18n="btn.clear">Limpar</button>
+        </div>
+
+        <!-- Unholy/Angelic table -->
+        <div id="uaSection" style="display:none">
+          <div class="ua-header">
+            <span class="ua-header-label">⚡ Unholy / Angelic</span>
+          </div>
+          <table id="uaTable">
+            <thead>
+              <tr>
+                <th data-i18n="th.item">Item</th>
+                <th data-i18n="th.dropped">Dropou</th>
+                <th data-i18n="th.collected">Coletou</th>
+              </tr>
+            </thead>
+            <tbody id="uaBody"></tbody>
+          </table>
+        </div>
+
+        <!-- Activity log -->
+        <div id="logList">
+          <div class="log-empty" id="logEmpty">
+            <div class="log-empty-icon"><img src="icon.png" alt=""></div>
+            <div class="log-empty-title" data-i18n="empty.title">Monitor inativo</div>
+            <div class="log-empty-desc">
+              <span data-i18n="empty.desc1">Selecione uma liga no rodapé</span><br>
+              <span data-i18n="empty.desc2">e pressione INICIAR para começar a registrar drops.</span>
+            </div>
+            <div class="log-empty-arrow">
+              <div class="log-empty-arrow-label" data-i18n="empty.cta">INICIAR</div>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <polyline points="19 12 12 19 5 12"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /#p-drops -->
+
+      <!-- STATS -->
+      <div class="page" id="p-stats">
+        <div class="stats-timer-wrap">
+          <div class="stats-timer-label" data-i18n="timer.label">TEMPO DE SESSÃO</div>
+          <div class="stats-timer-big" id="statsBigTimer">00:00:00</div>
+        </div>
+        <div class="rarity-tiles">
+          <div class="rarity-tile" style="--rc:var(--satanic)">
+            <div class="rarity-tile-name">SATANIC</div>
+            <div class="rarity-tile-count" id="rct-Satanic">0</div>
+            <div class="rarity-tile-rate" id="rrate-Satanic">— / hora</div>
+            <div class="rarity-tile-bar"><div class="rarity-tile-fill" id="rfill-Satanic"></div></div>
+          </div>
+          <div class="rarity-tile" style="--rc:var(--set)">
+            <div class="rarity-tile-name">SET</div>
+            <div class="rarity-tile-count" id="rct-Set">0</div>
+            <div class="rarity-tile-rate" id="rrate-Set">— / hora</div>
+            <div class="rarity-tile-bar"><div class="rarity-tile-fill" id="rfill-Set"></div></div>
+          </div>
+          <div class="rarity-tile" style="--rc:var(--heroic)">
+            <div class="rarity-tile-name">HEROIC</div>
+            <div class="rarity-tile-count" id="rct-Heroic">0</div>
+            <div class="rarity-tile-rate" id="rrate-Heroic">— / hora</div>
+            <div class="rarity-tile-bar"><div class="rarity-tile-fill" id="rfill-Heroic"></div></div>
+          </div>
+          <div class="rarity-tile" style="--rc:var(--angelic)">
+            <div class="rarity-tile-name">ANGELIC</div>
+            <div class="rarity-tile-count" id="rct-Angelic">0</div>
+            <div class="rarity-tile-rate" id="rrate-Angelic">— / hora</div>
+            <div class="rarity-tile-bar"><div class="rarity-tile-fill" id="rfill-Angelic"></div></div>
+          </div>
+          <div class="rarity-tile" style="--rc:var(--unholy)">
+            <div class="rarity-tile-name">UNHOLY</div>
+            <div class="rarity-tile-count" id="rct-Unholy">0</div>
+            <div class="rarity-tile-rate" id="rrate-Unholy">— / hora</div>
+            <div class="rarity-tile-bar"><div class="rarity-tile-fill" id="rfill-Unholy"></div></div>
+          </div>
+        </div>
+        <div class="stats-bottom-grid">
+          <div class="stat-tile">
+            <div class="stat-tile-label" data-i18n="tiles.totalDrops">Total de Drops</div>
+            <div class="stat-tile-value" id="statDropsTotal">0</div>
+            <div class="stat-tile-sub" id="statDropsRate">— / hora</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-tile-label" data-i18n="tiles.totalCollected">Total Coletados</div>
+            <div class="stat-tile-value" id="statCollectedTotal">0</div>
+            <div class="stat-tile-sub" data-i18n="tiles.itemsCollected">itens coletados</div>
+          </div>
+        </div>
+      </div><!-- /#p-stats -->
+
+      <!-- FILTRO -->
+      <div class="page" id="p-filtro">
+        <div class="page-header">
+          <h2 data-i18n="filter.title">Filtro de Itens</h2>
+          <p data-i18n="filter.desc">Configure quais itens serão monitorados</p>
+        </div>
+        <div class="filtro-launcher">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+          </svg>
+          <p data-i18n="filter.openDesc">Abra o painel de filtro para gerenciar raridades e itens detectados.</p>
+          <button class="filtro-open-btn" id="btnOpenFilter" data-i18n="filter.openBtn">Abrir Filtro</button>
+        </div>
+      </div>
+
+      <!-- CONFIG -->
+      <div class="page" id="p-config">
+        <div class="page-header">
+          <h2 data-i18n="cfg.title">Configurações</h2>
+        </div>
+        <div class="cfg-body">
+
+          <div class="cfg-section">
+            <div class="cfg-section-title" data-i18n="cfg.account">Conta</div>
+            <div class="cfg-account">
+              <div class="cfg-avatar" id="cfgAvatar">◈</div>
+              <span class="cfg-username" id="cfgUsername">—</span>
+              <button class="cfg-logout-btn" id="btnLogoutCfg" data-i18n="hdr.logout">Sair</button>
+            </div>
+          </div>
+
+          <div class="cfg-section">
+            <div class="cfg-section-title" data-i18n="cfg.appearance">Aparência</div>
+            <div class="cfg-row">
+              <div class="cfg-left">
+                <div class="cfg-label" data-i18n="cfg.lang">Idioma</div>
+              </div>
+              <div class="opt-group">
+                <button class="opt-btn on" data-lang="pt">Português</button>
+                <button class="opt-btn" data-lang="en">English</button>
+              </div>
+            </div>
+            <!-- Theme toggle kept for renderer compat (hidden in v2) -->
+            <div class="cfg-row" style="display:none">
+              <div class="opt-group">
+                <button class="opt-btn on" data-theme-btn="dark">Escuro</button>
+                <button class="opt-btn" data-theme-btn="light">Claro</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="cfg-section">
+            <div class="cfg-section-title" data-i18n="cfg.system">Sistema</div>
+            <div class="cfg-row">
+              <div class="cfg-left">
+                <div class="cfg-label" data-i18n="cfg.startup">Iniciar com Windows</div>
+                <div class="cfg-desc" data-i18n="cfg.startupDesc">Abre automaticamente ao ligar o PC</div>
+              </div>
+              <button class="cfg-toggle" id="togStartup" aria-label="Iniciar com Windows"></button>
+            </div>
+            <div class="cfg-row">
+              <div class="cfg-left">
+                <div class="cfg-label" data-i18n="cfg.onClose">Ao fechar</div>
+                <div class="cfg-desc" data-i18n="cfg.onCloseDesc">O que acontece ao fechar a janela</div>
+              </div>
+              <div class="opt-group">
+                <button class="opt-btn on" data-close="tray" data-i18n="cfg.tray">Bandeja</button>
+                <button class="opt-btn" data-close="exit" data-i18n="cfg.exit">Fechar</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="cfg-section">
+            <div class="cfg-section-title" data-i18n="cfg.overlay">Overlay</div>
+            <div class="cfg-row">
+              <div class="cfg-left">
+                <div class="cfg-label" data-i18n="cfg.showOverlay">Mostrar overlay</div>
+                <div class="cfg-desc" data-i18n="cfg.showOverlayDesc">Exibe drops em tempo real sobre o jogo</div>
+              </div>
+              <button class="cfg-toggle on" id="togOverlay" aria-label="Mostrar overlay"></button>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /#p-config -->
+
+      <!-- SOBRE -->
+      <div class="page" id="p-sobre">
+        <div class="sobre-card">
+          <div class="sobre-logo"><img src="icon.png" alt="HS Drop Logger"></div>
+          <div class="sobre-name">HS Drop Logger</div>
+          <div class="sobre-version">v1.9.2</div>
+        </div>
+      </div>
+
+    </div><!-- /pages -->
+
+    <!-- ── BOTTOM BAR ────────────────────────────────────────── -->
+    <div class="bot">
+      <div class="bot-league">
+        <div class="bot-league-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+        </div>
+        <select id="leagueSelect"><option value="">Carregando...</option></select>
+      </div>
+      <div class="bot-sep"></div>
+      <span class="bot-timer" id="sessionTimer">00:00:00</span>
+      <div class="bot-sp"></div>
+      <button id="btnToggleMonitor" class="start" disabled>▶ INICIAR</button>
+    </div>
+
+  </div><!-- /main-col -->
+</div><!-- /app-frame -->
+</div><!-- /screenApp -->
+
+<script src="renderer.js"></script>
+<script src="v2-shim.js"></script>
+</body>
+</html>

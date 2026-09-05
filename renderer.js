@@ -39,6 +39,9 @@ let showFiltered = false              // toggle for ADM-filtered entries in Liga
 
 let currentTab = 'meus'
 let isMonitoring = false
+let isPaused = false
+
+const UA_RARITIES = new Set(['Unholy', 'Angelic'])
 
 // ── Utils ────────────────────────────────────────────────────────────────────
 function showScreen(name) {
@@ -74,19 +77,16 @@ function updateTabCounts() {
 }
 
 function updateStatsBar() {
-  if (currentTab === 'meus') {
-    dropCount.textContent = meusDrops
-    rareCount.textContent = meusRares
-    if (btnToggleFiltered) btnToggleFiltered.style.display = 'none'
-  } else {
-    dropCount.textContent = ligaDrops
-    rareCount.textContent = ligaRares
-    if (btnToggleFiltered) {
-      const hasFiltered = ligaFilteredCount > 0
-      btnToggleFiltered.style.display = hasFiltered ? 'inline-block' : 'none'
+  dropCount.textContent = meusDrops
+  rareCount.textContent = collectedCount
+  if (btnToggleFiltered) {
+    if (currentTab === 'liga' && ligaFilteredCount > 0) {
+      btnToggleFiltered.style.display = 'inline-block'
       btnToggleFiltered.textContent = showFiltered
         ? `⊘ ocultar filtrados (${ligaFilteredCount})`
         : `⊘ ver filtrados (${ligaFilteredCount})`
+    } else {
+      btnToggleFiltered.style.display = 'none'
     }
   }
 }
@@ -108,8 +108,11 @@ function updateEmptyState() {
 }
 
 function _refreshUaCount() {
-  const visible = uaBody.querySelectorAll('tr:not([style*="display: none"]):not([style*="display:none"])').length
-  uaCount.textContent = visible
+  let count = 0
+  uaBody.querySelectorAll('tr[data-rarity]').forEach(r => {
+    if (UA_RARITIES.has(r.dataset.rarity) && !r.style.display.includes('none')) count++
+  })
+  uaCount.textContent = count
 }
 
 function switchTab(tab) {
@@ -286,8 +289,9 @@ const I18N = {
     'cfg.showOverlayDesc': 'Exibe drops em tempo real sobre o jogo',
     'hdr.logout': 'Sair',
     'login.desc': 'Faça login com sua conta Discord para sincronizar drops com o HS Manager.',
-    'stat.drops': 'drops', 'stat.rares': 'raros',
-    'btn.clear': 'Limpar', 'btn.start': '▶ INICIAR', 'btn.stop': '■ PAUSAR',
+    'stat.drops': 'drops', 'stat.rares': 'coletados',
+    'hdr.rares': 'COLETADOS',
+    'btn.clear': 'Limpar', 'btn.start': '▶ INICIAR', 'btn.stop': '■ PAUSAR', 'btn.resume': '▶ RETOMAR',
     'btn.installRestart': 'INSTALAR E REINICIAR',
     'status.idle': 'Aguardando', 'status.monitoring': 'Monitorando',
     'status.waitRelog': 'Aguardando relog...',
@@ -297,6 +301,10 @@ const I18N = {
     'btn.login': 'Entrar com Discord', 'btn.loginOpening': 'Abrindo Discord...',
     'msg.npcapInstalling': '⚙ Instalando Npcap... Após instalar, clique INICIAR novamente.',
     'empty.line1': 'Nenhuma atividade ainda.', 'empty.line2': 'Selecione uma liga e inicie o monitor.',
+    'empty.title': 'Monitor inativo',
+    'empty.desc1': 'Selecione uma liga no rodapé',
+    'empty.desc2': 'e pressione INICIAR para começar a registrar drops.',
+    'empty.cta': 'INICIAR',
     'update.available': '🔄 Nova versão {v} disponível', 'update.downloading': '🔄 Baixando... {p}%',
     'update.ready': '✅ Atualização pronta!', 'update.btn': 'ATUALIZAR', 'update.btnDl': 'BAIXANDO...',
     'update.initial': '🔄 Nova versão disponível...',
@@ -328,8 +336,9 @@ const I18N = {
     'cfg.showOverlayDesc': 'Displays drops in real time over the game',
     'hdr.logout': 'Sign Out',
     'login.desc': 'Sign in with your Discord account to sync drops with HS Manager.',
-    'stat.drops': 'drops', 'stat.rares': 'rares',
-    'btn.clear': 'Clear', 'btn.start': '▶ START', 'btn.stop': '■ PAUSE',
+    'stat.drops': 'drops', 'stat.rares': 'collected',
+    'hdr.rares': 'COLLECTED',
+    'btn.clear': 'Clear', 'btn.start': '▶ START', 'btn.stop': '■ PAUSE', 'btn.resume': '▶ RESUME',
     'btn.installRestart': 'INSTALL AND RESTART',
     'status.idle': 'Waiting', 'status.monitoring': 'Monitoring',
     'status.waitRelog': 'Waiting for relog...',
@@ -339,6 +348,10 @@ const I18N = {
     'btn.login': 'Sign in with Discord', 'btn.loginOpening': 'Opening Discord...',
     'msg.npcapInstalling': '⚙ Installing Npcap... After installing, click START again.',
     'empty.line1': 'No activity yet.', 'empty.line2': 'Select a league and start the monitor.',
+    'empty.title': 'Monitor inactive',
+    'empty.desc1': 'Select a league in the footer',
+    'empty.desc2': 'and press START to begin logging drops.',
+    'empty.cta': 'START',
     'update.available': '🔄 Version {v} available', 'update.downloading': '🔄 Downloading... {p}%',
     'update.ready': '✅ Update ready!', 'update.btn': 'UPDATE', 'update.btnDl': 'DOWNLOADING...',
     'update.initial': '🔄 New version available...',
@@ -494,30 +507,43 @@ function _updateStatusTab(watching, charIdentified) {
   }
 }
 
+function resetSessionData() {
+  meusDrops = 0; meusRares = 0
+  ligaDrops = 0; ligaRares = 0
+  ligaFilteredCount = 0; showFiltered = false
+  dropCount.textContent = '0'
+  rareCount.textContent = '0'
+  cntMeus.textContent = '0'
+  cntLiga.textContent = '0'
+  statDrops.style.display = 'none'
+  statRares.style.display = 'none'
+  clearUATable()
+  if (btnToggleFiltered) btnToggleFiltered.style.display = 'none'
+  resetStats()
+  logList.innerHTML = ''
+  if (logEmpty) { logEmpty.style.display = 'flex'; logList.appendChild(logEmpty) }
+}
+
 function setMonitorUI(watching, charIdentified) {
+  const wasMonitoring = isMonitoring
   isMonitoring = watching
   _charIdentifiedLocal = charIdentified
   if (!watching) {
-    btnToggle.textContent = tr('btn.start')
-    btnToggle.className = 'start'
+    if (wasMonitoring) isPaused = true  // transição monitoring→paused
+    // se wasMonitoring=false (ex: applyLang), mantém isPaused como estava
+    if (isPaused) {
+      btnToggle.textContent = tr('btn.resume')
+      btnToggle.className = 'resume'
+    } else {
+      btnToggle.textContent = tr('btn.start')
+      btnToggle.className = 'start'
+    }
     btnToggle.disabled = false
     statusDot.className = 'stat idle'
     statusText.textContent = tr('status.idle')
     stopSessionTimer()
-    meusDrops = 0; meusRares = 0
-    ligaDrops = 0; ligaRares = 0
-    ligaFilteredCount = 0; showFiltered = false
-    dropCount.textContent = '0'
-    rareCount.textContent = '0'
-    cntMeus.textContent = '0'
-    cntLiga.textContent = '0'
-    statDrops.style.display = 'none'
-    statRares.style.display = 'none'
-    clearUATable()
-    if (btnToggleFiltered) btnToggleFiltered.style.display = 'none'
-    resetStats()
+    // Dados preservados — só o estado visual muda (pause, não reset)
     _setNavLock(false)
-    // Reset heartbeat display
     _lastSnifferTs = null
     if (_heartbeatTimer) { clearInterval(_heartbeatTimer); _heartbeatTimer = null }
     if (stEvtDot) stEvtDot.className = 'st-dot'
@@ -533,6 +559,7 @@ function setMonitorUI(watching, charIdentified) {
     _setNavLock(true)
     navTo('status')
   } else {
+    isPaused = false
     btnToggle.textContent = tr('btn.stop')
     btnToggle.className = 'stop'
     btnToggle.disabled = false
@@ -570,6 +597,13 @@ async function loadLeagues() {
     opt.textContent = `${l.name} — ${l.guildName}`
     leagueSelect.appendChild(opt)
   })
+
+  if (window.api.getLeague) {
+    const saved = await window.api.getLeague()
+    if (saved && leagueSelect.querySelector(`option[value="${saved}"]`)) {
+      leagueSelect.value = saved
+    }
+  }
 
   btnToggle.disabled = false
 }
@@ -636,9 +670,17 @@ btnLogin.addEventListener('click', async () => {
 
 btnFilter.addEventListener('click', () => window.api.openFilter())
 
+leagueSelect.addEventListener('change', () => {
+  if (window.api.setLeague && leagueSelect.value) {
+    window.api.setLeague(leagueSelect.value)
+  }
+})
+
 btnLogout.addEventListener('click', async () => {
   await window.api.logout()
   userBadge.style.display = 'none'
+  isPaused = false
+  resetSessionData()
   setMonitorUI(false)
   showScreen('login')
   btnLogin.textContent = tr('btn.login')
@@ -649,6 +691,10 @@ btnLogout.addEventListener('click', async () => {
 btnToggle.addEventListener('click', async () => {
   if (isMonitoring) {
     await window.api.stopMonitor()
+  } else if (isPaused) {
+    btnToggle.disabled = true
+    await window.api.resumeMonitor()
+    btnToggle.disabled = false
   } else {
     const leagueId = leagueSelect.value
     if (!leagueId) return
@@ -671,6 +717,7 @@ btnToggle.addEventListener('click', async () => {
 
 // ── Eventos do main ──────────────────────────────────────────────────────────
 window.api.onLog((entry) => addLogEntry(entry))
+if (window.api.onSessionReset) window.api.onSessionReset(() => resetSessionData())
 window.api.onStateChange((state) => {
   setMonitorUI(state.isMonitoring, state.charIdentified)
   if (state.charIdentified && state.charName && stChrVal) {
@@ -684,6 +731,7 @@ window.api.onFilterLoaded((data) => {
 })
 window.api.onSessionExpired(() => {
   userBadge.style.display = 'none'
+  isPaused = false
   setMonitorUI(false)
   showScreen('login')
   btnLogin.textContent = tr('btn.login')
@@ -691,18 +739,7 @@ window.api.onSessionExpired(() => {
 })
 
 btnClearLog.addEventListener('click', () => {
-  logList.innerHTML = ''
-  logEmpty.style.display = 'flex'
-  logList.appendChild(logEmpty)
-  meusDrops = 0; meusRares = 0
-  ligaDrops = 0; ligaRares = 0
-  ligaFilteredCount = 0; showFiltered = false
-  dropCount.textContent = '0'
-  rareCount.textContent = '0'
-  cntMeus.textContent = '0'
-  cntLiga.textContent = '0'
-  clearUATable()
-  if (btnToggleFiltered) btnToggleFiltered.style.display = 'none'
+  resetSessionData()
 })
 
 // ── Auto-update ──────────────────────────────────────────────────────────────
@@ -754,6 +791,7 @@ function _addPendingRow(drop, collected = false) {
   const safeId = (drop.fp || '').replace(/[^a-zA-Z0-9-]/g, '_')
   const row = document.createElement('tr')
   row.dataset.fp = drop.fp
+  row.dataset.rarity = drop.rarity || ''
   if (collected) row.classList.add('collected')
   const tierPart = drop._tierTag || ''
   const catPart = drop._category ? `<span class="ua-cat">${drop._category}</span>` : ''
@@ -808,7 +846,7 @@ window.api.onDropCollected((drop) => {
       }
     }
   } else {
-    // Missed floor (vote reset etc.) → adiciona linha já como coletada
+    // Missed floor → adiciona linha já como coletada
     _addPendingRow(drop, true)
     if (drop._siteFiltered) {
       const row = uaBody.querySelector(`[data-fp="${CSS.escape(drop.fp)}"]`)

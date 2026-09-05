@@ -81,10 +81,11 @@ let charIdentified = false
 
 // ── Janela principal ────────────────────────────────────────────────────────
 function createMainWindow() {
+  const useV2 = process.env.HSDL_UI === 'v2'
   mainWin = new BrowserWindow({
-    width: 780,
-    height: 580,
-    minWidth: 680,
+    width: useV2 ? 1100 : 780,
+    height: useV2 ? 720 : 580,
+    minWidth: useV2 ? 960 : 680,
     minHeight: 480,
     frame: false,
     icon: path.join(__dirname, 'icon.png'),
@@ -95,7 +96,7 @@ function createMainWindow() {
       nodeIntegration: false,
     },
   })
-  mainWin.loadFile('index.html')
+  mainWin.loadFile(useV2 ? 'index-v2.html' : 'index.html')
   mainWin.setMenuBarVisibility(false)
 }
 
@@ -152,6 +153,14 @@ ipcMain.handle('settings:setLang', async (e, val) => {
   const s = await getStore()
   s.set('appLang', val)
   currentLang = val
+})
+ipcMain.handle('settings:getLeague', async () => {
+  const s = await getStore()
+  return s.get('lastLeagueId', null)
+})
+ipcMain.handle('settings:setLeague', async (e, val) => {
+  const s = await getStore()
+  s.set('lastLeagueId', val)
 })
 
 // ── Janelas overlay ─────────────────────────────────────────────────────────
@@ -622,7 +631,7 @@ function stopMonitor() {
   }
   isMonitoring = false
   charIdentified = false
-  currentLeagueId = null
+  // Não limpa currentLeagueId — preserva para resume na mesma liga
   sendState()
 }
 
@@ -819,10 +828,14 @@ ipcMain.handle('monitor:start', async (_e, leagueId) => {
     }
   } catch { /* sem perfil */ }
 
+  const isResume = leagueId === currentLeagueId
   currentLeagueId = leagueId
   isMonitoring = true
   charIdentified = false
-  dropHistory = []
+  if (!isResume) {
+    dropHistory = []
+    sendToWin(mainWin, 'session:reset', {})
+  }
   sendState()
 
   // Carregar filtro do servidor
@@ -869,6 +882,30 @@ ipcMain.handle('monitor:start', async (_e, leagueId) => {
 ipcMain.handle('monitor:stop', () => {
   stopMonitor()
   sendLog('info', t('■ Monitor pausado', '■ Monitor paused'))
+})
+
+ipcMain.handle('monitor:resume', async () => {
+  if (!hasNpcap()) return { ok: false, needsNpcap: true }
+  if (isMonitoring) return { ok: true }
+
+  isMonitoring = true
+  charIdentified = true  // personagem já estava identificado antes do pause
+  lastSnifferEventMs = Date.now()
+  sendState()
+
+  connectSSE(currentLeagueId)
+  spawnSniffer()
+
+  snifferWatchdog = setInterval(() => {
+    if (!isMonitoring || !snifferProc) return
+    const elapsed = Date.now() - lastSnifferEventMs
+    if (elapsed > SNIFFER_SILENCE_MS) {
+      sendLog('warn', t(`⚠ Sniffer sem heartbeat há ${Math.round(elapsed / 1000)}s — reiniciando...`, `⚠ No sniffer heartbeat for ${Math.round(elapsed / 1000)}s — restarting...`))
+      spawnSniffer()
+    }
+  }, 5_000)
+
+  return { ok: true }
 })
 
 // ── Filtro de Itens ─────────────────────────────────────────────────────────
