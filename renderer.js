@@ -10,11 +10,6 @@ const leagueSelect  = document.getElementById('leagueSelect')
 const btnToggle     = document.getElementById('btnToggleMonitor')
 const statusDot     = document.getElementById('statusDot')
 const statusText    = document.getElementById('statusText')
-const logList       = document.getElementById('logList')
-const logEmpty      = document.getElementById('logEmpty')
-const logBody       = document.getElementById('logBody')
-const logTable      = document.getElementById('logTable')
-const btnClearLog   = document.getElementById('btnClearLog')
 const statDrops     = document.getElementById('statDrops')
 const statRares     = document.getElementById('statRares')
 const dropCount     = document.getElementById('dropCount')
@@ -102,11 +97,7 @@ function toggleFiltered() {
   updateEmptyState()
 }
 
-function updateEmptyState() {
-  const hasVisible = logBody && Array.from(logBody.children).some(r => r.style.display !== 'none')
-  if (logEmpty) logEmpty.style.display = hasVisible ? 'none' : 'flex'
-  if (logTable) logTable.style.display = hasVisible ? 'table' : 'none'
-}
+function updateEmptyState() {}
 
 function _refreshUaCount() {
   let count = 0
@@ -121,11 +112,6 @@ function switchTab(tab) {
   document.body.classList.toggle('tab-liga', tab === 'liga')
   tabMeusBtn.classList.toggle('active', tab === 'meus')
   tabLigaBtn.classList.toggle('active', tab === 'liga')
-  if (logBody) logBody.querySelectorAll('tr').forEach(row => {
-    const entryTab = row.dataset.tab || 'both'
-    row.style.display = isEntryVisible(entryTab) ? '' : 'none'
-  })
-  updateEmptyState()
   // Hide site-filtered rows in Liga tab, show in My Drops tab
   uaBody.querySelectorAll('tr.ua-site-filtered').forEach(r => {
     r.style.display = tab === 'liga' ? 'none' : ''
@@ -155,19 +141,10 @@ function addLogEntry({ type, message, item, ts, tab = 'both' }) {
     updateTabCounts()
     updateStatsBar()
     updateStatsTiles()
-    return  // já aparece na tabela UA — não duplicar no log
   } else if (tab === 'liga-filtrado') {
     ligaFilteredCount++
     updateStatsBar()
   }
-
-  const tr = document.createElement('tr')
-  tr.className = `log-tr log-tr-${type}`
-  tr.dataset.tab = tab
-  tr.style.display = isEntryVisible(tab) ? '' : 'none'
-  tr.innerHTML = `<td class="log-tr-time">${fmtTime(ts)}</td><td class="log-tr-msg">${message}</td>`
-  if (logBody) logBody.insertBefore(tr, logBody.firstChild)
-  updateEmptyState()
 }
 
 function clearUATable() {
@@ -284,11 +261,11 @@ const I18N = {
     'login.desc': 'Faça login com sua conta Discord para sincronizar drops com o HS Manager.',
     'stat.drops': 'drops', 'stat.rares': 'coletados',
     'hdr.rares': 'COLETADOS',
-    'btn.clear': 'Limpar', 'btn.start': '▶ INICIAR', 'btn.stop': '■ PAUSAR', 'btn.resume': '▶ RETOMAR',
+    'btn.start': '▶ INICIAR', 'btn.stop': '■ PAUSAR', 'btn.resume': '▶ RETOMAR',
     'btn.installRestart': 'INSTALAR E REINICIAR',
     'status.idle': 'Aguardando', 'status.monitoring': 'Monitorando',
     'status.waitRelog': 'Aguardando relog...',
-    'th.item': 'Item', 'th.dropped': 'Dropou', 'th.collected': 'Coletou', 'th.time': 'Hora', 'th.event': 'Evento',
+    'th.item': 'Item', 'th.dropped': 'Dropou', 'th.collected': 'Coletou',
     'tiles.totalDrops': 'Total de Drops', 'tiles.totalCollected': 'Total Coletados',
     'tiles.itemsCollected': 'itens coletados', 'tiles.rateHour': '/ hora',
     'btn.login': 'Entrar com Discord', 'btn.loginOpening': 'Abrindo Discord...',
@@ -331,11 +308,11 @@ const I18N = {
     'login.desc': 'Sign in with your Discord account to sync drops with HS Manager.',
     'stat.drops': 'drops', 'stat.rares': 'collected',
     'hdr.rares': 'COLLECTED',
-    'btn.clear': 'Clear', 'btn.start': '▶ START', 'btn.stop': '■ PAUSE', 'btn.resume': '▶ RESUME',
+    'btn.start': '▶ START', 'btn.stop': '■ PAUSE', 'btn.resume': '▶ RESUME',
     'btn.installRestart': 'INSTALL AND RESTART',
     'status.idle': 'Waiting', 'status.monitoring': 'Monitoring',
     'status.waitRelog': 'Waiting for relog...',
-    'th.item': 'Item', 'th.dropped': 'Dropped', 'th.collected': 'Collected', 'th.time': 'Time', 'th.event': 'Event',
+    'th.item': 'Item', 'th.dropped': 'Dropped', 'th.collected': 'Collected',
     'tiles.totalDrops': 'Total Drops', 'tiles.totalCollected': 'Total Collected',
     'tiles.itemsCollected': 'items collected', 'tiles.rateHour': '/ hr',
     'btn.login': 'Sign in with Discord', 'btn.loginOpening': 'Opening Discord...',
@@ -513,9 +490,6 @@ function resetSessionData() {
   clearUATable()
   if (btnToggleFiltered) btnToggleFiltered.style.display = 'none'
   resetStats()
-  if (logBody) logBody.innerHTML = ''
-  if (logTable) logTable.style.display = 'none'
-  if (logEmpty) logEmpty.style.display = 'flex'
 }
 
 function setMonitorUI(watching, charIdentified) {
@@ -732,9 +706,6 @@ window.api.onSessionExpired(() => {
   btnLogin.disabled = false
 })
 
-btnClearLog.addEventListener('click', () => {
-  resetSessionData()
-})
 
 // ── Auto-update ──────────────────────────────────────────────────────────────
 const updateBanner     = document.getElementById('updateBanner')

@@ -5,7 +5,24 @@ const fs = require('fs')
 const { spawn } = require('child_process')
 const readline = require('readline')
 
-// electron-store v8 é ESM — usar dynamic import
+// ── File logger ──────────────────────────────────────────────────────────────
+let _logFilePath = null
+function _getLogPath() {
+  if (!_logFilePath) {
+    const dir = path.join(app.getPath('userData'), 'logs')
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+    _logFilePath = path.join(dir, 'hs-drop-logger.log')
+  }
+  return _logFilePath
+}
+function writeLog(level, message) {
+  try {
+    const ts = new Date().toISOString()
+    fs.appendFileSync(_getLogPath(), `[${ts}] [${level.toUpperCase()}] ${message}\n`)
+  } catch {}
+}
+
+// ── electron-store v8 é ESM — usar dynamic import ────────────────────────────
 let store
 async function getStore() {
   if (!store) {
@@ -221,13 +238,9 @@ autoUpdater.on('update-available', (info) => {
 
 
 autoUpdater.on('error', (err) => {
-  console.error('[updater] erro:', err?.message ?? err)
-  if (mainWin) mainWin.webContents.send('log:entry', {
-    type: 'info',
-    message: `[updater] ${err?.message ?? err}`,
-    item: null,
-    ts: Date.now(),
-  })
+  const msg = err?.message ?? String(err)
+  console.error('[updater] erro:', msg)
+  writeLog('error', `[updater] ${msg}`)
 })
 
 autoUpdater.on('checking-for-update', () => {
@@ -247,7 +260,8 @@ ipcMain.handle('update:download', async () => {
   const version = pendingUpdate.version
 
   const fail = (msg) => {
-    if (mainWin) mainWin.webContents.send('log:entry', { type: 'error', message: `[updater] ${msg}`, item: null, ts: Date.now() })
+    writeLog('error', `[updater] ${msg}`)
+    console.error('[updater]', msg)
   }
 
   // Buscar URL real do asset via GitHub API (evita problema de espaços/dashes no nome)
@@ -382,6 +396,7 @@ function sendToWin(win, channel, payload) {
 }
 
 function sendLog(type, message, item = null, tab = 'both') {
+  writeLog(type, message)
   const entry = { type, message, item, ts: Date.now(), tab }
   sendToWin(mainWin, 'log:entry', entry)
   sendToWin(compactWin, 'log:entry', entry)
