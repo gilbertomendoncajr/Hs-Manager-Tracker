@@ -944,10 +944,11 @@ function _updateOverview(data) {
 
 // Fixed notable groups — always rendered even when 0
 const NOTABLE_FIXED = [
-  { label: 'Angelic Key',  keys: ['angelic key'] },
-  { label: 'Satanic Dice', keys: ['satanic dice'] },
-  { label: 'SS Runes', keys: ['qi','xo','sur','ber','jah','drax','zed'] },
-  { label: 'S Runes',  keys: ['fawn','flo','nju','jol','sus','kek','jord'] },
+  { label: 'Angelic Key',       keys: ['angelic key'] },
+  { label: 'Satanic Dice',      keys: ['satanic dice'] },
+  { label: "Prophet's Wisdom",  keys: ["prophet's wisdom"] },
+  { label: 'S Runes',  keys: ['qi','xo','sur','ber','jah','drax','zed'] },
+  { label: 'SS Runes', keys: ['fawn','flo','nju','jol','sus','kek','jord'] },
 ]
 
 function _updateNotable(notable) {

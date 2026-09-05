@@ -520,6 +520,12 @@ def process_messages(messages: list[dict], src_ip: str):
             if "c" in item and c_val == 0 and rarity in JOURNAL_RARITIES and not resource:
                 rarity = None
 
+            # Odyssey items têm o campo 'h' e usam uma escala de raridade
+            # diferente (d=7 = Angelic na escala sazonal, mas não é Angelic).
+            # hs-tracker detecta isso e anula a raridade quando c != 1.
+            if 'h' in item and not named_flag and rarity in JOURNAL_RARITIES:
+                rarity = None
+
             # hs-tracker: name = if named_flag || worth_naming || resource { lookup }
             worth_naming = (rarity in JOURNAL_RARITIES)
             if named_flag or worth_naming or resource:
@@ -736,6 +742,8 @@ def _check_satanic(msg: dict):
 
 def process_all(msgs: list[dict], src_ip: str):
     global _my_uid
+    # hs-tracker descarta inventory_charms (dump completo do inventário) e steam
+    msgs = [m for m in msgs if 'inventory_charms' not in m and 'steam' not in m]
     for msg in msgs:
         if "accountUID" in msg and "name" in msg:
             uid = int(msg["accountUID"])

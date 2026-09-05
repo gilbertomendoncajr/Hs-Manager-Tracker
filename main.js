@@ -109,7 +109,7 @@ let _currentZone  = null
 let _satanicZone  = null
 
 const NOTABLE_NAMES = new Set([
-  'angelic key', 'satanic dice',
+  'angelic key', 'satanic dice', "prophet's wisdom",
   'qi', 'xo', 'sur', 'ber', 'jah', 'drax', 'zed',
   'fawn', 'flo', 'nju', 'jol', 'sus', 'kek', 'jord',
 ])
