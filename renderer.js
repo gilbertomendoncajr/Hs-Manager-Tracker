@@ -23,8 +23,6 @@ const uaSection     = document.getElementById('uaSection')
 const uaBody        = document.getElementById('uaBody')
 const uaCount       = document.getElementById('uaCount')
 const dropHint      = document.getElementById('dropHint')
-const dropHintTitle = document.getElementById('dropHintTitle')
-const dropHintArrow = document.getElementById('dropHintArrow')
 
 // fp → true (só para saber se a linha existe)
 const uaMap = new Map()
@@ -538,8 +536,6 @@ function setMonitorUI(watching, charIdentified) {
     if (_heartbeatTimer) { clearInterval(_heartbeatTimer); _heartbeatTimer = null }
     if (stEvtDot) stEvtDot.className = 'st-dot'
     if (stEvtVal) stEvtVal.textContent = '—'
-    if (dropHintTitle) dropHintTitle.textContent = tr('empty.title')
-    if (dropHintArrow) dropHintArrow.style.display = 'flex'
   } else if (!charIdentified) {
     btnToggle.textContent = tr('btn.stop')
     btnToggle.className = 'stop'
@@ -548,8 +544,6 @@ function setMonitorUI(watching, charIdentified) {
     statusText.textContent = tr('status.waitRelog')
     statDrops.style.display = 'none'
     statRares.style.display = 'none'
-    if (dropHintTitle) dropHintTitle.textContent = tr('status.waitLogin')
-    if (dropHintArrow) dropHintArrow.style.display = 'none'
     _setNavLock(true)
     navTo('status')
   } else {
