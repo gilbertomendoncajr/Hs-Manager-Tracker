@@ -829,8 +829,10 @@ function _addPendingRow(drop, collected = false) {
   const isRare = drop.rarity && RARE_RARITIES.has(drop.rarity)
   meusDrops++
   if (isRare) meusRares++
+  if (drop.rarity && drop.rarity in rarityCounters) rarityCounters[drop.rarity]++
   updateTabCounts()
   updateStatsBar()
+  updateStatsTiles()
 }
 
 window.api.onDropPending((drop) => {
@@ -940,17 +942,23 @@ function _updateOverview(data) {
   set('sovSessionRate', _hourRate(collectedCount, elapsed))
 }
 
+// Fixed notable groups — always rendered even when 0
+const NOTABLE_FIXED = [
+  { label: 'Angelic Key',  keys: ['angelic key'] },
+  { label: 'Satanic Dice', keys: ['satanic dice'] },
+  { label: 'SS Runes', keys: ['qi','xo','sur','ber','jah','drax','zed'] },
+  { label: 'S Runes',  keys: ['fawn','flo','nju','jol','sus','kek','jord'] },
+]
+
 function _updateNotable(notable) {
   const el = document.getElementById('notableList')
   if (!el) return
-  const entries = Object.entries(notable || {}).filter(([,v]) => v > 0)
-  if (!entries.length) {
-    el.innerHTML = '<div class="stats-kv-empty">Nenhum item notable ainda</div>'
-    return
-  }
-  el.innerHTML = entries.map(([name, count]) =>
-    `<div class="stats-kv-row"><span class="stats-kv-name">${name}</span><span class="stats-kv-val">${count}</span></div>`
-  ).join('')
+  const low = {}
+  for (const [k, v] of Object.entries(notable || {})) low[k.toLowerCase()] = v
+  el.innerHTML = NOTABLE_FIXED.map(g => {
+    const count = g.keys.reduce((s, k) => s + (low[k] || 0), 0)
+    return `<div class="stats-kv-row"><span class="stats-kv-name">${g.label}</span><span class="stats-kv-val">${count}</span></div>`
+  }).join('')
 }
 
 function _updateResources(resources) {
@@ -986,6 +994,41 @@ function _updateTallies(tallies) {
   }).join('')
 }
 
+const SATANIC_ZONE_MAP = {
+  'ACT_01_01': 'Act 1 — Blood Moor',
+  'ACT_01_02': 'Act 1 — Den of Evil',
+  'ACT_01_03': 'Act 1 — Cold Plains',
+  'ACT_01_04': 'Act 1 — Stony Field',
+  'ACT_01_05': 'Act 1 — Dark Wood',
+  'ACT_02_01': 'Act 2 — Lut Gholein',
+  'ACT_02_02': 'Act 2 — Rocky Waste',
+  'ACT_02_03': 'Act 2 — Dry Hills',
+  'ACT_02_04': 'Act 2 — Far Oasis',
+  'ACT_02_05': 'Act 2 — Lost City',
+  'ACT_03_01': 'Act 3 — Kurast Docks',
+  'ACT_03_02': 'Act 3 — Spider Forest',
+  'ACT_03_03': 'Act 3 — Great Marsh',
+  'ACT_03_04': 'Act 3 — Flayer Jungle',
+  'ACT_03_05': 'Act 3 — Lower Kurast',
+  'ACT_04_01': 'Act 4 — Pandemonium Fortress',
+  'ACT_04_02': 'Act 4 — Outer Steppes',
+  'ACT_04_03': 'Act 4 — Plains of Despair',
+  'ACT_04_04': 'Act 4 — City of the Damned',
+  'ACT_04_05': "Act 4 — The Devil's Breach",
+  'ACT_05_01': 'Act 5 — Harrogath',
+  'ACT_05_02': 'Act 5 — Bloody Foothills',
+  'ACT_05_03': 'Act 5 — Frigid Highlands',
+  'ACT_05_04': 'Act 5 — Arreat Plateau',
+  'ACT_05_05': 'Act 5 — Crystalline Passage',
+}
+
+function _fmtZoneName(code) {
+  if (SATANIC_ZONE_MAP[code]) return SATANIC_ZONE_MAP[code]
+  const m = String(code).match(/^ACT_(\d+)_(\d+)$/i)
+  if (m) return `Act ${parseInt(m[1])} — Area ${parseInt(m[2])}`
+  return code
+}
+
 function _updateSatanic(satanic) {
   const el = document.getElementById('satanicZoneBlock')
   if (!el) return
@@ -993,12 +1036,28 @@ function _updateSatanic(satanic) {
     el.innerHTML = '<div class="satanic-none">Nenhuma Satanic Zone ativa</div>'
     return
   }
-  const buffTags  = (satanic.buffs  || []).map(b => `<span class="szb-tag buff">${b}</span>`).join('')
-  const debufTags = (satanic.debuffs || []).map(d => `<span class="szb-tag debuf">${d}</span>`).join('')
+  const zoneName = _fmtZoneName(satanic.zone)
+  const buffs   = satanic.buffs   || []
+  const debuffs = satanic.debuffs || []
+  const prosCols = buffs.length
+    ? buffs.map(b => `<div class="szb-mod">${b}</div>`).join('')
+    : '<div class="szb-mod-empty">—</div>'
+  const consCols = debuffs.length
+    ? debuffs.map(d => `<div class="szb-mod">${d}</div>`).join('')
+    : '<div class="szb-mod-empty">—</div>'
   el.innerHTML = `
     <div class="satanic-zone-block">
-      <div class="szb-name">${satanic.zone}</div>
-      <div class="szb-tags">${buffTags}${debufTags}${(!buffTags && !debufTags) ? '<span class="stats-kv-empty">Sem buffs/debuffs</span>' : ''}</div>
+      <div class="szb-name">${zoneName}</div>
+      <div class="szb-cols">
+        <div class="szb-col">
+          <div class="szb-col-label pros">PROS</div>
+          ${prosCols}
+        </div>
+        <div class="szb-col">
+          <div class="szb-col-label cons">CONS</div>
+          ${consCols}
+        </div>
+      </div>
     </div>`
 }
 

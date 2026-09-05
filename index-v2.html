@@ -606,8 +606,9 @@ body.tab-liga .ua-player { display: block; }
 }
 .rarity-tile {
   flex: 1; min-width: 80px;
-  background: var(--surf);
-  border: 1px solid var(--border);
+  background: var(--surf-hi);
+  border: 1px solid var(--brt);
+  border-left: 3px solid var(--rc);
   border-top: 2px solid var(--rc);
   padding: 10px 10px 8px;
   display: flex; flex-direction: column; gap: 2px;
@@ -636,8 +637,8 @@ body.tab-liga .ua-player { display: block; }
   gap: 6px; padding: 0 12px 12px;
 }
 .stat-tile {
-  background: var(--surf); border: 1px solid var(--border);
-  border-left: 2px solid var(--brt);
+  background: var(--surf-hi); border: 1px solid var(--brt);
+  border-left: 2px solid var(--accent);
   padding: 14px 14px 12px;
 }
 .stat-tile-label {
@@ -689,7 +690,7 @@ body.tab-liga .ua-player { display: block; }
 }
 .stats-kv-row {
   display: flex; justify-content: space-between; align-items: center;
-  background: var(--surf); border: 1px solid var(--border);
+  background: var(--surf-hi); border: 1px solid var(--brt);
   padding: 5px 10px;
 }
 .stats-kv-name { font-size: var(--fs-sm); color: var(--text2); }
@@ -705,7 +706,7 @@ body.tab-liga .ua-player { display: block; }
   gap: 4px;
 }
 .stats-tally-card {
-  background: var(--surf); border: 1px solid var(--border);
+  background: var(--surf-hi); border: 1px solid var(--brt);
   padding: 6px 10px; display: flex; justify-content: space-between; align-items: center;
 }
 .stc-name { font-size: var(--fs-xs); color: var(--text2); text-transform: capitalize; }
@@ -732,12 +733,18 @@ body.tab-liga .ua-player { display: block; }
 .szb-tag.buff  { border-color: #4caf50; color: #4caf50; }
 .szb-tag.debuf { border-color: #f44336; color: #f44336; }
 .satanic-none { font-size: var(--fs-sm); color: var(--text3); font-style: italic; }
+.szb-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
+.szb-col-label { font-size: var(--fs-xs); font-weight: 700; letter-spacing: .14em; margin-bottom: 5px; }
+.szb-col-label.pros { color: #4caf50; }
+.szb-col-label.cons { color: #f44336; }
+.szb-mod { font-size: var(--fs-xs); color: var(--text2); padding: 2px 0; line-height: 1.4; }
+.szb-mod-empty { font-size: var(--fs-xs); color: var(--text3); }
 
 /* Item timeline */
 .stats-timeline { display: flex; flex-direction: column; gap: 4px; }
 .stl-row {
   display: flex; align-items: center; gap: 8px;
-  background: var(--surf); border: 1px solid var(--border); padding: 5px 10px;
+  background: var(--surf-hi); border: 1px solid var(--brt); padding: 5px 10px;
 }
 .stl-time { font-family: 'Space Mono', monospace; font-size: var(--fs-xs); color: var(--text3); min-width: 44px; }
 .stl-rarity {
