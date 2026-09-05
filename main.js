@@ -896,7 +896,7 @@ function spawnSniffer() {
         sendToWin(mainWin, 'drop:collected', collectedPayload)
         sendToWin(compactWin, 'drop:collected', collectedPayload)
         if (isSiteFiltered) {
-          sendLog('info', t(`⊘ ${drop.name}${tierTag} filtrado pelo ADM`, `⊘ ${drop.name}${tierTag} filtered by ADM`), drop, 'liga-filtrado')
+          sendLog('info', t(`⊘ ${drop.name}${tierTag} [${drop.rarity}] filtrado pelo ADM`, `⊘ ${drop.name}${tierTag} [${drop.rarity}] filtered by ADM`), drop, 'liga-filtrado')
           return
         }
         if (charIdentified) await postDrop(currentLeagueId, drop)

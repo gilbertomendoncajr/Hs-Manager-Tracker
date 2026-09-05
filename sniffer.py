@@ -524,8 +524,14 @@ def process_messages(messages: list[dict], src_ip: str):
             worth_naming = (rarity in JOURNAL_RARITIES)
             if named_flag or worth_naming or resource:
                 name = _get_name(item, fp)
-                if not rarity:
-                    rarity = _rarity_from_name(name)
+                # hs-tracker: packet `d` is unreliable for named items (inventory
+                # syncs send d=9 regardless of actual rarity). The item tables are
+                # the ground truth — always prefer DB rarity over packet rarity.
+                db_rarity = _rarity_from_name(name) if name else None
+                if db_rarity:
+                    rarity = db_rarity
+                elif not rarity:
+                    pass  # no rarity from either source → skipped below
             else:
                 name = _f(item, ["name", "itemName", "item_name", "label"])
                 name = str(name) if name else None
