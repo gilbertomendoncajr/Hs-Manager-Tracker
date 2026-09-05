@@ -814,7 +814,14 @@ function spawnSniffer() {
         return
       }
       if (msg.type === 'stat:xp') {
+        // Save packet: valor acumulativo do personagem — usa deltaUpdate
         _deltaUpdate(_sessStats.xp, msg.total)
+        _sendStatsUpdate()
+        return
+      }
+      if (msg.type === 'stat:xp_gain') {
+        // Evento real-time (delta por kill/quest) — acumula diretamente
+        _sessStats.xp.earned = (_sessStats.xp.earned || 0) + msg.gained
         _sendStatsUpdate()
         return
       }

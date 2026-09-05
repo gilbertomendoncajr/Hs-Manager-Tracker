@@ -632,20 +632,39 @@ def _check_gold(msg: dict):
         except: pass
 
 def _check_xp(msg: dict):
-    for f in _XP_GUILD_FIELDS:
-        v = msg.get(f)
-        if v is not None:
+    keys = set(msg.keys())
+    is_save = _ACCOUNT_SIG <= keys or _ACCOUNT_SIG_ALT <= keys
+    if is_save:
+        # Save packet: ler 'experience' diretamente (XP real do personagem,
+        # não totalGuildXp que é o total acumulado de toda a guild)
+        exp = msg.get("experience")
+        if exp is not None:
             try:
-                xp = int(int(v) / 0.15)
+                xp = int(exp)
                 if xp > 0: emit_line({"type": "stat:xp", "total": xp})
-                return
             except: pass
+        return  # nunca ler totalGuildXp do save packet
+
+    # Pacotes de evento real-time: quando totalGuildXp é detectado,
+    # o delta real está no campo 'xp' — totalGuildXp é o total acumulado da guild
+    for f in _XP_GUILD_FIELDS:
+        if msg.get(f) is not None:
+            for df in _XP_DIRECT_FIELDS:
+                v = msg.get(df)
+                if v is not None:
+                    try:
+                        xp = int(int(v) / 0.15)
+                        if xp > 0: emit_line({"type": "stat:xp_gain", "gained": xp})
+                    except: pass
+            return
+
+    # Recompensas de quest / XP direto
     for f in _XP_DIRECT_FIELDS:
         v = msg.get(f)
         if v is not None and ("status" in msg or "message" in msg):
             try:
                 xp = int(v)
-                if xp > 0: emit_line({"type": "stat:xp", "total": xp})
+                if xp > 0: emit_line({"type": "stat:xp_gain", "gained": xp})
                 return
             except: pass
 
