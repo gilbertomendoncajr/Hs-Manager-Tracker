@@ -23,6 +23,9 @@ const uaSection     = document.getElementById('uaSection')
 const uaBody        = document.getElementById('uaBody')
 const uaCount       = document.getElementById('uaCount')
 const dropHint      = document.getElementById('dropHint')
+const dropHintTitle = document.getElementById('dropHintTitle')
+const dropHintSub   = document.getElementById('dropHintSub')
+const dropHintArrowLabel = document.getElementById('dropHintArrowLabel')
 
 // fp → true (só para saber se a linha existe)
 const uaMap = new Map()
@@ -148,12 +151,35 @@ function addLogEntry({ type, message, item, ts, tab = 'both' }) {
   }
 }
 
+function updateDropHint() {
+  if (!dropHint) return
+  if (uaBody && uaBody.children.length > 0) {
+    dropHint.style.display = 'none'
+    return
+  }
+  dropHint.style.display = 'flex'
+  if (!isMonitoring) {
+    dropHint.dataset.state = 'inactive'
+    if (dropHintTitle) dropHintTitle.textContent = tr('empty.inactive')
+    if (dropHintSub) dropHintSub.textContent = ''
+    if (dropHintArrowLabel) dropHintArrowLabel.textContent = tr('empty.cta')
+  } else if (!_charIdentifiedLocal) {
+    dropHint.dataset.state = 'login'
+    if (dropHintTitle) dropHintTitle.textContent = tr('empty.waitChar')
+    if (dropHintSub) dropHintSub.textContent = tr('status.waitLogin')
+  } else {
+    dropHint.dataset.state = 'monitoring'
+    if (dropHintTitle) dropHintTitle.textContent = tr('empty.monitoring')
+    if (dropHintSub) dropHintSub.textContent = _charNameLocal || ''
+  }
+}
+
 function clearUATable() {
   uaBody.innerHTML = ''
   uaMap.clear()
   uaSection.style.display = 'none'
   uaCount.textContent = '0'
-  if (dropHint) dropHint.style.display = 'flex'
+  updateDropHint()
 }
 
 // ── Stats data ───────────────────────────────────────────────────────────────
@@ -305,6 +331,7 @@ const I18N = {
     'status.loading': 'Carregando...', 'status.waitLogin': 'Entre ou relogue no jogo',
     'hint.waitLogin': 'Entre ou relogue no jogo para iniciar o monitoramento',
     'empty.title': 'Monitor inativo', 'empty.cta': 'INICIAR',
+    'empty.inactive': 'Monitor inativo', 'empty.waitChar': 'Aguardando personagem', 'empty.monitoring': 'Monitorando',
     'status.active': 'Monitorando', 'status.stopped': 'Parado',
     'status.filterOk': '{n} itens ativos', 'status.charOk': '✓ {name}',
     'status.lastEvt': 'Último evento do sniffer',
@@ -354,6 +381,7 @@ const I18N = {
     'status.loading': 'Loading...', 'status.waitLogin': 'Enter or relog in game',
     'hint.waitLogin': 'Enter or relog in game to start monitoring',
     'empty.title': 'Monitor inactive', 'empty.cta': 'START',
+    'empty.inactive': 'Monitor inactive', 'empty.waitChar': 'Awaiting character', 'empty.monitoring': 'Monitoring',
     'status.active': 'Monitoring', 'status.stopped': 'Stopped',
     'status.filterOk': '{n} active items', 'status.charOk': '✓ {name}',
     'status.lastEvt': 'Last sniffer event',
@@ -362,6 +390,7 @@ const I18N = {
 
 let _currentLang = 'pt'
 let _charIdentifiedLocal = false
+let _charNameLocal = null
 
 function tr(key) {
   return (I18N[_currentLang] || I18N.pt)[key] || (I18N.pt)[key] || key
@@ -562,6 +591,7 @@ function setMonitorUI(watching, charIdentified) {
     if (activePage && activePage.id === 'p-status') navTo('drops')
   }
   _updateStatusTab(watching, charIdentified)
+  updateDropHint()
 }
 
 // ── Ligas ────────────────────────────────────────────────────────────────────
@@ -707,6 +737,7 @@ btnToggle.addEventListener('click', async () => {
 window.api.onLog((entry) => addLogEntry(entry))
 if (window.api.onSessionReset) window.api.onSessionReset(() => resetSessionData())
 window.api.onStateChange((state) => {
+  if (state.charName) _charNameLocal = state.charName
   setMonitorUI(state.isMonitoring, state.charIdentified)
   if (state.charIdentified && state.charName && stChrVal) {
     stChrVal.textContent = tr('status.charOk').replace('{name}', state.charName)

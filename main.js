@@ -852,6 +852,7 @@ function spawnSniffer() {
       const drop = msg
       if (!drop.name) return
       if (drop.resource) return
+      if (!charIdentified) return  // drop sem personagem identificado — ignorar
 
       const uid = parseInt((drop.fp || '').split('-')[1] || '0', 10)
       if (uid && charMap[uid]) drop.charName = charMap[uid]
