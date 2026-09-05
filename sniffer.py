@@ -302,17 +302,39 @@ class FlowBuffer:
     - Acumula payloads TCP por fluxo
     - drain() extrai JSONs completos e mantém carry (JSON incompleto no fim)
     - Cada byte processado exatamente uma vez → sem ghost detections
+
+    Duas proteções vindas do parser.rs:
+    - opens_a_value: um '{' só abre mensagem se vier seguido de '"' ou '}'.
+      Um 0x7B solto no framing binário era carregado para sempre e deixava o
+      fluxo mudo até acumular CARRY_MAX.
+    - desistência do carry: se o JSON incompleto não fechou em CARRY_TTL
+      (segmento perdido ou fora de ordem), pula o opener e lê o que veio
+      atrás dele. O Rust conta rodadas de flush por ack; aqui o drain roda a
+      cada pacote, então a medida equivalente é tempo.
     """
     SCAN_BUDGET = 5_000_000  # anti-quadrático para dados corrompidos
     CARRY_MAX   = 64 * 1024  # descarta carry > 64KB (mensagem perdida)
+    CARRY_TTL   = 1.0        # segundos: segmentos de uma mensagem chegam em ms
 
     def __init__(self):
         self.buf: bytes = b""
+        self.carry_since: float | None = None   # quando o carry atual começou
 
     def push(self, data: bytes):
         self.buf += data
         if len(self.buf) > 512 * 1024:
             self.buf = self.buf[-256 * 1024:]
+            self.carry_since = None
+
+    @staticmethod
+    def _opens_a_value(buf: bytes, i: int) -> bool:
+        """'{' em i abre um objeto JSON de verdade? Truncado logo após o opener conta como sim."""
+        j = i + 1
+        while j < len(buf) and buf[j] in (32, 9, 13, 10):   # espaco, tab, CR, LF
+            j += 1
+        if j >= len(buf):
+            return True
+        return buf[j] in b'"}'
 
     def drain(self) -> list[dict]:
         """Extrai todos os JSONs completos; deixa carry no buffer."""
@@ -321,6 +343,9 @@ class FlowBuffer:
         pos = 0
         carry_start: int | None = None
         scanned = 0
+        # O carry antigo (sempre no início do buffer) já passou do prazo?
+        give_up = (self.carry_since is not None
+                   and time.monotonic() - self.carry_since > self.CARRY_TTL)
 
         while pos < len(buf) and scanned < self.SCAN_BUDGET:
             # Avança até o próximo '{'
@@ -331,6 +356,11 @@ class FlowBuffer:
 
             scanned += brace - pos
             pos = brace
+
+            # Byte de framing que por acaso é '{': não é mensagem, segue adiante
+            if not self._opens_a_value(buf, pos):
+                pos += 1
+                continue
 
             # Balanceamento de chaves
             depth = 0; in_str = False; esc = False
@@ -365,19 +395,28 @@ class FlowBuffer:
                 j += 1
 
             if not complete:
+                if give_up:
+                    # Carry vencido: pula este opener e lê o que veio atrás dele.
+                    give_up = False
+                    pos += 1
+                    continue
                 # JSON incompleto — este é o carry
                 carry_start = pos
                 break
 
         # Atualiza buffer: mantém carry ou descarta tudo processado
         if carry_start is not None:
+            if carry_start != 0 or self.carry_since is None:
+                self.carry_since = time.monotonic()   # carry novo
             self.buf = buf[carry_start:]
         else:
             self.buf = b""
+            self.carry_since = None
 
         # Carry muito grande = dados corrompidos, descarta
         if len(self.buf) > self.CARRY_MAX:
             self.buf = b""
+            self.carry_since = None
 
         return msgs
 
