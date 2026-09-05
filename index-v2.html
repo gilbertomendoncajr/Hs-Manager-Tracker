@@ -615,6 +615,102 @@ body.tab-liga .ua-player { display: block; }
 }
 .stat-tile-sub { font-size: var(--fs-sm); color: var(--text2); margin-top: 4px; }
 
+/* ── Stats sections ─────────────────────────────────────────────────────── */
+#p-stats { overflow-y: auto; }
+.stats-section {
+  padding: 0 12px 12px;
+}
+.stats-section-title {
+  font-size: var(--fs-xs); font-weight: 700;
+  color: var(--text3); letter-spacing: .18em; text-transform: uppercase;
+  margin-bottom: 8px; padding: 8px 0 4px;
+  border-bottom: 1px solid var(--border);
+}
+.stats-overview-grid {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+}
+.stats-overview-card {
+  background: var(--surf); border: 1px solid var(--border);
+  border-top: 2px solid var(--brt);
+  padding: 10px 12px 9px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.soc-label {
+  font-size: var(--fs-xs); font-weight: 700;
+  color: var(--text3); text-transform: uppercase; letter-spacing: .12em;
+}
+.soc-val {
+  font-family: 'Space Mono', monospace;
+  font-size: var(--fs-stat-s); font-weight: 700; color: var(--text);
+  line-height: 1.1;
+}
+.soc-sub { font-size: var(--fs-xs); color: var(--text3); margin-top: 1px; }
+
+/* Notable & resources */
+.stats-kv-list {
+  display: flex; flex-direction: column; gap: 3px;
+}
+.stats-kv-row {
+  display: flex; justify-content: space-between; align-items: center;
+  background: var(--surf); border: 1px solid var(--border);
+  padding: 5px 10px;
+}
+.stats-kv-name { font-size: var(--fs-sm); color: var(--text2); }
+.stats-kv-val {
+  font-family: 'Space Mono', monospace;
+  font-size: var(--fs-sm); font-weight: 700; color: var(--text);
+}
+.stats-kv-empty { font-size: var(--fs-sm); color: var(--text3); font-style: italic; }
+
+/* Tally grid (bosses/chests) */
+.stats-tally-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 4px;
+}
+.stats-tally-card {
+  background: var(--surf); border: 1px solid var(--border);
+  padding: 6px 10px; display: flex; justify-content: space-between; align-items: center;
+}
+.stc-name { font-size: var(--fs-xs); color: var(--text2); text-transform: capitalize; }
+.stc-val {
+  font-family: 'Space Mono', monospace;
+  font-size: var(--fs-sm); font-weight: 700; color: var(--text);
+}
+
+/* Satanic zone */
+.satanic-zone-block {
+  background: var(--surf); border: 1px solid var(--satanic);
+  border-left: 3px solid var(--satanic); padding: 10px 14px;
+}
+.szb-name {
+  font-size: var(--fs-sm); font-weight: 700; color: var(--satanic);
+  text-transform: uppercase; letter-spacing: .1em; margin-bottom: 4px;
+}
+.szb-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.szb-tag {
+  font-size: var(--fs-xs); padding: 2px 6px;
+  border: 1px solid var(--border); color: var(--text2);
+  background: var(--bg);
+}
+.szb-tag.buff  { border-color: #4caf50; color: #4caf50; }
+.szb-tag.debuf { border-color: #f44336; color: #f44336; }
+.satanic-none { font-size: var(--fs-sm); color: var(--text3); font-style: italic; }
+
+/* Item timeline */
+.stats-timeline { display: flex; flex-direction: column; gap: 4px; }
+.stl-row {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surf); border: 1px solid var(--border); padding: 5px 10px;
+}
+.stl-time { font-family: 'Space Mono', monospace; font-size: var(--fs-xs); color: var(--text3); min-width: 44px; }
+.stl-rarity {
+  font-size: var(--fs-xs); font-weight: 700;
+  text-transform: uppercase; letter-spacing: .1em; min-width: 56px;
+}
+.stl-name { font-size: var(--fs-sm); color: var(--text2); flex: 1; }
+.stl-empty { font-size: var(--fs-sm); color: var(--text3); font-style: italic; }
+
 /* ── Config page ─────────────────────────────────────────────────────── */
 .cfg-body { flex: 1; overflow-y: auto; padding: 14px 16px; }
 .cfg-section { margin-bottom: 20px; }
@@ -1062,54 +1158,121 @@ body.tab-liga .ua-player { display: block; }
 
       <!-- STATS -->
       <div class="page" id="p-stats">
+
+        <!-- Timer + Overview -->
         <div class="stats-timer-wrap">
           <div class="stats-timer-label" data-i18n="timer.label">TEMPO DE SESSÃO</div>
           <div class="stats-timer-big" id="statsBigTimer">00:00:00</div>
         </div>
-        <div class="rarity-tiles">
-          <div class="rarity-tile" style="--rc:var(--satanic)">
-            <div class="rarity-tile-name">SATANIC</div>
-            <div class="rarity-tile-count" id="rct-Satanic">0</div>
-            <div class="rarity-tile-rate" id="rrate-Satanic">— / hora</div>
-            <div class="rarity-tile-bar"><div class="rarity-tile-fill" id="rfill-Satanic"></div></div>
-          </div>
-          <div class="rarity-tile" style="--rc:var(--set)">
-            <div class="rarity-tile-name">SET</div>
-            <div class="rarity-tile-count" id="rct-Set">0</div>
-            <div class="rarity-tile-rate" id="rrate-Set">— / hora</div>
-            <div class="rarity-tile-bar"><div class="rarity-tile-fill" id="rfill-Set"></div></div>
-          </div>
-          <div class="rarity-tile" style="--rc:var(--heroic)">
-            <div class="rarity-tile-name">HEROIC</div>
-            <div class="rarity-tile-count" id="rct-Heroic">0</div>
-            <div class="rarity-tile-rate" id="rrate-Heroic">— / hora</div>
-            <div class="rarity-tile-bar"><div class="rarity-tile-fill" id="rfill-Heroic"></div></div>
-          </div>
-          <div class="rarity-tile" style="--rc:var(--angelic)">
-            <div class="rarity-tile-name">ANGELIC</div>
-            <div class="rarity-tile-count" id="rct-Angelic">0</div>
-            <div class="rarity-tile-rate" id="rrate-Angelic">— / hora</div>
-            <div class="rarity-tile-bar"><div class="rarity-tile-fill" id="rfill-Angelic"></div></div>
-          </div>
-          <div class="rarity-tile" style="--rc:var(--unholy)">
-            <div class="rarity-tile-name">UNHOLY</div>
-            <div class="rarity-tile-count" id="rct-Unholy">0</div>
-            <div class="rarity-tile-rate" id="rrate-Unholy">— / hora</div>
-            <div class="rarity-tile-bar"><div class="rarity-tile-fill" id="rfill-Unholy"></div></div>
+        <div class="stats-section">
+          <div class="stats-overview-grid">
+            <div class="stats-overview-card">
+              <div class="soc-label">Gold</div>
+              <div class="soc-val" id="sovGold">0</div>
+              <div class="soc-sub" id="sovGoldRate">— / hora</div>
+            </div>
+            <div class="stats-overview-card">
+              <div class="soc-label">XP</div>
+              <div class="soc-val" id="sovXp">0</div>
+              <div class="soc-sub" id="sovXpRate">— / hora</div>
+            </div>
+            <div class="stats-overview-card">
+              <div class="soc-label">Kills</div>
+              <div class="soc-val" id="sovKills">0</div>
+              <div class="soc-sub" id="sovKillsRate">— / hora</div>
+            </div>
           </div>
         </div>
-        <div class="stats-bottom-grid">
-          <div class="stat-tile">
-            <div class="stat-tile-label" data-i18n="tiles.totalDrops">Total de Drops</div>
-            <div class="stat-tile-value" id="statDropsTotal">0</div>
-            <div class="stat-tile-sub" id="statDropsRate">— / hora</div>
+
+        <!-- Loot por raridade -->
+        <div class="stats-section">
+          <div class="stats-section-title">LOOT</div>
+          <div class="rarity-tiles">
+            <div class="rarity-tile" style="--rc:var(--satanic)">
+              <div class="rarity-tile-name">SATANIC</div>
+              <div class="rarity-tile-count" id="rct-Satanic">0</div>
+              <div class="rarity-tile-rate" id="rrate-Satanic">— / hora</div>
+              <div class="rarity-tile-bar"><div class="rarity-tile-fill" id="rfill-Satanic"></div></div>
+            </div>
+            <div class="rarity-tile" style="--rc:var(--set)">
+              <div class="rarity-tile-name">SET</div>
+              <div class="rarity-tile-count" id="rct-Set">0</div>
+              <div class="rarity-tile-rate" id="rrate-Set">— / hora</div>
+              <div class="rarity-tile-bar"><div class="rarity-tile-fill" id="rfill-Set"></div></div>
+            </div>
+            <div class="rarity-tile" style="--rc:var(--heroic)">
+              <div class="rarity-tile-name">HEROIC</div>
+              <div class="rarity-tile-count" id="rct-Heroic">0</div>
+              <div class="rarity-tile-rate" id="rrate-Heroic">— / hora</div>
+              <div class="rarity-tile-bar"><div class="rarity-tile-fill" id="rfill-Heroic"></div></div>
+            </div>
+            <div class="rarity-tile" style="--rc:var(--angelic)">
+              <div class="rarity-tile-name">ANGELIC</div>
+              <div class="rarity-tile-count" id="rct-Angelic">0</div>
+              <div class="rarity-tile-rate" id="rrate-Angelic">— / hora</div>
+              <div class="rarity-tile-bar"><div class="rarity-tile-fill" id="rfill-Angelic"></div></div>
+            </div>
+            <div class="rarity-tile" style="--rc:var(--unholy)">
+              <div class="rarity-tile-name">UNHOLY</div>
+              <div class="rarity-tile-count" id="rct-Unholy">0</div>
+              <div class="rarity-tile-rate" id="rrate-Unholy">— / hora</div>
+              <div class="rarity-tile-bar"><div class="rarity-tile-fill" id="rfill-Unholy"></div></div>
+            </div>
           </div>
-          <div class="stat-tile">
-            <div class="stat-tile-label" data-i18n="tiles.totalCollected">Total Coletados</div>
-            <div class="stat-tile-value" id="statCollectedTotal">0</div>
-            <div class="stat-tile-sub" data-i18n="tiles.itemsCollected">itens coletados</div>
+          <div class="stats-bottom-grid" style="margin-top:6px">
+            <div class="stat-tile">
+              <div class="stat-tile-label" data-i18n="tiles.totalDrops">Total de Drops</div>
+              <div class="stat-tile-value" id="statDropsTotal">0</div>
+              <div class="stat-tile-sub" id="statDropsRate">— / hora</div>
+            </div>
+            <div class="stat-tile">
+              <div class="stat-tile-label" data-i18n="tiles.totalCollected">Total Coletados</div>
+              <div class="stat-tile-value" id="statCollectedTotal">0</div>
+              <div class="stat-tile-sub" id="sovSessionRate">— / hora</div>
+            </div>
           </div>
         </div>
+
+        <!-- Notable Resources -->
+        <div class="stats-section">
+          <div class="stats-section-title">NOTABLE RESOURCES</div>
+          <div id="notableList" class="stats-kv-list">
+            <div class="stats-kv-empty">Nenhum item notable ainda</div>
+          </div>
+        </div>
+
+        <!-- Resources -->
+        <div class="stats-section">
+          <div class="stats-section-title">RESOURCES</div>
+          <div id="resourceList" class="stats-kv-list">
+            <div class="stats-kv-empty">Nenhum resource ainda</div>
+          </div>
+        </div>
+
+        <!-- Killed & Opened -->
+        <div class="stats-section">
+          <div class="stats-section-title">KILLED &amp; OPENED</div>
+          <div id="tallyGrid" class="stats-tally-grid">
+            <div class="stats-kv-empty">Aguardando dados…</div>
+          </div>
+        </div>
+
+        <!-- Satanic Zone -->
+        <div class="stats-section">
+          <div class="stats-section-title">SATANIC ZONE</div>
+          <div id="satanicZoneBlock">
+            <div class="satanic-none">Nenhuma Satanic Zone ativa</div>
+          </div>
+        </div>
+
+        <!-- Item Timeline (Heroic+) -->
+        <div class="stats-section">
+          <div class="stats-section-title">ITEM TIMELINE</div>
+          <div id="itemTimeline" class="stats-timeline">
+            <div class="stl-empty">Nenhum item Heroic+ ainda</div>
+          </div>
+        </div>
+
       </div><!-- /#p-stats -->
 
       <!-- FILTRO -->

@@ -184,6 +184,17 @@ function resetStats() {
   for (const k of Object.keys(rarityCounters)) rarityCounters[k] = 0
   collectedCount = 0
   updateStatsTiles()
+  // Reset advanced stats UI (data comes from next onStatsUpdate)
+  if (typeof _lastStatsData !== 'undefined') {
+    _lastStatsData = null
+    _itemTimeline.length = 0
+    _renderTimeline()
+    _updateOverview({ gold: 0, xp: 0, kills: 0 })
+    _updateNotable({})
+    _updateResources({})
+    _updateTallies({})
+    _updateSatanic(null)
+  }
 }
 
 // ── Session timer ────────────────────────────────────────────────────────────
@@ -208,6 +219,9 @@ function startSessionTimer() {
     if (sessionTimerEl)  sessionTimerEl.textContent  = str
     if (statsBigTimerEl) statsBigTimerEl.textContent = str
     updateStatsTiles()
+    if (typeof _lastStatsData !== 'undefined' && _lastStatsData) {
+      if (typeof _updateOverview === 'function') _updateOverview(_lastStatsData)
+    }
   }, 1000)
 }
 
@@ -825,6 +839,178 @@ window.api.onDropCollected((drop) => {
   }
   _refreshUaCount()
 })
+
+// ── Stats avançados (gold/xp/kills/tallies/resources/notable/satanic) ────────
+const RARITY_COLOR_MAP = {
+  Satanic: 'var(--satanic)', Angelic: 'var(--angelic)',
+  Unholy: 'var(--unholy)', Heroic: 'var(--heroic)',
+  Set: 'var(--set)', Blessed: '#9c6', Mythic: '#fa0',
+  Rare: '#62a', Superior: '#888', Common: 'var(--text3)',
+}
+
+// Tally label map (normalised key → display label)
+const TALLY_LABELS = {
+  // bosses
+  andariel: 'Andariel', duriel: 'Duriel', mephisto: 'Mephisto',
+  diablo: 'Diablo', baal: 'Baal', nihlathak: 'Nihlathak',
+  uber_diablo: 'Uber Diablo', uber_duriel: 'Uber Duriel',
+  uber_mephisto: 'Uber Mephisto', uber_baal: 'Uber Baal',
+  uber_andariel: 'Uber Andariel', uber_izual: 'Uber Izual',
+  uber_nihlathak: 'Uber Nihlathak',
+  // chests
+  superchest: 'Super Chest', goodchest: 'Good Chest', actboss: 'Act Boss',
+  chests: 'Baú', horadric: 'Horadric', larzuk: 'Larzuk',
+}
+
+// Last received stats payload — used by timer to refresh rates
+let _lastStatsData = null
+
+// Boss / chest classification by tally key
+function _tallyGroup(k) {
+  const boss = ['andariel','duriel','mephisto','diablo','baal','nihlathak',
+    'uber_diablo','uber_duriel','uber_mephisto','uber_baal','uber_andariel',
+    'uber_izual','uber_nihlathak', 'actboss']
+  return boss.includes(k) ? 'boss' : 'chest'
+}
+
+// Format large numbers
+function _fmtNum(n) {
+  if (n >= 1_000_000) return `${(n/1_000_000).toFixed(1)}M`
+  if (n >= 1_000)     return `${(n/1_000).toFixed(1)}k`
+  return String(n)
+}
+
+function _hourRate(count, elapsedHours) {
+  if (elapsedHours < 0.01 || count === 0) return '— / hora'
+  return `${_fmtNum(Math.round(count / elapsedHours))} / hora`
+}
+
+// Item timeline data
+const _itemTimeline = []
+
+function _updateOverview(data) {
+  const elapsed = _sessionStart ? (Date.now() - _sessionStart) / 3600000 : 0
+
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val }
+
+  set('sovGold',      _fmtNum(data.gold || 0))
+  set('sovGoldRate',  _hourRate(data.gold || 0, elapsed))
+  set('sovXp',        _fmtNum(data.xp || 0))
+  set('sovXpRate',    _hourRate(data.xp || 0, elapsed))
+  set('sovKills',     _fmtNum(data.kills || 0))
+  set('sovKillsRate', _hourRate(data.kills || 0, elapsed))
+  set('sovSessionRate', _hourRate(collectedCount, elapsed))
+}
+
+function _updateNotable(notable) {
+  const el = document.getElementById('notableList')
+  if (!el) return
+  const entries = Object.entries(notable || {}).filter(([,v]) => v > 0)
+  if (!entries.length) {
+    el.innerHTML = '<div class="stats-kv-empty">Nenhum item notable ainda</div>'
+    return
+  }
+  el.innerHTML = entries.map(([name, count]) =>
+    `<div class="stats-kv-row"><span class="stats-kv-name">${name}</span><span class="stats-kv-val">${count}</span></div>`
+  ).join('')
+}
+
+function _updateResources(resources) {
+  const el = document.getElementById('resourceList')
+  if (!el) return
+  const entries = Object.entries(resources || {}).filter(([,v]) => v > 0)
+    .sort((a,b) => b[1]-a[1])
+  if (!entries.length) {
+    el.innerHTML = '<div class="stats-kv-empty">Nenhum resource ainda</div>'
+    return
+  }
+  el.innerHTML = entries.map(([rarity, count]) => {
+    const col = RARITY_COLOR_MAP[rarity] || 'var(--text)'
+    return `<div class="stats-kv-row"><span class="stats-kv-name" style="color:${col}">${rarity}</span><span class="stats-kv-val">${count}</span></div>`
+  }).join('')
+}
+
+function _updateTallies(tallies) {
+  const el = document.getElementById('tallyGrid')
+  if (!el) return
+  const entries = Object.entries(tallies || {}).filter(([,v]) => v > 0)
+    .sort((a,b) => b[1]-a[1])
+  if (!entries.length) {
+    el.innerHTML = '<div class="stats-kv-empty">Aguardando dados…</div>'
+    return
+  }
+  const bossColor = 'var(--satanic)'
+  const chestColor = 'var(--heroic)'
+  el.innerHTML = entries.map(([k, count]) => {
+    const label = TALLY_LABELS[k] || k.replace(/_/g,' ')
+    const col = _tallyGroup(k) === 'boss' ? bossColor : chestColor
+    return `<div class="stats-tally-card"><span class="stc-name" style="color:${col}">${label}</span><span class="stc-val">${count}</span></div>`
+  }).join('')
+}
+
+function _updateSatanic(satanic) {
+  const el = document.getElementById('satanicZoneBlock')
+  if (!el) return
+  if (!satanic || !satanic.zone) {
+    el.innerHTML = '<div class="satanic-none">Nenhuma Satanic Zone ativa</div>'
+    return
+  }
+  const buffTags  = (satanic.buffs  || []).map(b => `<span class="szb-tag buff">${b}</span>`).join('')
+  const debufTags = (satanic.debuffs || []).map(d => `<span class="szb-tag debuf">${d}</span>`).join('')
+  el.innerHTML = `
+    <div class="satanic-zone-block">
+      <div class="szb-name">${satanic.zone}</div>
+      <div class="szb-tags">${buffTags}${debufTags}${(!buffTags && !debufTags) ? '<span class="stats-kv-empty">Sem buffs/debuffs</span>' : ''}</div>
+    </div>`
+}
+
+function _addToTimeline(drop) {
+  const HEROIC_PLUS = new Set(['Satanic','Angelic','Unholy','Heroic'])
+  if (!HEROIC_PLUS.has(drop.rarity)) return
+  _itemTimeline.unshift({ name: drop.name, rarity: drop.rarity, ts_ms: drop.ts_ms || Date.now() })
+  if (_itemTimeline.length > 50) _itemTimeline.pop()
+  _renderTimeline()
+}
+
+function _renderTimeline() {
+  const el = document.getElementById('itemTimeline')
+  if (!el) return
+  if (!_itemTimeline.length) {
+    el.innerHTML = '<div class="stl-empty">Nenhum item Heroic+ ainda</div>'
+    return
+  }
+  const sessionStartMs = _sessionStart || Date.now()
+  el.innerHTML = _itemTimeline.slice(0, 30).map(item => {
+    const elapsedSec = Math.floor((item.ts_ms - sessionStartMs) / 1000)
+    const h = Math.floor(elapsedSec / 3600)
+    const m = Math.floor((elapsedSec % 3600) / 60)
+    const s = elapsedSec % 60
+    const timeStr = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
+    const col = RARITY_COLOR_MAP[item.rarity] || 'var(--text)'
+    return `<div class="stl-row">
+      <span class="stl-time">${timeStr}</span>
+      <span class="stl-rarity" style="color:${col}">${item.rarity}</span>
+      <span class="stl-name">${item.name}</span>
+    </div>`
+  }).join('')
+}
+
+// Stats update handler
+if (window.api.onStatsUpdate) {
+  window.api.onStatsUpdate((data) => {
+    _lastStatsData = data
+    _updateOverview(data)
+    _updateNotable(data.notable)
+    _updateResources(data.resources)
+    _updateTallies(data.tallies)
+    _updateSatanic(data.satanic)
+  })
+}
+
+// Register second listener for timeline (IPC allows multiple listeners)
+if (window.api.onDropCollected) {
+  window.api.onDropCollected((drop) => { _addToTimeline(drop) })
+}
 
 // ── Window controls ──────────────────────────────────────────────────────────
 const btnWinMinimize = document.getElementById('btnWinMinimize')

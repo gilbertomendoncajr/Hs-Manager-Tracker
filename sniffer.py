@@ -558,8 +558,8 @@ def process_messages(messages: list[dict], src_ip: str):
                     continue
                 _seen_fp.add(f"p:{ident}")
                 _told.add(ident)
-                drop = {"name": name or "?", "rarity": rarity, "ground": ground,
-                        "resource": True, "ts_ms": ts, "fp": fp_str}
+                drop = {"type": "stat:resource", "name": name or "?", "rarity": rarity,
+                        "ground": ground, "resource": True, "ts_ms": ts, "fp": fp_str}
                 log_debug(f"  DROP (resource): {name} [{rarity}]")
                 emit(drop)
             elif ground:
@@ -593,6 +593,122 @@ def _fp_account(fp) -> int | None:
         except: return None
     return None
 
+# ─── game stats detection ────────────────────────────────────────────────────
+
+_CURRENCY_FIELDS  = ("currencyData", "currency_data")
+_GOLD_PARTS       = ("GSS", "GSH", "GNS", "GNH", "GBP")
+_XP_GUILD_FIELDS  = ("totalGuildXp", "total_guild_xp", "totalGuildExp", "total_guild_exp")
+_XP_DIRECT_FIELDS = ("xp", "experienceGained", "experience_gained")
+_KILL_FIELDS      = ("statisticTotalMonsterKills", "statistic_total_monster_kills",
+                     "totalMonsterKills", "total_monster_kills")
+_ACCOUNT_SIG      = frozenset({"name", "class", "heroLevel", "season", "hardcore"})
+_ACCOUNT_SIG_ALT  = frozenset({"name", "class", "hero_level", "season", "hardcore"})
+_STAT_PREFIX_RE   = re.compile(r'^statistic_?', re.IGNORECASE)
+_NONALPHA_RE      = re.compile(r'[^a-z0-9]')
+
+def _norm_tally(k: str) -> str:
+    k = _STAT_PREFIX_RE.sub('', k)
+    return _NONALPHA_RE.sub('', k.lower())
+
+def _check_gold(msg: dict):
+    for f in _CURRENCY_FIELDS:
+        cd = msg.get(f)
+        if isinstance(cd, dict):
+            total = sum(int(cd.get(k, 0) or 0) for k in _GOLD_PARTS if k in cd)
+            if total > 0:
+                emit_line({"type": "stat:gold", "total": total})
+            return
+    ga = msg.get("goldAmount")
+    if ga is not None:
+        try:
+            v = int(ga)
+            if v > 0: emit_line({"type": "stat:gold", "total": v})
+        except: pass
+
+def _check_xp(msg: dict):
+    for f in _XP_GUILD_FIELDS:
+        v = msg.get(f)
+        if v is not None:
+            try:
+                xp = int(int(v) / 0.15)
+                if xp > 0: emit_line({"type": "stat:xp", "total": xp})
+                return
+            except: pass
+    for f in _XP_DIRECT_FIELDS:
+        v = msg.get(f)
+        if v is not None and ("status" in msg or "message" in msg):
+            try:
+                xp = int(v)
+                if xp > 0: emit_line({"type": "stat:xp", "total": xp})
+                return
+            except: pass
+
+def _check_tallies(msg: dict):
+    tallies = {}
+    kills_total = None
+    for k, v in msg.items():
+        if k in _KILL_FIELDS:
+            try: kills_total = int(v)
+            except: pass
+        if k.lower().startswith("statistic"):
+            norm = _norm_tally(k)
+            try: tallies[norm] = int(v)
+            except: pass
+    if kills_total is not None:
+        emit_line({"type": "stat:kills", "total": kills_total})
+    if tallies:
+        emit_line({"type": "stat:tallies", "tallies": tallies})
+
+def _check_account(msg: dict):
+    keys = set(msg.keys())
+    if not (_ACCOUNT_SIG <= keys or _ACCOUNT_SIG_ALT <= keys):
+        return
+    if "accountUID" in msg or "unique_account_id" in msg or "uniqueAccountId" in msg:
+        return  # login packet — already handled
+    try:
+        name     = str(msg.get("name") or "")
+        level    = int(msg.get("level", 0) or 0)
+        hlevel   = int(msg.get("heroLevel") or msg.get("hero_level") or 0)
+        mf       = int(msg.get("mf") or msg.get("magicFind") or msg.get("magic_find") or 0)
+        hardcore = bool(msg.get("hardcore", False))
+        diff     = int(msg.get("difficulty", 0) or 0)
+        if name:
+            emit_line({"type": "stat:account", "name": name, "level": level,
+                       "heroLevel": hlevel, "mf": mf, "hardcore": hardcore,
+                       "difficulty": diff})
+    except: pass
+
+def _check_vitals_and_zone(msg: dict):
+    gs = msg.get("game_state") or msg.get("gameState")
+    if not isinstance(gs, str): return
+    try:
+        raw = base64.b64decode(gs + "==")
+        fb = FlowBuffer()
+        fb.push(raw)
+        for dm in fb.drain():
+            room = dm.get("room")
+            if room: emit_line({"type": "stat:zone", "room": str(room)})
+            mf    = dm.get("mf")
+            level = dm.get("level")
+            hlevel = dm.get("hlevel")
+            sz    = dm.get("sz")
+            if any(v is not None for v in [mf, level, hlevel, sz]):
+                emit_line({"type": "stat:vitals", "mf": mf, "level": level,
+                           "hlevel": hlevel, "sz": bool(sz)})
+    except: pass
+
+def _check_satanic(msg: dict):
+    zone_name = msg.get("satanicZoneName") or msg.get("satanic_zone_name")
+    if not zone_name: return
+    buffs   = (msg.get("satanicZoneBuffs") or msg.get("satanic_zone_buffs") or
+               msg.get("zoneBuffs") or msg.get("zone_buffs") or [])
+    debuffs = (msg.get("satanicZoneDebuffs") or msg.get("satanic_zone_debuffs") or
+               msg.get("zoneDebuffs") or msg.get("zone_debuffs") or [])
+    emit_line({"type": "stat:satanic", "zone": str(zone_name),
+               "buffs":   buffs   if isinstance(buffs, list)   else [],
+               "debuffs": debuffs if isinstance(debuffs, list) else [],
+               "ts_ms": int(time.time() * 1000)})
+
 def process_all(msgs: list[dict], src_ip: str):
     global _my_uid
     for msg in msgs:
@@ -604,6 +720,12 @@ def process_all(msgs: list[dict], src_ip: str):
                 _my_uid = uid
                 emit_line({"type": "player_login", "charName": char, "accountUID": uid})
                 log_debug(f"PLAYER_LOGIN: {char} uid={uid}")
+        _check_gold(msg)
+        _check_xp(msg)
+        _check_tallies(msg)
+        _check_account(msg)
+        _check_vitals_and_zone(msg)
+        _check_satanic(msg)
     process_messages(msgs, src_ip)
 
 # ─── TCP flows (um FlowBuffer por fluxo) ────────────────────────────────────

@@ -96,6 +96,61 @@ let myDiscordId = null
 let myDiscordUsername = null
 let charIdentified = false
 
+// ── Stats de sessão ───────────────────────────────────────────────────────────
+const _sessStats = {
+  gold:  { base: null, earned: 0 },
+  xp:    { base: null, earned: 0 },
+  kills: { base: null, earned: 0 },
+}
+let _sessTallies = {}
+let _sessResources = {}
+let _sessNotable  = {}
+let _currentZone  = null
+let _satanicZone  = null
+
+const NOTABLE_NAMES = new Set([
+  'angelic key', 'satanic dice',
+  'qi', 'xo', 'sur', 'ber', 'jah', 'drax', 'zed',
+  'fawn', 'flo', 'nju', 'jol', 'sus', 'kek', 'jord',
+])
+
+function _resetSessStats() {
+  _sessStats.gold  = { base: null, earned: 0 }
+  _sessStats.xp    = { base: null, earned: 0 }
+  _sessStats.kills = { base: null, earned: 0 }
+  _sessTallies = {}
+  _sessResources = {}
+  _sessNotable  = {}
+  _satanicZone  = null
+}
+
+function _deltaUpdate(stat, total) {
+  if (stat.base === null) { stat.base = total; return }
+  stat.earned = Math.max(0, total - stat.base)
+}
+
+function _tallyDelta(norm, total) {
+  if (!_sessTallies[norm]) _sessTallies[norm] = { base: null, earned: 0 }
+  const t = _sessTallies[norm]
+  if (t.base === null) { t.base = total; return }
+  t.earned = Math.max(0, total - t.base)
+}
+
+function _sendStatsUpdate() {
+  const tallies = {}
+  for (const [k, v] of Object.entries(_sessTallies)) tallies[k] = v.earned
+  sendToWin(mainWin, 'stats:update', {
+    gold:      _sessStats.gold.earned,
+    xp:        _sessStats.xp.earned,
+    kills:     _sessStats.kills.earned,
+    tallies,
+    resources: { ..._sessResources },
+    notable:   { ..._sessNotable },
+    zone:      _currentZone,
+    satanic:   _satanicZone,
+  })
+}
+
 // ── Janela principal ────────────────────────────────────────────────────────
 function createMainWindow() {
   const useV2 = process.env.HSDL_UI === 'v2'
@@ -752,6 +807,48 @@ function spawnSniffer() {
 
       sendToWin(mainWin, 'sniffer:heartbeat', { ts: Date.now() })
 
+      // ── Novos eventos de stats ──────────────────────────────────────────────
+      if (msg.type === 'stat:gold') {
+        _deltaUpdate(_sessStats.gold, msg.total)
+        _sendStatsUpdate()
+        return
+      }
+      if (msg.type === 'stat:xp') {
+        _deltaUpdate(_sessStats.xp, msg.total)
+        _sendStatsUpdate()
+        return
+      }
+      if (msg.type === 'stat:kills') {
+        _deltaUpdate(_sessStats.kills, msg.total)
+        _sendStatsUpdate()
+        return
+      }
+      if (msg.type === 'stat:tallies') {
+        for (const [k, v] of Object.entries(msg.tallies || {})) _tallyDelta(k, v)
+        _sendStatsUpdate()
+        return
+      }
+      if (msg.type === 'stat:zone') {
+        _currentZone = msg.room
+        _sendStatsUpdate()
+        return
+      }
+      if (msg.type === 'stat:satanic') {
+        _satanicZone = { zone: msg.zone, buffs: msg.buffs || [], debuffs: msg.debuffs || [], ts_ms: msg.ts_ms }
+        _sendStatsUpdate()
+        return
+      }
+      if (msg.type === 'stat:resource') {
+        const r = msg.rarity || 'Unknown'
+        _sessResources[r] = (_sessResources[r] || 0) + 1
+        _sendStatsUpdate()
+        return
+      }
+      if (msg.type === 'stat:account' || msg.type === 'stat:vitals') {
+        sendToWin(mainWin, 'stats:account', msg)
+        return
+      }
+
       const drop = msg
       if (!drop.name) return
       if (drop.resource) return
@@ -787,6 +884,11 @@ function spawnSniffer() {
       }
 
       if (drop.type === 'collected') {
+        const nameLower = (drop.name || '').toLowerCase()
+        if (NOTABLE_NAMES.has(nameLower)) {
+          _sessNotable[drop.name] = (_sessNotable[drop.name] || 0) + 1
+          _sendStatsUpdate()
+        }
         const isSiteFiltered = serverEnabledItems !== null && !serverEnabledItems.has(drop.name)
         const logMsg = `⚔ ${drop.name}${tierTag} (${drop.rarity})${charPart} ✓`
         const collectedPayload = { ...drop, _logMsg: logMsg, _tierTag: tierTag, _category: categoryVal, _siteFiltered: isSiteFiltered }
@@ -889,6 +991,7 @@ ipcMain.handle('monitor:start', async (_e, leagueId) => {
   charIdentified = false
   if (!isResume) {
     dropHistory = []
+    _resetSessStats()
     sendToWin(mainWin, 'session:reset', {})
   }
   sendState()
