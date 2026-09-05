@@ -353,7 +353,6 @@ async function downloadMissingIcons(iconEntries) {
   const BATCH = 5
   for (let i = 0; i < iconEntries.length; i += BATCH) {
     await Promise.all(iconEntries.slice(i, i + BATCH).map(e => downloadOneIcon(e.name, e.imageUrl)))
-    if (i + BATCH < iconEntries.length) await new Promise(r => setTimeout(r, 100))
   }
 }
 
@@ -860,15 +859,14 @@ ipcMain.handle('monitor:start', async (_e, leagueId) => {
 
   if (isMonitoring) stopMonitor()
 
-  // Capturar Discord ID do usuário logado para filtrar SSE
-  try {
-    const profileRes = await apiFetch('/api/perfil')
-    if (profileRes.ok) {
-      const p = await profileRes.json()
+  // Capturar Discord ID em background — não bloqueia o startMonitor
+  apiFetch('/api/perfil').then(async res => {
+    if (res.ok) {
+      const p = await res.json()
       myDiscordId = p.discordId ?? null
       myDiscordUsername = p.username ?? null
     }
-  } catch { /* sem perfil */ }
+  }).catch(() => {})
 
   const isResume = leagueId === currentLeagueId
   currentLeagueId = leagueId
