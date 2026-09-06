@@ -604,13 +604,14 @@ ipcMain.handle('site:getLeagues', async () => {
       if (seen.has(reg.leagueId)) continue
       seen.add(reg.leagueId)
       leagues.push({ id: reg.leagueId, name: reg.leagueName, guildName: reg.guildName,
-                     seasonNumber: reg.seasonNumber, gameNick: reg.gameNick })
+                     seasonNumber: reg.seasonNumber, gameNick: reg.gameNick,
+                     bloodPactId: reg.bloodPactId ?? null })
     }
     return leagues
   } catch { return [] }
 })
 
-// Tenta auto-selecionar a liga com base no nick do personagem detectado no packet
+// Auto-seleção por nick do personagem (gameNick cadastrado no bot)
 async function _tryAutoSelectLeague(charName) {
   if (!charName || !_registrations.length) return
   const nick = charName.toLowerCase().trim()
@@ -625,6 +626,31 @@ async function _tryAutoSelectLeague(charName) {
       leagueId: match.leagueId,
       leagueName: match.leagueName,
       charName,
+    })
+  }
+}
+
+// Auto-seleção por ID Blood Pact do jogo (vínculo criado com /bloodpact linkar-liga)
+async function _tryAutoSelectByBloodPact(bloodPactId, charName) {
+  if (!bloodPactId || !_registrations.length) return
+  const match = _registrations.find(r =>
+    r.isLeagueActive && r.bloodPactId != null && r.bloodPactId === bloodPactId
+  )
+  if (match) {
+    const s = await getStore()
+    s.set('selectedLeagueId', match.leagueId)
+    currentLeagueId = match.leagueId
+    sendToWin(mainWin, 'monitor:leagueAutoSelected', {
+      leagueId: match.leagueId,
+      leagueName: match.leagueName,
+      charName: charName || '',
+    })
+  } else {
+    // Liga BP detectada mas sem vínculo — loga o ID para o admin configurar
+    sendToWin(mainWin, 'log:entry', {
+      type: 'warn',
+      message: `Liga Blood Pact detectada (ID: ${bloodPactId}) sem vínculo. Use /bloodpact linkar-liga id_bp:${bloodPactId} no Discord.`,
+      ts: Date.now(),
     })
   }
 }
@@ -883,7 +909,11 @@ function spawnSniffer() {
       }
       if (msg.type === 'stat:account') {
         sendToWin(mainWin, 'stats:account', msg)
-        if (msg.name) _tryAutoSelectLeague(msg.name)
+        if (msg.bloodPact) {
+          _tryAutoSelectByBloodPact(msg.bloodPact, msg.name)
+        } else if (msg.name) {
+          _tryAutoSelectLeague(msg.name)
+        }
         return
       }
       if (msg.type === 'stat:vitals') {
