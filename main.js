@@ -907,6 +907,14 @@ function spawnSniffer() {
         _sendStatsUpdate()
         return
       }
+      if (msg.type === 'debug:bp_scan') {
+        sendToWin(mainWin, 'log:entry', {
+          type: 'warn',
+          message: `[BP_SCAN] sig=${msg.sig_match} bp=${msg.blood_pact} name=${msg.name} season=${msg.season} keys=${(msg.keys||[]).join(',')}`,
+          ts: Date.now(),
+        })
+        return
+      }
       if (msg.type === 'stat:account') {
         sendToWin(mainWin, 'stats:account', msg)
         console.log(`[DEBUG stat:account] name=${msg.name} bloodPact=${msg.bloodPact} season=${msg.season} hardcore=${msg.hardcore}`)

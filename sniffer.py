@@ -787,6 +787,16 @@ def process_all(msgs: list[dict], src_ip: str):
     # hs-tracker descarta inventory_charms (dump completo do inventário) e steam
     msgs = [m for m in msgs if 'inventory_charms' not in m and 'steam' not in m]
     for msg in msgs:
+        # DEBUG temporário: qualquer campo relacionado a blood_pact ou save-packet completo
+        _bp = msg.get("blood_pact") or msg.get("bloodPact") or msg.get("bp") or msg.get("bloodpact")
+        _has_sig = _ACCOUNT_SIG <= set(msg.keys()) or _ACCOUNT_SIG_ALT <= set(msg.keys())
+        if _bp or _has_sig:
+            emit_line({"type": "debug:bp_scan",
+                       "keys": sorted(msg.keys()),
+                       "blood_pact": _bp,
+                       "name": msg.get("name", ""),
+                       "season": msg.get("season"),
+                       "sig_match": _has_sig})
         if "accountUID" in msg and "name" in msg:
             uid = int(msg["accountUID"])
             char = str(msg["name"]).strip()
