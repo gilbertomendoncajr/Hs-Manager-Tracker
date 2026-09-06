@@ -968,10 +968,13 @@ function _updateNotable(notable) {
   if (!el) return
   const low = {}
   for (const [k, v] of Object.entries(notable || {})) low[k.toLowerCase()] = v
-  el.innerHTML = NOTABLE_FIXED.map(g => {
+  el.innerHTML = `<div class="stc-group">${NOTABLE_FIXED.map(g => {
     const count = g.keys.reduce((s, k) => s + (low[k] || 0), 0)
-    return `<div class="stats-kv-row"><span class="stats-kv-name">${g.label}</span><span class="stats-kv-val">${count}</span></div>`
-  }).join('')
+    return `<div class="stc-card">
+      <span class="stc-count" style="color:var(--angelic)">${count}</span>
+      <span class="stc-label">${g.label}</span>
+    </div>`
+  }).join('')}</div>`
 }
 
 function _updateResources(resources) {
@@ -989,31 +992,31 @@ function _updateResources(resources) {
   }).join('')
 }
 
+const _TALLY_BOSSES = [
+  'satankills','damienkills','reaperkills','anubiskills','guragkills','meviuskills',
+  'odinkills','cthulhukills','karpkingkills',
+  'uberdamienkills','uberreaperkills','uberlunakills','uberendrixiakills',
+  'ubergabrielkills','uberkingrakhulkills','ubersheepkingkills','ubersungleekills',
+  'uberamunrakills','uberarchitectkills','uberpapalegbakills','ubercaptaingrimtidekills',
+  'uberbloodmaidenkills','uberphantomleviathankills','uberchaostowerkills',
+]
+const _TALLY_CHESTS = ['commonchestsopened','rarechestopened','crystalchestopened','rubychestsopened','dungeonchestsopened']
+const _TALLY_CLEARS = ['chaostowerfloorclears','wormholeclears']
+
 function _updateTallies(tallies) {
   const el = document.getElementById('tallyGrid')
   if (!el) return
-  // Only show keys we have labels for — raw statistic fields are noise
-  const entries = Object.entries(tallies || {})
-    .filter(([k, v]) => v > 0 && TALLY_LABELS[k])
-    .sort((a, b) => b[1] - a[1])
-  if (!entries.length) {
-    el.innerHTML = '<div class="stats-kv-empty">Aguardando dados…</div>'
-    return
-  }
-  const bosses  = entries.filter(([k]) => _tallyGroup(k) === 'boss')
-  const chests  = entries.filter(([k]) => _tallyGroup(k) === 'chest')
-  const clears  = entries.filter(([k]) => _tallyGroup(k) === 'clear')
-  const renderGroup = (items, col) => items.map(([k, count]) =>
+  const t = tallies || {}
+  const renderGroup = (keys, col) => keys.map(k =>
     `<div class="stc-card">
-      <span class="stc-count" style="color:${col}">${count}</span>
+      <span class="stc-count" style="color:${col}">${t[k] || 0}</span>
       <span class="stc-label">${TALLY_LABELS[k]}</span>
     </div>`
   ).join('')
-  let html = ''
-  if (bosses.length)  html += `<div class="stc-group-label">BOSSES</div><div class="stc-group">${renderGroup(bosses, 'var(--satanic)')}</div>`
-  if (chests.length)  html += `<div class="stc-group-label">BAÚS</div><div class="stc-group">${renderGroup(chests, 'var(--heroic)')}</div>`
-  if (clears.length)  html += `<div class="stc-group-label">CLEARS</div><div class="stc-group">${renderGroup(clears, 'var(--angelic)')}</div>`
-  el.innerHTML = html
+  el.innerHTML =
+    `<div class="stc-group-label">BOSSES</div><div class="stc-group">${renderGroup(_TALLY_BOSSES, 'var(--satanic)')}</div>` +
+    `<div class="stc-group-label">BAÚS</div><div class="stc-group">${renderGroup(_TALLY_CHESTS, 'var(--heroic)')}</div>` +
+    `<div class="stc-group-label">CLEARS</div><div class="stc-group">${renderGroup(_TALLY_CLEARS, 'var(--angelic)')}</div>`
 }
 
 // Buff/debuff decode tables — sourced from hs-tracker buffs.js

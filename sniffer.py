@@ -637,12 +637,25 @@ def _check_gold(msg: dict):
             if v > 0: emit_line({"type": "stat:gold", "total": v})
         except: pass
 
+def _msg_first_int(msg: dict) -> int | None:
+    """Extract first integer from message/msg/text fields (hs-tracker xp_gain approach)."""
+    text = str(msg.get("message") or msg.get("msg") or msg.get("text") or "")
+    digits = ""
+    for c in text:
+        if c.isdigit():
+            digits += c
+        elif digits:
+            break
+    if digits:
+        try: return int(digits)
+        except: pass
+    return None
+
 def _check_xp(msg: dict):
     keys = set(msg.keys())
     is_save = _ACCOUNT_SIG <= keys or _ACCOUNT_SIG_ALT <= keys
     if is_save:
-        # Save packet: ler 'experience' diretamente (XP real do personagem,
-        # não totalGuildXp que é o total acumulado de toda a guild)
+        # Save packet: ler 'experience' diretamente (XP real do personagem)
         exp = msg.get("experience")
         if exp is not None:
             try:
@@ -651,20 +664,26 @@ def _check_xp(msg: dict):
             except: pass
         return  # nunca ler totalGuildXp do save packet
 
-    # Pacotes de evento real-time: quando totalGuildXp é detectado,
-    # o delta real está no campo 'xp' — totalGuildXp é o total acumulado da guild
-    for f in _XP_GUILD_FIELDS:
-        if msg.get(f) is not None:
+    # Pacotes de evento real-time com totalGuildXp: extrair XP do texto da mensagem
+    # (hs-tracker faz isso antes de tentar o campo xp) ou do campo xp diretamente
+    has_guild_xp = any(msg.get(f) is not None for f in _XP_GUILD_FIELDS)
+    if has_guild_xp:
+        xp_raw = _msg_first_int(msg)
+        if xp_raw is None:
             for df in _XP_DIRECT_FIELDS:
                 v = msg.get(df)
                 if v is not None:
-                    try:
-                        xp = int(int(v) / 0.15)
-                        if xp > 0: emit_line({"type": "stat:xp_gain", "gained": xp})
+                    try: xp_raw = int(v); break
                     except: pass
-            return
+        if xp_raw and xp_raw > 0:
+            try:
+                is_quest = "questId" in msg or "quest_id" in msg or "questID" in msg
+                xp = xp_raw if is_quest else int(xp_raw / 0.15)
+                if xp > 0: emit_line({"type": "stat:xp_gain", "gained": xp})
+            except: pass
+        return
 
-    # Recompensas de quest / XP direto
+    # Recompensas de quest / XP direto (sem totalGuildXp)
     for f in _XP_DIRECT_FIELDS:
         v = msg.get(f)
         if v is not None and ("status" in msg or "message" in msg):
@@ -728,16 +747,37 @@ def _check_vitals_and_zone(msg: dict):
                            "hlevel": hlevel, "sz": bool(sz)})
     except: pass
 
+def _parse_effect_ids(v) -> list:
+    """Parse buff/debuff IDs from list, pipe/comma-separated string, or int."""
+    if v is None:
+        return []
+    if isinstance(v, list):
+        out = []
+        for item in v:
+            try: out.append(int(item))
+            except: pass
+        return out
+    if isinstance(v, (int, float)):
+        return [int(v)]
+    if isinstance(v, str):
+        s = v.replace(',', '|')
+        out = []
+        for part in s.split('|'):
+            try: out.append(int(part.strip()))
+            except: pass
+        return out
+    return []
+
 def _check_satanic(msg: dict):
     zone_name = msg.get("satanicZoneName") or msg.get("satanic_zone_name")
     if not zone_name: return
-    buffs   = (msg.get("satanicZoneBuffs") or msg.get("satanic_zone_buffs") or
-               msg.get("zoneBuffs") or msg.get("zone_buffs") or [])
-    debuffs = (msg.get("satanicZoneDebuffs") or msg.get("satanic_zone_debuffs") or
-               msg.get("zoneDebuffs") or msg.get("zone_debuffs") or [])
+    raw_buffs = (msg.get("buffs") or msg.get("satanicZoneBuffs") or
+                 msg.get("satanic_zone_buffs") or msg.get("zoneBuffs") or msg.get("zone_buffs"))
+    raw_debuffs = (msg.get("debuffs") or msg.get("satanicZoneDebuffs") or
+                   msg.get("satanic_zone_debuffs") or msg.get("zoneDebuffs") or msg.get("zone_debuffs"))
     emit_line({"type": "stat:satanic", "zone": str(zone_name),
-               "buffs":   buffs   if isinstance(buffs, list)   else [],
-               "debuffs": debuffs if isinstance(debuffs, list) else [],
+               "buffs":   _parse_effect_ids(raw_buffs),
+               "debuffs": _parse_effect_ids(raw_debuffs),
                "ts_ms": int(time.time() * 1000)})
 
 def process_all(msgs: list[dict], src_ip: str):
