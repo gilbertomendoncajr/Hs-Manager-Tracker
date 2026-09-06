@@ -830,7 +830,7 @@ def process_all(msgs: list[dict], src_ip: str):
             try:
                 uid = int(msg["accountUID"])
                 char = str(msg["name"]).strip()
-                if char and uid and uid not in _emitted_logins:
+                if char and uid and (uid not in _emitted_logins or char != _my_char_name):
                     _emitted_logins.add(uid)
                     _my_uid = uid
                     _my_char_name = char

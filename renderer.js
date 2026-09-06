@@ -1253,6 +1253,13 @@ if (window.api.onBpMode) {
   window.api.onBpMode(({ active }) => setBpMode(active))
 }
 
+const btnResetSession = document.getElementById('btnResetSession')
+if (btnResetSession) {
+  btnResetSession.addEventListener('click', () => {
+    if (window.api.resetSession) window.api.resetSession()
+  })
+}
+
 // ── Window controls ──────────────────────────────────────────────────────────
 const btnWinMinimize = document.getElementById('btnWinMinimize')
 const btnWinClose    = document.getElementById('btnWinClose')

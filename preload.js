@@ -31,6 +31,7 @@ contextBridge.exposeInMainWorld('api', {
   onStatsAccount: (cb) => ipcRenderer.on('stats:account', (_e, data) => cb(data)),
   onLeagueAutoSelected: (cb) => ipcRenderer.on('monitor:leagueAutoSelected', (_e, data) => cb(data)),
   onBpMode: (cb) => ipcRenderer.on('monitor:bpMode', (_e, data) => cb(data)),
+  resetSession: () => ipcRenderer.invoke('monitor:resetSession'),
 
   // Auto-update
   onUpdateAvailable: (cb) => ipcRenderer.on('update:available', (_e, info) => cb(info)),

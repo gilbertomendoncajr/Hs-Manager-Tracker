@@ -649,7 +649,7 @@ async function _tryAutoSelectByBloodPact(bloodPactId, charName) {
     // Liga BP detectada mas sem vínculo — loga o ID para o admin configurar
     sendToWin(mainWin, 'log:entry', {
       type: 'warn',
-      message: `Liga Blood Pact detectada (ID: ${bloodPactId}) sem vínculo. Use /bloodpact linkar-liga id_bp:${bloodPactId} no Discord.`,
+      message: `Liga Blood Pact detectada (ID: ${bloodPactId}) sem vínculo. Contate um administrador para vincular a liga.`,
       ts: Date.now(),
     })
   }
@@ -852,11 +852,17 @@ function spawnSniffer() {
       }
 
       if (msg.type === 'player_login') {
+        const prevChar = charMap[msg.accountUID]
         charMap[msg.accountUID] = msg.charName
         if (!charIdentified) {
           charIdentified = true
           sendState()
           sendLog('info', t(`✅ Personagem identificado: ${msg.charName} — monitorando drops!`, `✅ Character identified: ${msg.charName} — monitoring drops!`))
+        } else if (prevChar && prevChar !== msg.charName) {
+          dropHistory = []
+          _resetSessStats()
+          sendToWin(mainWin, 'session:reset', {})
+          sendLog('info', t(`🔄 Personagem trocado para ${msg.charName} — sessão reiniciada automaticamente.`, `🔄 Character changed to ${msg.charName} — session reset automatically.`))
         }
         return
       }
@@ -1254,3 +1260,10 @@ ipcMain.handle('personal:setAll', (_, names, value) => {
 })
 
 ipcMain.handle('monitor:getState', () => ({ isMonitoring, leagueId: currentLeagueId, charIdentified }))
+
+ipcMain.handle('monitor:resetSession', () => {
+  dropHistory = []
+  _resetSessStats()
+  sendToWin(mainWin, 'session:reset', {})
+  sendLog('info', t('🔄 Sessão reiniciada manualmente.', '🔄 Session reset manually.'))
+})
