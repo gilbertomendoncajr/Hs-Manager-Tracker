@@ -1211,6 +1211,17 @@ if (window.api.onDropCollected) {
   window.api.onDropCollected((drop) => { _addToTimeline(drop) })
 }
 
+if (window.api.onLeagueAutoSelected) {
+  window.api.onLeagueAutoSelected(({ leagueId, leagueName, charName }) => {
+    const opt = leagueSelect.querySelector(`option[value="${leagueId}"]`)
+    if (opt) {
+      leagueSelect.value = leagueId
+      if (window.api.setLeague) window.api.setLeague(leagueId)
+      addLogEntry({ type: 'info', message: `Liga detectada automaticamente: ${leagueName} (${charName})`, ts: Date.now() })
+    }
+  })
+}
+
 // ── Window controls ──────────────────────────────────────────────────────────
 const btnWinMinimize = document.getElementById('btnWinMinimize')
 const btnWinClose    = document.getElementById('btnWinClose')

@@ -716,16 +716,18 @@ def _check_account(msg: dict):
     if "accountUID" in msg or "unique_account_id" in msg or "uniqueAccountId" in msg:
         return  # login packet — already handled
     try:
-        name     = str(msg.get("name") or "")
-        level    = int(msg.get("level", 0) or 0)
-        hlevel   = int(msg.get("heroLevel") or msg.get("hero_level") or 0)
-        mf       = int(msg.get("mf") or msg.get("magicFind") or msg.get("magic_find") or 0)
-        hardcore = bool(msg.get("hardcore", False))
-        diff     = int(msg.get("difficulty", 0) or 0)
+        name       = str(msg.get("name") or "")
+        level      = int(msg.get("level", 0) or 0)
+        hlevel     = int(msg.get("heroLevel") or msg.get("hero_level") or 0)
+        mf         = int(msg.get("mf") or msg.get("magicFind") or msg.get("magic_find") or 0)
+        hardcore   = bool(msg.get("hardcore", False))
+        diff       = int(msg.get("difficulty", 0) or 0)
+        blood_pact = int(msg.get("blood_pact") or msg.get("bloodPact") or 0)
+        season     = int(msg.get("season") or 0)
         if name:
             emit_line({"type": "stat:account", "name": name, "level": level,
                        "heroLevel": hlevel, "mf": mf, "hardcore": hardcore,
-                       "difficulty": diff})
+                       "difficulty": diff, "bloodPact": blood_pact, "season": season})
     except: pass
 
 def _check_vitals_and_zone(msg: dict):

@@ -29,6 +29,7 @@ contextBridge.exposeInMainWorld('api', {
   onSessionReset: (cb) => ipcRenderer.on('session:reset', () => cb()),
   onStatsUpdate:  (cb) => ipcRenderer.on('stats:update', (_e, data) => cb(data)),
   onStatsAccount: (cb) => ipcRenderer.on('stats:account', (_e, data) => cb(data)),
+  onLeagueAutoSelected: (cb) => ipcRenderer.on('monitor:leagueAutoSelected', (_e, data) => cb(data)),
 
   // Auto-update
   onUpdateAvailable: (cb) => ipcRenderer.on('update:available', (_e, info) => cb(info)),

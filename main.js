@@ -588,22 +588,46 @@ ipcMain.handle('auth:getSession', async () => {
 })
 
 // ── Ligas ativo do jogador ──────────────────────────────────────────────────
+// Cache de registrações para auto-detecção por gameNick
+let _registrations = []
+
 ipcMain.handle('site:getLeagues', async () => {
   try {
     const res = await apiFetch('/api/perfil')
     if (!res.ok) return []
     const data = await res.json()
+    _registrations = data.registrations ?? []
     const seen = new Set()
     const leagues = []
-    for (const reg of data.registrations ?? []) {
+    for (const reg of _registrations) {
       if (!reg.isLeagueActive) continue
       if (seen.has(reg.leagueId)) continue
       seen.add(reg.leagueId)
-      leagues.push({ id: reg.leagueId, name: reg.leagueName, guildName: reg.guildName, seasonNumber: reg.seasonNumber })
+      leagues.push({ id: reg.leagueId, name: reg.leagueName, guildName: reg.guildName,
+                     seasonNumber: reg.seasonNumber, gameNick: reg.gameNick })
     }
     return leagues
   } catch { return [] }
 })
+
+// Tenta auto-selecionar a liga com base no nick do personagem detectado no packet
+async function _tryAutoSelectLeague(charName) {
+  if (!charName || !_registrations.length) return
+  const nick = charName.toLowerCase().trim()
+  const match = _registrations.find(r =>
+    r.isLeagueActive && r.gameNick && r.gameNick.toLowerCase().trim() === nick
+  )
+  if (match) {
+    const s = await getStore()
+    s.set('selectedLeagueId', match.leagueId)
+    currentLeagueId = match.leagueId
+    sendToWin(mainWin, 'monitor:leagueAutoSelected', {
+      leagueId: match.leagueId,
+      leagueName: match.leagueName,
+      charName,
+    })
+  }
+}
 
 const LOOT_FILTER = ['Heroic', 'Satanic', 'Angelic', 'Unholy', 'Set']
 
@@ -857,7 +881,12 @@ function spawnSniffer() {
         _sendStatsUpdate()
         return
       }
-      if (msg.type === 'stat:account' || msg.type === 'stat:vitals') {
+      if (msg.type === 'stat:account') {
+        sendToWin(mainWin, 'stats:account', msg)
+        if (msg.name) _tryAutoSelectLeague(msg.name)
+        return
+      }
+      if (msg.type === 'stat:vitals') {
         sendToWin(mainWin, 'stats:account', msg)
         return
       }
