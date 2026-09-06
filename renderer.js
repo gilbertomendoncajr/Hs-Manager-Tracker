@@ -1121,8 +1121,11 @@ function _updateSatanic(satanic) {
     const name = b ? b[0] : `Buff ${id}`
     const desc = b ? b[1] : ''
     return `<div class="szb-mod">
-      <div class="szb-mod-name pros">${name}</div>
-      ${desc ? `<div class="szb-mod-desc">${desc}</div>` : ''}
+      <img class="szb-icon" src="assets/icons/buffs/${id}.png" alt="" onerror="this.style.display='none'">
+      <div class="szb-mod-text">
+        <div class="szb-mod-name pros">${name}</div>
+        ${desc ? `<div class="szb-mod-desc">${desc}</div>` : ''}
+      </div>
     </div>`
   }
   const renderDebuff = (id) => {
@@ -1130,8 +1133,10 @@ function _updateSatanic(satanic) {
     const name = d ? d[0] : `Debuff ${id}`
     const desc = d ? d[1] : ''
     return `<div class="szb-mod">
-      <div class="szb-mod-name cons">${name}</div>
-      ${desc ? `<div class="szb-mod-desc">${desc}</div>` : ''}
+      <div class="szb-mod-text">
+        <div class="szb-mod-name cons">${name}</div>
+        ${desc ? `<div class="szb-mod-desc">${desc}</div>` : ''}
+      </div>
     </div>`
   }
 

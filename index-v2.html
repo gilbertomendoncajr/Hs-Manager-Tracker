@@ -737,12 +737,14 @@ body.tab-liga .ua-player { display: block; }
 .szb-col-label { font-size: var(--fs-xs); font-weight: 700; letter-spacing: .14em; margin-bottom: 5px; }
 .szb-col-label.pros { color: #4caf50; }
 .szb-col-label.cons { color: #f44336; }
-.szb-mod { padding: 4px 0; border-bottom: 1px solid var(--brt); }
+.szb-mod { display: flex; align-items: flex-start; gap: 7px; padding: 5px 0; border-bottom: 1px solid var(--brt); }
 .szb-mod:last-child { border-bottom: none; }
+.szb-icon { width: 22px; height: 22px; object-fit: contain; flex-shrink: 0; border-radius: 2px; }
+.szb-mod-text { display: flex; flex-direction: column; gap: 1px; }
 .szb-mod-name { font-size: var(--fs-xs); font-weight: 600; line-height: 1.3; }
 .szb-mod-name.pros { color: #4caf50; }
 .szb-mod-name.cons { color: #f44336; }
-.szb-mod-desc { font-size: 10px; color: var(--text3); line-height: 1.3; margin-top: 1px; }
+.szb-mod-desc { font-size: 10px; color: var(--text3); line-height: 1.3; }
 .szb-mod-empty { font-size: var(--fs-xs); color: var(--text3); }
 
 /* Item timeline */
