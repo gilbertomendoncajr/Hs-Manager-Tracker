@@ -1037,11 +1037,51 @@ body.no-bp.tab-liga .bp-disabled-overlay { display: flex; }
 .bot-sep { width: 1px; height: 22px; background: var(--border); flex-shrink: 0; }
 .bot-reset-btn {
   background: transparent; border: 1px solid var(--border); border-radius: 4px;
-  color: var(--text3); cursor: pointer; padding: 4px 6px;
-  display: flex; align-items: center; flex-shrink: 0;
+  color: var(--text3); cursor: pointer; padding: 4px 8px;
+  display: flex; align-items: center; gap: 5px; flex-shrink: 0;
+  font-family: inherit; font-size: 11px; font-weight: 500; letter-spacing: .03em;
   transition: color .15s, border-color .15s;
 }
 .bot-reset-btn:hover { color: var(--text); border-color: var(--text3); }
+
+/* Reset confirmation modal */
+#resetModal {
+  display: none; position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.55); backdrop-filter: blur(4px);
+  align-items: center; justify-content: center;
+}
+#resetModal.open { display: flex; }
+.reset-modal-box {
+  background: var(--surf); border: 1px solid var(--border); border-radius: 14px;
+  padding: 24px 20px 20px; width: 300px; box-shadow: 0 8px 32px rgba(0,0,0,.4);
+}
+.reset-modal-title {
+  font-size: 15px; font-weight: 700; color: var(--text);
+  margin-bottom: 6px; letter-spacing: .01em;
+}
+.reset-modal-char {
+  font-size: 11px; color: var(--text3); margin-bottom: 18px;
+}
+.reset-modal-char span { color: var(--accent); font-weight: 600; }
+.reset-modal-option {
+  display: flex; align-items: center; gap: 12px;
+  border: 1px solid var(--border); border-radius: 10px;
+  padding: 12px 14px; cursor: pointer; margin-bottom: 8px;
+  background: transparent; width: 100%; text-align: left;
+  font-family: inherit; transition: background .15s, border-color .15s;
+}
+.reset-modal-option:last-child { margin-bottom: 0; }
+.reset-modal-option-icon {
+  width: 34px; height: 34px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  font-size: 16px;
+}
+.reset-modal-option-label { font-size: 13px; font-weight: 600; color: var(--text); }
+.reset-modal-option-desc  { font-size: 11px; color: var(--text3); margin-top: 2px; }
+.reset-opt-cancel  .reset-modal-option-icon { background: rgba(72,187,120,.12); }
+.reset-opt-cancel:hover  { background: rgba(72,187,120,.07); border-color: rgba(72,187,120,.4); }
+.reset-opt-clear   .reset-modal-option-icon { background: rgba(237,137,54,.12); }
+.reset-opt-clear:hover   { background: rgba(237,137,54,.07); border-color: rgba(237,137,54,.4); }
 
 .bot-timer {
   font-family: 'Space Mono', monospace;
@@ -1568,10 +1608,11 @@ body.no-bp.tab-liga .bp-disabled-overlay { display: flex; }
       </div>
       <div class="bot-sep"></div>
       <span class="bot-timer" id="sessionTimer">00:00:00</span>
-      <button id="btnResetSession" class="bot-reset-btn" title="Reiniciar farm (zera drops e estatísticas)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13">
+      <button id="btnResetSession" class="bot-reset-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12">
           <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/>
         </svg>
+        Reiniciar Farm
       </button>
       <div class="bot-sp"></div>
       <button id="btnToggleMonitor" class="start" disabled>▶ INICIAR</button>
@@ -1579,6 +1620,28 @@ body.no-bp.tab-liga .bp-disabled-overlay { display: flex; }
 
   </div><!-- /main-col -->
 </div><!-- /app-frame -->
+
+<!-- Reset confirmation modal -->
+<div id="resetModal">
+  <div class="reset-modal-box">
+    <div class="reset-modal-title">Reiniciar Farm</div>
+    <div class="reset-modal-char">Personagem: <span id="resetModalChar">—</span></div>
+    <button class="reset-modal-option reset-opt-cancel" id="resetOptCancel">
+      <div class="reset-modal-option-icon">▶</div>
+      <div>
+        <div class="reset-modal-option-label">Continuar Farm Atual</div>
+        <div class="reset-modal-option-desc">Mantém todos os dados desta sessão</div>
+      </div>
+    </button>
+    <button class="reset-modal-option reset-opt-clear" id="resetOptClear">
+      <div class="reset-modal-option-icon">🗑</div>
+      <div>
+        <div class="reset-modal-option-label">Limpar e Reiniciar</div>
+        <div class="reset-modal-option-desc">Zera drops e estatísticas para um novo farm</div>
+      </div>
+    </button>
+  </div>
+</div>
 </div><!-- /screenApp -->
 
 <script src="renderer.js"></script>

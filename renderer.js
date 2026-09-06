@@ -1253,9 +1253,29 @@ if (window.api.onBpMode) {
   window.api.onBpMode(({ active }) => setBpMode(active))
 }
 
-const btnResetSession = document.getElementById('btnResetSession')
-if (btnResetSession) {
-  btnResetSession.addEventListener('click', () => {
+const btnResetSession  = document.getElementById('btnResetSession')
+const resetModal       = document.getElementById('resetModal')
+const resetModalChar   = document.getElementById('resetModalChar')
+const resetOptCancel   = document.getElementById('resetOptCancel')
+const resetOptClear    = document.getElementById('resetOptClear')
+
+function openResetModal() {
+  const charName = document.querySelector('.monitor-char')?.textContent?.trim()
+    || _charIdentifiedLocal && 'Personagem ativo'
+    || '—'
+  if (resetModalChar) resetModalChar.textContent = charName
+  if (resetModal) resetModal.classList.add('open')
+}
+function closeResetModal() {
+  if (resetModal) resetModal.classList.remove('open')
+}
+
+if (btnResetSession)  btnResetSession.addEventListener('click', openResetModal)
+if (resetOptCancel)   resetOptCancel.addEventListener('click', closeResetModal)
+if (resetModal)       resetModal.addEventListener('click', (e) => { if (e.target === resetModal) closeResetModal() })
+if (resetOptClear) {
+  resetOptClear.addEventListener('click', () => {
+    closeResetModal()
     if (window.api.resetSession) window.api.resetSession()
   })
 }
