@@ -911,6 +911,14 @@ function spawnSniffer() {
         _sendStatsUpdate()
         return
       }
+      if (msg.type === 'debug:login_dump') {
+        sendToWin(mainWin, 'log:entry', {
+          type: 'warn',
+          message: `[LOGIN_DUMP] name=${msg.name} bloodPact=${msg.bloodPact} keys=${(msg.keys||[]).join(',')}`,
+          ts: Date.now(),
+        })
+        return
+      }
       if (msg.type === 'debug:bp_scan') {
         sendToWin(mainWin, 'log:entry', {
           type: 'warn',

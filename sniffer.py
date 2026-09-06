@@ -835,6 +835,12 @@ def process_all(msgs: list[dict], src_ip: str):
                     _my_char_name = char
                     emit_line({"type": "player_login", "charName": char, "accountUID": uid})
                     log_debug(f"PLAYER_LOGIN: {char} uid={uid}")
+                    # DEBUG: dump login packet keys+bp para ver se bloodPact está aqui
+                    bp_in_login = msg.get("bloodPact") or msg.get("blood_pact") or msg.get("bp")
+                    emit_line({"type": "debug:login_dump",
+                               "keys": sorted(msg.keys()),
+                               "bloodPact": bp_in_login,
+                               "name": char})
             except: pass
         _check_gold(msg)
         _check_xp(msg)
