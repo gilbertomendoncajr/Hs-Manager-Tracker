@@ -92,6 +92,7 @@ let sseAbort = null   // AbortController para fechar a conexão SSE ao parar
 let isMonitoring = false
 let currentLeagueId = null
 const charMap = {}   // accountUID (number) → charName (string)
+let currentCharName = null
 let myDiscordId = null
 let myDiscordUsername = null
 let charIdentified = false
@@ -458,9 +459,7 @@ function sendLog(type, message, item = null, tab = 'both') {
 }
 
 function sendState() {
-  const knownChars = Object.values(charMap)
-  const charName = knownChars.length > 0 ? knownChars[knownChars.length - 1] : null
-  const state = { isMonitoring, leagueId: currentLeagueId, charIdentified, charName }
+  const state = { isMonitoring, leagueId: currentLeagueId, charIdentified, charName: currentCharName }
   sendToWin(mainWin, 'monitor:stateChange', state)
   sendToWin(compactWin, 'monitor:stateChange', state)
 }
@@ -794,6 +793,7 @@ function stopMonitor() {
   }
   isMonitoring = false
   charIdentified = false
+  currentCharName = null
   // Não limpa currentLeagueId — preserva para resume na mesma liga
   sendState()
 }
@@ -852,8 +852,9 @@ function spawnSniffer() {
       }
 
       if (msg.type === 'player_login') {
-        const prevChar = charMap[msg.accountUID]
+        const prevChar = currentCharName
         charMap[msg.accountUID] = msg.charName
+        currentCharName = msg.charName
         if (!charIdentified) {
           charIdentified = true
           sendState()
@@ -861,6 +862,7 @@ function spawnSniffer() {
         } else if (prevChar && prevChar !== msg.charName) {
           dropHistory = []
           _resetSessStats()
+          sendState()
           sendToWin(mainWin, 'session:reset', {})
           sendLog('info', t(`🔄 Personagem trocado para ${msg.charName} — sessão reiniciada automaticamente.`, `🔄 Character changed to ${msg.charName} — session reset automatically.`))
         }
@@ -1102,6 +1104,7 @@ ipcMain.handle('monitor:start', async (_e, leagueId) => {
   currentLeagueId = leagueId
   isMonitoring = true
   charIdentified = false
+  currentCharName = null
   if (!isResume) {
     dropHistory = []
     _resetSessStats()
