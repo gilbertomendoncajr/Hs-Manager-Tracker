@@ -780,8 +780,8 @@ def _check_satanic(msg: dict):
 
 def process_all(msgs: list[dict], src_ip: str):
     global _my_uid
-    # hs-tracker descarta inventory_charms (dump completo do inventário) e steam
-    msgs = [m for m in msgs if 'inventory_charms' not in m and 'steam' not in m]
+    # Stats + debug scan roda em TODOS os pacotes — antes de qualquer filtro.
+    # O filtro inventory_charms só se aplica ao processamento de itens.
     for msg in msgs:
         # DEBUG temporário: qualquer campo relacionado a blood_pact ou save-packet completo
         _bp = msg.get("blood_pact") or msg.get("bloodPact") or msg.get("bp") or msg.get("bloodpact")
@@ -794,20 +794,25 @@ def process_all(msgs: list[dict], src_ip: str):
                        "season": msg.get("season"),
                        "sig_match": _has_sig})
         if "accountUID" in msg and "name" in msg:
-            uid = int(msg["accountUID"])
-            char = str(msg["name"]).strip()
-            if char and uid and uid not in _emitted_logins:
-                _emitted_logins.add(uid)
-                _my_uid = uid
-                emit_line({"type": "player_login", "charName": char, "accountUID": uid})
-                log_debug(f"PLAYER_LOGIN: {char} uid={uid}")
+            try:
+                uid = int(msg["accountUID"])
+                char = str(msg["name"]).strip()
+                if char and uid and uid not in _emitted_logins:
+                    _emitted_logins.add(uid)
+                    _my_uid = uid
+                    emit_line({"type": "player_login", "charName": char, "accountUID": uid})
+                    log_debug(f"PLAYER_LOGIN: {char} uid={uid}")
+            except: pass
         _check_gold(msg)
         _check_xp(msg)
         _check_tallies(msg)
         _check_account(msg)
         _check_vitals_and_zone(msg)
         _check_satanic(msg)
-    process_messages(msgs, src_ip)
+    # hs-tracker descarta inventory_charms (dump completo do inventário) e steam
+    # apenas para detecção de itens — não para as checagens de stats acima.
+    item_msgs = [m for m in msgs if 'inventory_charms' not in m and 'steam' not in m]
+    process_messages(item_msgs, src_ip)
 
 # ─── TCP flows (um FlowBuffer por fluxo) ────────────────────────────────────
 
