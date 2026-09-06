@@ -1010,6 +1010,29 @@ body.tab-liga .ua-player { display: block; }
   flex: 1; min-width: 0; height: 100%;
   letter-spacing: .02em;
 }
+#leagueSelect:disabled {
+  color: var(--text3); cursor: default; opacity: 0.7;
+}
+body.no-bp .bot-league {
+  opacity: 0.6;
+}
+.bp-disabled-overlay {
+  display: none;
+  position: absolute; inset: 0; z-index: 10;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(3px);
+  align-items: center; justify-content: center; flex-direction: column;
+  gap: 10px;
+  pointer-events: all;
+}
+body.no-bp.tab-liga .bp-disabled-overlay { display: flex; }
+.bp-disabled-overlay-icon { font-size: 32px; }
+.bp-disabled-overlay-title {
+  color: var(--text); font-size: 14px; font-weight: 600; letter-spacing: .04em;
+}
+.bp-disabled-overlay-sub {
+  color: var(--text3); font-size: 11px; text-align: center; max-width: 220px; line-height: 1.5;
+}
 
 .bot-sep { width: 1px; height: 22px; background: var(--border); flex-shrink: 0; }
 
@@ -1262,7 +1285,12 @@ body.tab-liga .ua-player { display: block; }
       <div class="page" id="p-status"></div>
 
       <!-- DROPS — default active page -->
-      <div class="page active" id="p-drops">
+      <div class="page active" id="p-drops" style="position:relative">
+        <div class="bp-disabled-overlay">
+          <div class="bp-disabled-overlay-icon">⛔</div>
+          <div class="bp-disabled-overlay-title">Blood Pact não detectado</div>
+          <div class="bp-disabled-overlay-sub">Este personagem não faz parte de nenhuma liga Blood Pact. Entre com um personagem vinculado para ver a liga.</div>
+        </div>
 
         <!-- Hidden tab bar (compat) -->
         <div class="tab-bar">

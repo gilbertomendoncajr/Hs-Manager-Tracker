@@ -841,15 +841,14 @@ def process_all(msgs: list[dict], src_ip: str):
                              msg.get("blood_pact") or msg.get("bp") or 0)
                     try: bp_id = int(bp_id)
                     except: bp_id = 0
-                    if bp_id:
-                        emit_line({"type": "stat:account", "name": char,
-                                   "level": int(msg.get("level") or 0),
-                                   "heroLevel": int(msg.get("level") or 0),
-                                   "mf": 0,
-                                   "hardcore": bool(msg.get("hardcore") or msg.get("hc")),
-                                   "difficulty": 0,
-                                   "bloodPact": bp_id,
-                                   "season": int(msg.get("season") or 0)})
+                    emit_line({"type": "stat:account", "name": char,
+                               "level": int(msg.get("level") or 0),
+                               "heroLevel": int(msg.get("level") or 0),
+                               "mf": 0,
+                               "hardcore": bool(msg.get("hardcore") or msg.get("hc")),
+                               "difficulty": 0,
+                               "bloodPact": bp_id,
+                               "season": int(msg.get("season") or 0)})
             except: pass
         _check_gold(msg)
         _check_xp(msg)

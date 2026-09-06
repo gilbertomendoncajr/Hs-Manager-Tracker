@@ -940,6 +940,7 @@ function spawnSniffer() {
         } else if (msg.name) {
           _tryAutoSelectLeague(msg.name)
         }
+        sendToWin(mainWin, 'monitor:bpMode', { active: !!msg.bloodPact, charName: msg.name })
         return
       }
       if (msg.type === 'stat:vitals') {

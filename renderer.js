@@ -1230,6 +1230,29 @@ if (window.api.onLeagueAutoSelected) {
   })
 }
 
+function setBpMode(active) {
+  document.body.classList.toggle('no-bp', !active)
+  if (!active) {
+    leagueSelect.disabled = true
+    const prev = leagueSelect.querySelector('option[value="__no_bp__"]')
+    if (!prev) {
+      const opt = document.createElement('option')
+      opt.value = '__no_bp__'
+      opt.textContent = '⛔ Blood Pact desativado'
+      leagueSelect.insertBefore(opt, leagueSelect.firstChild)
+    }
+    leagueSelect.value = '__no_bp__'
+  } else {
+    leagueSelect.disabled = false
+    const noBpOpt = leagueSelect.querySelector('option[value="__no_bp__"]')
+    if (noBpOpt) noBpOpt.remove()
+  }
+}
+
+if (window.api.onBpMode) {
+  window.api.onBpMode(({ active }) => setBpMode(active))
+}
+
 // ── Window controls ──────────────────────────────────────────────────────────
 const btnWinMinimize = document.getElementById('btnWinMinimize')
 const btnWinClose    = document.getElementById('btnWinClose')
