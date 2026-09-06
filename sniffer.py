@@ -828,27 +828,31 @@ def process_all(msgs: list[dict], src_ip: str):
                        "sig_match": _has_sig})
         if "accountUID" in msg and "name" in msg:
             try:
-                uid = int(msg["accountUID"])
                 char = str(msg["name"]).strip()
-                if char and uid and (uid not in _emitted_logins or char != _my_char_name):
-                    _emitted_logins.add(uid)
-                    _my_uid = uid
-                    _my_char_name = char
-                    emit_line({"type": "player_login", "charName": char, "accountUID": uid})
-                    log_debug(f"PLAYER_LOGIN: {char} uid={uid}")
-                    # bloodPactId está no login packet — emite stat:account direto
-                    bp_id = (msg.get("bloodPactId") or msg.get("bloodPact") or
-                             msg.get("blood_pact") or msg.get("bp") or 0)
-                    try: bp_id = int(bp_id)
-                    except: bp_id = 0
-                    emit_line({"type": "stat:account", "name": char,
-                               "level": int(msg.get("level") or 0),
-                               "heroLevel": int(msg.get("level") or 0),
-                               "mf": 0,
-                               "hardcore": bool(msg.get("hardcore") or msg.get("hc")),
-                               "difficulty": 0,
-                               "bloodPact": bp_id,
-                               "season": int(msg.get("season") or 0)})
+                if char:
+                    # accountUID pode ser null no packet — usa _my_uid como fallback
+                    try: uid = int(msg["accountUID"])
+                    except (TypeError, ValueError): uid = _my_uid or 0
+                    is_new    = uid and uid not in _emitted_logins
+                    is_switch = _my_char_name is not None and char != _my_char_name
+                    if is_new or is_switch:
+                        if uid: _emitted_logins.add(uid)
+                        _my_uid = uid or _my_uid
+                        _my_char_name = char
+                        emit_line({"type": "player_login", "charName": char, "accountUID": _my_uid})
+                        log_debug(f"PLAYER_LOGIN: {char} uid={_my_uid}")
+                        bp_id = (msg.get("bloodPactId") or msg.get("bloodPact") or
+                                 msg.get("blood_pact") or msg.get("bp") or 0)
+                        try: bp_id = int(bp_id)
+                        except: bp_id = 0
+                        emit_line({"type": "stat:account", "name": char,
+                                   "level": int(msg.get("level") or 0),
+                                   "heroLevel": int(msg.get("level") or 0),
+                                   "mf": 0,
+                                   "hardcore": bool(msg.get("hardcore") or msg.get("hc")),
+                                   "difficulty": 0,
+                                   "bloodPact": bp_id,
+                                   "season": int(msg.get("season") or 0)})
             except: pass
         _check_gold(msg)
         _check_xp(msg)
