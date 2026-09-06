@@ -914,7 +914,7 @@ function spawnSniffer() {
       if (msg.type === 'debug:bp_scan') {
         sendToWin(mainWin, 'log:entry', {
           type: 'warn',
-          message: `[BP_SCAN] sig=${msg.sig_match} bp=${msg.blood_pact} name=${msg.name} season=${msg.season} keys=${(msg.keys||[]).join(',')}`,
+          message: `[BP_SCAN] sig=${msg.sig_match} bp=${msg.blood_pact} name=${msg.name} uid=${msg.uid} my_uid=${msg.my_uid} season=${msg.season} keys=${(msg.keys||[]).join(',')}`,
           ts: Date.now(),
         })
         return

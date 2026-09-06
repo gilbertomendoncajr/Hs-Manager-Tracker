@@ -707,6 +707,32 @@ def _check_tallies(msg: dict):
 
 def _check_account(msg: dict):
     keys = set(msg.keys())
+
+    # Social/lobby packet format: {bloodPact, uid, name, class, level, hc, season, ...}
+    # Esses pacotes listam membros do Blood Pact com chaves diferentes do save-packet.
+    # uid aqui é o account UID do personagem — podemos identificar o nosso.
+    if "bloodPact" in msg and "uid" in msg and "name" in msg and "class" in msg:
+        try:
+            pkt_uid    = int(msg.get("uid") or 0)
+            name       = str(msg.get("name") or "")
+            blood_pact = int(msg.get("bloodPact") or 0)
+            season     = int(msg.get("season") or 0)
+            level      = int(msg.get("level") or 0)
+            hardcore   = bool(msg.get("hc") or msg.get("hardcore") or False)
+            if name and blood_pact:
+                # Se for nosso jogador (uid conhecido), emite stat:account completo
+                if _my_uid is not None and pkt_uid == _my_uid:
+                    emit_line({"type": "stat:account", "name": name, "level": level,
+                               "heroLevel": level, "mf": 0, "hardcore": hardcore,
+                               "difficulty": 0, "bloodPact": blood_pact, "season": season})
+                else:
+                    # Outro membro do BP — emite evento separado para linking futuro
+                    emit_line({"type": "stat:bp_member", "name": name, "uid": pkt_uid,
+                               "bloodPact": blood_pact, "season": season})
+        except: pass
+        return
+
+    # Save-packet clássico: {name, class, heroLevel, season, hardcore}
     if not (_ACCOUNT_SIG <= keys or _ACCOUNT_SIG_ALT <= keys):
         return
     if "accountUID" in msg or "unique_account_id" in msg or "uniqueAccountId" in msg:
@@ -791,6 +817,8 @@ def process_all(msgs: list[dict], src_ip: str):
                        "keys": sorted(msg.keys()),
                        "blood_pact": _bp,
                        "name": msg.get("name", ""),
+                       "uid": msg.get("uid"),
+                       "my_uid": _my_uid,
                        "season": msg.get("season"),
                        "sig_match": _has_sig})
         if "accountUID" in msg and "name" in msg:
