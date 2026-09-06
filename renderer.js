@@ -1255,8 +1255,10 @@ function setBpMode(active) {
 }
 
 // ── Class icon helper ─────────────────────────────────────────────────────────
+// Index 0 unused — game sends 1-based class IDs matching the in-game class grid order
 const CLASS_ID_NAMES = [
-  'Viking','Pyromancer','Pirate','Marksman','Nomad','Redneck',
+  null,
+  'Viking','Pyromancer','Marksman','Pirate','Nomad','Redneck',
   'Necromancer','Samurai','Paladin','Amazon','Demon_Slayer','Demonspawn',
   'Shaman','White_Mage','Marauder','Plague_Doctor','Shield_Lancer',
   'Jotunn','Illusionist','Exo','Butcher','Stormweaver'
