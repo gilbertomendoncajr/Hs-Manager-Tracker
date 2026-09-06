@@ -830,14 +830,15 @@ def process_all(msgs: list[dict], src_ip: str):
             try:
                 char = str(msg["name"]).strip()
                 if char:
-                    # accountUID pode ser null no packet — usa _my_uid como fallback
-                    try: uid = int(msg["accountUID"])
-                    except (TypeError, ValueError): uid = _my_uid or 0
-                    is_new    = uid and uid not in _emitted_logins
+                    uid_raw = msg.get("accountUID")
+                    try: uid = int(uid_raw)
+                    except (TypeError, ValueError): uid = 0
+                    is_first  = _my_char_name is None               # nenhum char detectado ainda
+                    is_new    = uid > 0 and uid not in _emitted_logins
                     is_switch = _my_char_name is not None and char != _my_char_name
-                    if is_new or is_switch:
-                        if uid: _emitted_logins.add(uid)
-                        _my_uid = uid or _my_uid
+                    if is_first or is_new or is_switch:
+                        if uid > 0: _emitted_logins.add(uid)
+                        if uid > 0: _my_uid = uid
                         _my_char_name = char
                         emit_line({"type": "player_login", "charName": char, "accountUID": _my_uid})
                         log_debug(f"PLAYER_LOGIN: {char} uid={_my_uid}")
