@@ -1256,7 +1256,7 @@ function setBpMode(active) {
 
 // ── Class icon helper ─────────────────────────────────────────────────────────
 const CLASS_ID_NAMES = [
-  'Viking','Pyromancer','Marksman','Pirate','Nomad','Redneck',
+  'Viking','Pyromancer','Pirate','Marksman','Nomad','Redneck',
   'Necromancer','Samurai','Paladin','Amazon','Demon_Slayer','Demonspawn',
   'Shaman','White_Mage','Marauder','Plague_Doctor','Shield_Lancer',
   'Jotunn','Illusionist','Exo','Butcher','Stormweaver'
