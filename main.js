@@ -575,10 +575,16 @@ ipcMain.handle('auth:getSession', async () => {
   if (!token) return null
   try {
     const res = await apiFetch('/api/perfil')
-    if (!res.ok) { s.set('sessionToken', null); return null }
+    // 401/403 = sessão realmente expirada → limpar token
+    if (res.status === 401 || res.status === 403) {
+      s.set('sessionToken', null)
+      return null
+    }
+    // 5xx ou outro erro = servidor indisponível → manter token e tentar depois
+    if (!res.ok) return null
     const data = await res.json()
     return { discordUsername: data.username, discordId: data.discordId }
-  } catch { return null }
+  } catch { return null }  // erro de rede → manter token
 })
 
 // ── Ligas ativo do jogador ──────────────────────────────────────────────────
