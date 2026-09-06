@@ -592,6 +592,7 @@ def process_messages(messages: list[dict], src_ip: str):
 
 _emitted_logins: set = set()
 _my_uid: int | None = None
+_my_char_name: str | None = None
 
 def _fp_account(fp) -> int | None:
     if not fp: return None
@@ -720,8 +721,11 @@ def _check_account(msg: dict):
             level      = int(msg.get("level") or 0)
             hardcore   = bool(msg.get("hc") or msg.get("hardcore") or False)
             if name and blood_pact:
-                # Se for nosso jogador (uid conhecido), emite stat:account completo
-                if _my_uid is not None and pkt_uid == _my_uid:
+                is_me = (
+                    (_my_uid is not None and pkt_uid == _my_uid) or
+                    (_my_char_name is not None and name.lower() == _my_char_name.lower())
+                )
+                if is_me:
                     emit_line({"type": "stat:account", "name": name, "level": level,
                                "heroLevel": level, "mf": 0, "hardcore": hardcore,
                                "difficulty": 0, "bloodPact": blood_pact, "season": season})
@@ -828,6 +832,7 @@ def process_all(msgs: list[dict], src_ip: str):
                 if char and uid and uid not in _emitted_logins:
                     _emitted_logins.add(uid)
                     _my_uid = uid
+                    _my_char_name = char
                     emit_line({"type": "player_login", "charName": char, "accountUID": uid})
                     log_debug(f"PLAYER_LOGIN: {char} uid={uid}")
             except: pass
