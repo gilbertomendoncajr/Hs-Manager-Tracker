@@ -712,11 +712,11 @@ def _check_account(msg: dict):
     # Social/lobby packet format: {bloodPact, uid, name, class, level, hc, season, ...}
     # Esses pacotes listam membros do Blood Pact com chaves diferentes do save-packet.
     # uid aqui é o account UID do personagem — podemos identificar o nosso.
-    if "bloodPact" in msg and "uid" in msg and "name" in msg and "class" in msg:
+    if ("bloodPact" in msg or "bloodPactId" in msg) and "uid" in msg and "name" in msg and "class" in msg:
         try:
             pkt_uid    = int(msg.get("uid") or 0)
             name       = str(msg.get("name") or "")
-            blood_pact = int(msg.get("bloodPact") or 0)
+            blood_pact = int(msg.get("bloodPactId") or msg.get("bloodPact") or 0)
             season     = int(msg.get("season") or 0)
             level      = int(msg.get("level") or 0)
             hardcore   = bool(msg.get("hc") or msg.get("hardcore") or False)
@@ -814,7 +814,8 @@ def process_all(msgs: list[dict], src_ip: str):
     # O filtro inventory_charms só se aplica ao processamento de itens.
     for msg in msgs:
         # DEBUG temporário: qualquer campo relacionado a blood_pact ou save-packet completo
-        _bp = msg.get("blood_pact") or msg.get("bloodPact") or msg.get("bp") or msg.get("bloodpact")
+        _bp = (msg.get("bloodPactId") or msg.get("blood_pact") or
+               msg.get("bloodPact") or msg.get("bp") or msg.get("bloodpact"))
         _has_sig = _ACCOUNT_SIG <= set(msg.keys()) or _ACCOUNT_SIG_ALT <= set(msg.keys())
         if _bp or _has_sig:
             emit_line({"type": "debug:bp_scan",
@@ -835,12 +836,20 @@ def process_all(msgs: list[dict], src_ip: str):
                     _my_char_name = char
                     emit_line({"type": "player_login", "charName": char, "accountUID": uid})
                     log_debug(f"PLAYER_LOGIN: {char} uid={uid}")
-                    # DEBUG: dump login packet keys+bp para ver se bloodPact está aqui
-                    bp_in_login = msg.get("bloodPact") or msg.get("blood_pact") or msg.get("bp")
-                    emit_line({"type": "debug:login_dump",
-                               "keys": sorted(msg.keys()),
-                               "bloodPact": bp_in_login,
-                               "name": char})
+                    # bloodPactId está no login packet — emite stat:account direto
+                    bp_id = (msg.get("bloodPactId") or msg.get("bloodPact") or
+                             msg.get("blood_pact") or msg.get("bp") or 0)
+                    try: bp_id = int(bp_id)
+                    except: bp_id = 0
+                    if bp_id:
+                        emit_line({"type": "stat:account", "name": char,
+                                   "level": int(msg.get("level") or 0),
+                                   "heroLevel": int(msg.get("level") or 0),
+                                   "mf": 0,
+                                   "hardcore": bool(msg.get("hardcore") or msg.get("hc")),
+                                   "difficulty": 0,
+                                   "bloodPact": bp_id,
+                                   "season": int(msg.get("season") or 0)})
             except: pass
         _check_gold(msg)
         _check_xp(msg)
