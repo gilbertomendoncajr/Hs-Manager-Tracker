@@ -809,7 +809,7 @@ def _check_satanic(msg: dict):
                "ts_ms": int(time.time() * 1000)})
 
 def process_all(msgs: list[dict], src_ip: str):
-    global _my_uid
+    global _my_uid, _my_char_name
     # Stats + debug scan roda em TODOS os pacotes — antes de qualquer filtro.
     # O filtro inventory_charms só se aplica ao processamento de itens.
     for msg in msgs:
