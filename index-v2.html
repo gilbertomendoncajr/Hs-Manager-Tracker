@@ -234,6 +234,41 @@ body {
 .nav-div { height: 1px; background: var(--border); margin: 5px 8px; flex-shrink: 0; }
 .nav-sp { flex: 1; }
 
+/* Character card */
+.side-char-card {
+  border-top: 1px solid var(--border);
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.side-char-card[hidden] { display: none !important; }
+.char-class-icon {
+  width: 48px; height: 48px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  flex-shrink: 0;
+}
+.char-card-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.char-card-name {
+  font-family: var(--font-title);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.char-card-class {
+  font-size: var(--fs-xs);
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
 .side-version {
   padding: 8px 16px;
   font-family: var(--font-sans);
@@ -1207,6 +1242,8 @@ body.no-bp.tab-liga .bp-disabled-overlay { display: flex; }
         <span class="nav-btn-label" data-i18n="nav.filter">Filtro</span>
       </button>
 
+      <div class="nav-div"></div>
+
       <button class="nav-btn nav-compact-btn" id="btnCompact">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <rect x="2" y="3" width="20" height="14" rx="2"/>
@@ -1235,6 +1272,15 @@ body.no-bp.tab-liga .bp-disabled-overlay { display: flex; }
       </button>
 
     </div><!-- /side-nav-wrap -->
+
+    <!-- Character card (shown when character identified) -->
+    <div id="sideCharCard" class="side-char-card" hidden>
+      <img id="sideCharClassIcon" class="char-class-icon" src="" alt="">
+      <div class="char-card-info">
+        <div id="sideCharName" class="char-card-name"></div>
+        <div id="sideCharClassName" class="char-card-class"></div>
+      </div>
+    </div>
 
     <div class="side-version">v1.9.2</div>
   </nav>

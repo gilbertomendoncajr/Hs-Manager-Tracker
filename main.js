@@ -93,6 +93,7 @@ let isMonitoring = false
 let currentLeagueId = null
 const charMap = {}   // accountUID (number) → charName (string)
 let currentCharName = null
+let currentCharClass = null
 let myDiscordId = null
 let myDiscordUsername = null
 let charIdentified = false
@@ -459,7 +460,7 @@ function sendLog(type, message, item = null, tab = 'both') {
 }
 
 function sendState() {
-  const state = { isMonitoring, leagueId: currentLeagueId, charIdentified, charName: currentCharName }
+  const state = { isMonitoring, leagueId: currentLeagueId, charIdentified, charName: currentCharName, charClass: currentCharClass }
   sendToWin(mainWin, 'monitor:stateChange', state)
   sendToWin(compactWin, 'monitor:stateChange', state)
 }
@@ -794,6 +795,7 @@ function stopMonitor() {
   isMonitoring = false
   charIdentified = false
   currentCharName = null
+  currentCharClass = null
   // Não limpa currentLeagueId — preserva para resume na mesma liga
   sendState()
 }
@@ -937,18 +939,13 @@ function spawnSniffer() {
       }
       if (msg.type === 'stat:account') {
         sendToWin(mainWin, 'stats:account', msg)
-        console.log(`[DEBUG stat:account] name=${msg.name} bloodPact=${msg.bloodPact} season=${msg.season} hardcore=${msg.hardcore}`)
-        sendToWin(mainWin, 'log:entry', {
-          type: 'info',
-          message: `[DEBUG] stat:account — name=${msg.name} bloodPact=${msg.bloodPact} season=${msg.season} hardcore=${msg.hardcore}`,
-          ts: Date.now(),
-        })
+        if (msg.charClass != null) currentCharClass = msg.charClass
         if (msg.bloodPact) {
           _tryAutoSelectByBloodPact(msg.bloodPact, msg.name)
         } else if (msg.name) {
           _tryAutoSelectLeague(msg.name)
         }
-        sendToWin(mainWin, 'monitor:bpMode', { active: !!msg.bloodPact, charName: msg.name })
+        sendToWin(mainWin, 'monitor:bpMode', { active: !!msg.bloodPact, charName: msg.name, charClass: currentCharClass })
         return
       }
       if (msg.type === 'stat:vitals') {
@@ -1105,6 +1102,7 @@ ipcMain.handle('monitor:start', async (_e, leagueId) => {
   isMonitoring = true
   charIdentified = false
   currentCharName = null
+  currentCharClass = null
   if (!isResume) {
     dropHistory = []
     _resetSessStats()

@@ -750,6 +750,11 @@ window.api.onStateChange((state) => {
   if (state.charIdentified && state.charName && stChrVal) {
     stChrVal.textContent = tr('status.charOk').replace('{name}', state.charName)
   }
+  if (state.charIdentified && state.charName) {
+    updateCharCard(state.charName, state.charClass)
+  } else if (!state.charIdentified) {
+    if (sideCharCard) sideCharCard.hidden = true
+  }
 })
 window.api.onFilterLoaded((data) => {
   if (!stFltDot) return
@@ -1249,8 +1254,55 @@ function setBpMode(active) {
   }
 }
 
+// ── Class icon helper ─────────────────────────────────────────────────────────
+const CLASS_ID_NAMES = [
+  'Viking','Pyromancer','Marksman','Pirate','Nomad','Redneck',
+  'Necromancer','Samurai','Paladin','Amazon','Demon_Slayer','Demonspawn',
+  'Shaman','White_Mage','Marauder','Plague_Doctor','Shield_Lancer',
+  'Jotunn','Illusionist','Exo','Butcher','Stormweaver'
+]
+function classToFileName(cls) {
+  if (cls == null) return null
+  if (typeof cls === 'number' || /^\d+$/.test(String(cls))) {
+    return CLASS_ID_NAMES[parseInt(cls)] || null
+  }
+  return String(cls).trim()
+    .replace(/\s+/g, '_')
+    .replace(/[öÖ]/g, 'o')
+    .replace(/^(.)/, c => c.toUpperCase())
+}
+function classToDisplayName(cls) {
+  const file = classToFileName(cls)
+  if (!file) return ''
+  return file.replace(/_/g, ' ')
+}
+
+const sideCharCard     = document.getElementById('sideCharCard')
+const sideCharClassIcon = document.getElementById('sideCharClassIcon')
+const sideCharNameEl   = document.getElementById('sideCharName')
+const sideCharClassName = document.getElementById('sideCharClassName')
+
+function updateCharCard(charName, charClass) {
+  if (!sideCharCard) return
+  if (!charName) { sideCharCard.hidden = true; return }
+  const file = classToFileName(charClass)
+  if (file && sideCharClassIcon) {
+    sideCharClassIcon.src = `assets/classes/${file}.png`
+    sideCharClassIcon.alt = classToDisplayName(charClass)
+    sideCharClassIcon.hidden = false
+  } else if (sideCharClassIcon) {
+    sideCharClassIcon.hidden = true
+  }
+  if (sideCharNameEl) sideCharNameEl.textContent = charName
+  if (sideCharClassName) sideCharClassName.textContent = classToDisplayName(charClass)
+  sideCharCard.hidden = false
+}
+
 if (window.api.onBpMode) {
-  window.api.onBpMode(({ active }) => setBpMode(active))
+  window.api.onBpMode(({ active, charName, charClass }) => {
+    setBpMode(active)
+    if (charName) updateCharCard(charName, charClass)
+  })
 }
 
 const btnResetSession  = document.getElementById('btnResetSession')

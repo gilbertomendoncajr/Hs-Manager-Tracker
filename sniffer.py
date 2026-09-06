@@ -720,6 +720,7 @@ def _check_account(msg: dict):
             season     = int(msg.get("season") or 0)
             level      = int(msg.get("level") or 0)
             hardcore   = bool(msg.get("hc") or msg.get("hardcore") or False)
+            char_class = msg.get("class")
             if name and blood_pact:
                 is_me = (
                     (_my_uid is not None and pkt_uid == _my_uid) or
@@ -728,7 +729,8 @@ def _check_account(msg: dict):
                 if is_me:
                     emit_line({"type": "stat:account", "name": name, "level": level,
                                "heroLevel": level, "mf": 0, "hardcore": hardcore,
-                               "difficulty": 0, "bloodPact": blood_pact, "season": season})
+                               "difficulty": 0, "bloodPact": blood_pact, "season": season,
+                               "charClass": char_class})
                 else:
                     # Outro membro do BP — emite evento separado para linking futuro
                     emit_line({"type": "stat:bp_member", "name": name, "uid": pkt_uid,
@@ -750,10 +752,12 @@ def _check_account(msg: dict):
         diff       = int(msg.get("difficulty", 0) or 0)
         blood_pact = int(msg.get("blood_pact") or msg.get("bloodPact") or 0)
         season     = int(msg.get("season") or 0)
+        char_class = msg.get("class")
         if name:
             emit_line({"type": "stat:account", "name": name, "level": level,
                        "heroLevel": hlevel, "mf": mf, "hardcore": hardcore,
-                       "difficulty": diff, "bloodPact": blood_pact, "season": season})
+                       "difficulty": diff, "bloodPact": blood_pact, "season": season,
+                       "charClass": char_class})
     except: pass
 
 def _check_vitals_and_zone(msg: dict):
@@ -853,7 +857,8 @@ def process_all(msgs: list[dict], src_ip: str):
                                    "hardcore": bool(msg.get("hardcore") or msg.get("hc")),
                                    "difficulty": 0,
                                    "bloodPact": bp_id,
-                                   "season": int(msg.get("season") or 0)})
+                                   "season": int(msg.get("season") or 0),
+                                   "charClass": msg.get("class")})
             except: pass
         _check_gold(msg)
         _check_xp(msg)
