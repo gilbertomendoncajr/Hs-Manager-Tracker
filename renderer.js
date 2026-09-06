@@ -638,6 +638,11 @@ async function initAuth() {
   const cfgUsername = document.getElementById('cfgUsername')
   if (cfgUsername) cfgUsername.textContent = displayName
   userBadge.style.display = 'flex'
+
+  if (displayName === 'gilbertomendonca') {
+    _initDebugLog()
+  }
+
   showScreen('app')
   await loadLeagues()
   const state = await window.api.getMonitorState()
@@ -734,7 +739,10 @@ btnToggle.addEventListener('click', async () => {
 })
 
 // ── Eventos do main ──────────────────────────────────────────────────────────
-window.api.onLog((entry) => addLogEntry(entry))
+window.api.onLog((entry) => {
+  addLogEntry(entry)
+  _pushDebugLog(entry)
+})
 if (window.api.onSessionReset) window.api.onSessionReset(() => resetSessionData())
 window.api.onStateChange((state) => {
   if (state.charName) _charNameLocal = state.charName
@@ -1233,6 +1241,50 @@ if (btnCompact) {
   btnCompact.addEventListener('click', async () => {
     // Main window will be hidden by main.js — no toggle needed here
     await window.api.toggleCompact()
+  })
+}
+
+// ── Debug log (admin only) ────────────────────────────────────────────────────
+let _debugLogEnabled = false
+
+function _pushDebugLog(entry) {
+  if (!_debugLogEnabled) return
+  const list  = document.getElementById('debugLogList')
+  const empty = document.getElementById('debugLogEmpty')
+  const btn   = document.getElementById('btnDebugLog')
+  if (!list) return
+  if (empty) empty.style.display = 'none'
+  const ts   = new Date(entry.ts || Date.now())
+  const time = `${String(ts.getHours()).padStart(2,'0')}:${String(ts.getMinutes()).padStart(2,'0')}:${String(ts.getSeconds()).padStart(2,'0')}`
+  const row  = document.createElement('div')
+  const type = entry.type || 'info'
+  row.className = `dbg-row ${type}`
+  row.innerHTML = `<span class="dbg-time">${time}</span><span class="dbg-msg">${entry.message || ''}</span>`
+  list.appendChild(row)
+  list.scrollTop = list.scrollHeight
+  if (btn) btn.classList.add('has-entries')
+}
+
+function _initDebugLog() {
+  _debugLogEnabled = true
+  const btn     = document.getElementById('btnDebugLog')
+  const overlay = document.getElementById('debugLogOverlay')
+  const close   = document.getElementById('btnDebugLogClose')
+  const clear   = document.getElementById('btnDebugLogClear')
+  if (!btn || !overlay) return
+  btn.style.display = 'flex'
+  btn.addEventListener('click', () => {
+    overlay.classList.add('open')
+    btn.classList.remove('has-entries')
+  })
+  close && close.addEventListener('click', () => overlay.classList.remove('open'))
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.remove('open') })
+  clear && clear.addEventListener('click', () => {
+    const list  = document.getElementById('debugLogList')
+    const empty = document.getElementById('debugLogEmpty')
+    if (list)  list.innerHTML = ''
+    if (empty) { empty.style.display = 'block'; list.appendChild(empty) }
+    btn.classList.remove('has-entries')
   })
 }
 

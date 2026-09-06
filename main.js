@@ -909,6 +909,12 @@ function spawnSniffer() {
       }
       if (msg.type === 'stat:account') {
         sendToWin(mainWin, 'stats:account', msg)
+        console.log(`[DEBUG stat:account] name=${msg.name} bloodPact=${msg.bloodPact} season=${msg.season} hardcore=${msg.hardcore}`)
+        sendToWin(mainWin, 'log:entry', {
+          type: 'info',
+          message: `[DEBUG] stat:account — name=${msg.name} bloodPact=${msg.bloodPact} season=${msg.season} hardcore=${msg.hardcore}`,
+          ts: Date.now(),
+        })
         if (msg.bloodPact) {
           _tryAutoSelectByBloodPact(msg.bloodPact, msg.name)
         } else if (msg.name) {
