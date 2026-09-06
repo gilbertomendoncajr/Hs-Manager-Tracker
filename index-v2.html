@@ -46,9 +46,9 @@
   --fs-body:   14px;   /* base body — was 13px */
   --fs-lg:     15px;   /* section headers — was 14px */
   --fs-xl:     17px;   /* large headings — was 16px */
-  --fs-stat-s: 26px;   /* stat display numbers */
-  --fs-stat-m: 30px;
-  --fs-stat-l: 38px;
+  --fs-stat-s: 18px;   /* stat display numbers */
+  --fs-stat-m: 20px;
+  --fs-stat-l: 26px;
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -600,13 +600,14 @@ body.tab-liga .ua-player { display: block; }
 .page-header p { font-family: var(--font-sans); font-size: var(--fs-sm); color: var(--text2); margin-top: 4px; }
 
 .stats-timer-wrap {
-  text-align: center; padding: 20px 16px 14px;
+  text-align: center; padding: 10px 16px 8px;
   border-bottom: 1px solid var(--border); flex-shrink: 0;
 }
 .stats-timer-label {
+  font-family: var(--font-sans);
   font-size: var(--fs-xs); font-weight: 700;
   color: var(--text3); letter-spacing: .2em; text-transform: uppercase;
-  margin-bottom: 6px;
+  margin-bottom: 3px;
 }
 .stats-timer-big {
   font-family: 'Space Mono', monospace;
@@ -615,15 +616,15 @@ body.tab-liga .ua-player { display: block; }
 }
 
 .rarity-tiles {
-  display: flex; gap: 6px; padding: 12px; flex-shrink: 0; flex-wrap: wrap;
+  display: flex; gap: 5px; padding: 8px; flex-shrink: 0; flex-wrap: wrap;
 }
 .rarity-tile {
-  flex: 1; min-width: 80px;
+  flex: 1; min-width: 72px;
   background: var(--surf-hi);
   border: 1px solid var(--brt);
   border-left: 3px solid var(--rc);
   border-top: 2px solid var(--rc);
-  padding: 10px 10px 8px;
+  padding: 7px 8px 5px;
   display: flex; flex-direction: column; gap: 2px;
 }
 .rarity-tile-name {
@@ -647,12 +648,12 @@ body.tab-liga .ua-player { display: block; }
 
 .stats-bottom-grid {
   display: grid; grid-template-columns: 1fr 1fr;
-  gap: 6px; padding: 0 12px 12px;
+  gap: 5px; padding: 0 8px 8px;
 }
 .stat-tile {
   background: var(--surf-hi); border: 1px solid var(--brt);
   border-left: 2px solid var(--accent);
-  padding: 14px 14px 12px;
+  padding: 8px 10px 7px;
 }
 .stat-tile-label {
   font-size: var(--fs-xs); font-weight: 700;
@@ -668,7 +669,7 @@ body.tab-liga .ua-player { display: block; }
 /* ── Stats sections ─────────────────────────────────────────────────────── */
 #p-stats { overflow-y: auto; }
 .stats-section {
-  padding: 0 12px 12px;
+  padding: 0 8px 8px;
 }
 .stats-section-title {
   font-family: var(--font-sans);
@@ -679,12 +680,12 @@ body.tab-liga .ua-player { display: block; }
 }
 .stats-overview-grid {
   display: grid; grid-template-columns: 1fr 1fr 1fr;
-  gap: 6px;
+  gap: 5px;
 }
 .stats-overview-card {
   background: var(--surf); border: 1px solid var(--border);
   border-top: 2px solid var(--brt);
-  padding: 10px 12px 9px;
+  padding: 7px 10px 6px;
   display: flex; flex-direction: column; gap: 2px;
 }
 .soc-label {
@@ -726,11 +727,11 @@ body.tab-liga .ua-player { display: block; }
 }
 .stc-card {
   background: var(--surf-hi); border: 1px solid var(--brt);
-  padding: 8px 10px; display: flex; flex-direction: column;
-  align-items: flex-start; gap: 2px; min-width: 0;
+  padding: 5px 8px; display: flex; flex-direction: column;
+  align-items: flex-start; gap: 1px; min-width: 0;
 }
 .stc-count {
-  font-family: 'Space Mono', monospace; font-size: 20px; font-weight: 700;
+  font-family: 'Space Mono', monospace; font-size: 16px; font-weight: 700;
   line-height: 1; letter-spacing: -.02em;
 }
 .stc-label {
