@@ -888,29 +888,41 @@ const RARITY_COLOR_MAP = {
   Rare: '#62a', Superior: '#888', Common: 'var(--text3)',
 }
 
-// Tally label map (normalised key → display label)
+// Tally label map — keys are _norm_tally() output (statistic prefix stripped,
+// all non-alphanumeric removed, lowercased). Matches hs-tracker TALLIES table.
 const TALLY_LABELS = {
-  // bosses
-  andariel: 'Andariel', duriel: 'Duriel', mephisto: 'Mephisto',
-  diablo: 'Diablo', baal: 'Baal', nihlathak: 'Nihlathak',
-  uber_diablo: 'Uber Diablo', uber_duriel: 'Uber Duriel',
-  uber_mephisto: 'Uber Mephisto', uber_baal: 'Uber Baal',
-  uber_andariel: 'Uber Andariel', uber_izual: 'Uber Izual',
-  uber_nihlathak: 'Uber Nihlathak',
+  // main bosses
+  satankills: 'Satan',        damienkills: 'Damien',
+  reaperkills: 'Reaper',      anubiskills: 'Anubis',
+  guragkills: 'Gurag',        meviuskills: 'Mevius',
+  odinkills: 'Odin',          cthulhukills: 'Cthulhu',
+  karpkingkills: 'Karp King',
+  // uber bosses
+  uberdamienkills: 'Uber Damien',           uberreaperkills: 'Uber Reaper',
+  uberlunakills: 'Uber Luna',               uberendrixiakills: 'Uber Endrixia',
+  ubergabrielkills: 'Uber Gabriel',         uberkingrakhulkills: 'Uber King Rakhul',
+  ubersheepkingkills: 'Uber Sheep King',    ubersungleekills: 'Uber Sung Lee',
+  uberamunrakills: 'Uber Amun Ra',          uberarchitectkills: 'Uber Architect',
+  uberpapalegbakills: 'Uber Papa Legba',    ubercaptaingrimtidekills: 'Uber Grimtide',
+  uberbloodmaidenkills: 'Uber Blood Maiden',
+  uberphantomleviathankills: 'Uber Leviathan',
+  uberchaostowerkills: 'Uber Chaos Tower',
+  // clears
+  chaostowerfloorclears: 'CT Floors',  wormholeclears: 'Wormholes',
   // chests
-  superchest: 'Super Chest', goodchest: 'Good Chest', actboss: 'Act Boss',
-  chests: 'Baú', horadric: 'Horadric', larzuk: 'Larzuk',
+  commonchestsopened: 'Common',  rarechestopened: 'Rare',
+  crystalchestopened: 'Crystal', rubychestsopened: 'Ruby',
+  dungeonchestsopened: 'Dungeon',
 }
 
 // Last received stats payload — used by timer to refresh rates
 let _lastStatsData = null
 
-// Boss / chest classification by tally key
+// Boss / chest / clear classification by normalized tally key
 function _tallyGroup(k) {
-  const boss = ['andariel','duriel','mephisto','diablo','baal','nihlathak',
-    'uber_diablo','uber_duriel','uber_mephisto','uber_baal','uber_andariel',
-    'uber_izual','uber_nihlathak', 'actboss']
-  return boss.includes(k) ? 'boss' : 'chest'
+  if (k.endsWith('kills')) return 'boss'
+  if (k.endsWith('clears')) return 'clear'
+  return 'chest'
 }
 
 // Format large numbers
@@ -980,54 +992,114 @@ function _updateResources(resources) {
 function _updateTallies(tallies) {
   const el = document.getElementById('tallyGrid')
   if (!el) return
-  const entries = Object.entries(tallies || {}).filter(([,v]) => v > 0)
-    .sort((a,b) => b[1]-a[1])
+  // Only show keys we have labels for — raw statistic fields are noise
+  const entries = Object.entries(tallies || {})
+    .filter(([k, v]) => v > 0 && TALLY_LABELS[k])
+    .sort((a, b) => b[1] - a[1])
   if (!entries.length) {
     el.innerHTML = '<div class="stats-kv-empty">Aguardando dados…</div>'
     return
   }
-  const bossColor = 'var(--satanic)'
-  const chestColor = 'var(--heroic)'
-  el.innerHTML = entries.map(([k, count]) => {
-    const label = TALLY_LABELS[k] || k.replace(/_/g,' ')
-    const col = _tallyGroup(k) === 'boss' ? bossColor : chestColor
-    return `<div class="stats-tally-card"><span class="stc-name" style="color:${col}">${label}</span><span class="stc-val">${count}</span></div>`
-  }).join('')
+  const bosses  = entries.filter(([k]) => _tallyGroup(k) === 'boss')
+  const chests  = entries.filter(([k]) => _tallyGroup(k) === 'chest')
+  const clears  = entries.filter(([k]) => _tallyGroup(k) === 'clear')
+  const renderGroup = (items, col) => items.map(([k, count]) =>
+    `<div class="stc-card">
+      <span class="stc-count" style="color:${col}">${count}</span>
+      <span class="stc-label">${TALLY_LABELS[k]}</span>
+    </div>`
+  ).join('')
+  let html = ''
+  if (bosses.length)  html += `<div class="stc-group-label">BOSSES</div><div class="stc-group">${renderGroup(bosses, 'var(--satanic)')}</div>`
+  if (chests.length)  html += `<div class="stc-group-label">BAÚS</div><div class="stc-group">${renderGroup(chests, 'var(--heroic)')}</div>`
+  if (clears.length)  html += `<div class="stc-group-label">CLEARS</div><div class="stc-group">${renderGroup(clears, 'var(--angelic)')}</div>`
+  el.innerHTML = html
 }
 
-const SATANIC_ZONE_MAP = {
-  'ACT_01_01': 'Act 1 — Blood Moor',
-  'ACT_01_02': 'Act 1 — Den of Evil',
-  'ACT_01_03': 'Act 1 — Cold Plains',
-  'ACT_01_04': 'Act 1 — Stony Field',
-  'ACT_01_05': 'Act 1 — Dark Wood',
-  'ACT_02_01': 'Act 2 — Lut Gholein',
-  'ACT_02_02': 'Act 2 — Rocky Waste',
-  'ACT_02_03': 'Act 2 — Dry Hills',
-  'ACT_02_04': 'Act 2 — Far Oasis',
-  'ACT_02_05': 'Act 2 — Lost City',
-  'ACT_03_01': 'Act 3 — Kurast Docks',
-  'ACT_03_02': 'Act 3 — Spider Forest',
-  'ACT_03_03': 'Act 3 — Great Marsh',
-  'ACT_03_04': 'Act 3 — Flayer Jungle',
-  'ACT_03_05': 'Act 3 — Lower Kurast',
-  'ACT_04_01': 'Act 4 — Pandemonium Fortress',
-  'ACT_04_02': 'Act 4 — Outer Steppes',
-  'ACT_04_03': 'Act 4 — Plains of Despair',
-  'ACT_04_04': 'Act 4 — City of the Damned',
-  'ACT_04_05': "Act 4 — The Devil's Breach",
-  'ACT_05_01': 'Act 5 — Harrogath',
-  'ACT_05_02': 'Act 5 — Bloody Foothills',
-  'ACT_05_03': 'Act 5 — Frigid Highlands',
-  'ACT_05_04': 'Act 5 — Arreat Plateau',
-  'ACT_05_05': 'Act 5 — Crystalline Passage',
+// Buff/debuff decode tables — sourced from hs-tracker buffs.js
+const SATANIC_BUFFS = {
+  1:  ['Loot Goblin I',      '+1 Max Loot por Inimigo Morto'],
+  2:  ['Loot Goblin II',     '+2 Max Loot por Inimigo Morto'],
+  3:  ['Rune Master',        '+15% Chance de Drop de Runas'],
+  4:  ['Gold Hunger',        '+40% Ouro de Monstros Mortos'],
+  5:  ['Heroic Windfall',    '+3% Chance de Drop Heroic'],
+  6:  ['Angelic Fortune',    '+25% Chance de Drop Angelic'],
+  7:  ["Zephy's Grace",      '+50% Velocidade de Movimento'],
+  8:  ['Fury of Tempest',    '+60% Velocidade de Ataque'],
+  9:  ['Rapid Casting',      '+60% Velocidade de Conjuração'],
+  10: ['Onslaught',          '+100% Dano de Ataque'],
+  11: ['Nether Surge',       '+40% Dano de Magia'],
+  12: ['Relic Keepers',      '2% Chance de Relic ao Matar Ancião'],
+  13: ["Goblin's Greed",     '0.5% Chance de Goblin do Tesouro'],
+  14: ['Artifact Digger',    '+55% Magic Find'],
+  15: ['Artifact Seeker',    '+110% Magic Find'],
+  16: ['Artifact Excavator', '+170% Magic Find'],
+  17: ['Recruit',            '+10% Ganho de XP'],
+  18: ['Combat Training',    '+15% Ganho de XP'],
+  19: ['Battle Scarred',     '+20% Ganho de XP'],
+  20: ['Clairvoyance',       '+100% em toda recuperação'],
+  21: ['Aftermath',          '3% Chance de Invocar Legião na Morte'],
+  22: ['Deep Cuts',          '+200% Dano de Golpe Crítico'],
+  23: ['Old Town',           '+15% Chance de Packs Antigos'],
+  24: ['Terror Zone',        '+25% Chance de Packs Antigos'],
+  25: ['Fields of Carnage',  '+30% Chance de Packs Antigos'],
+}
+const SATANIC_DEBUFFS = [
+  ["Dusk's Shroud",      '-20% Raio de Luz'],
+  ['Elemental Erosion',  '-75% Todas as Resistências'],
+  ['Sundered Armor',     '+25% Dano Recebido'],
+  ['Vitality Drain',     '-25% Vida'],
+  ['Essence Drain',      '-25% Mana'],
+  ['Abyssal Gloom',      '+100% Escuridão'],
+  ['Skill Debilitation', '-10% Todas as Skills'],
+  ['Weakening Essence',  '-20% Todos os Atributos'],
+  ['Lifeflow Starvation','Regeneração reduzida'],
+  ['Sanguine Impairment','-75% Roubo de Vida'],
+  ['Arcane Impairment',  '-75% Roubo de Mana'],
+  ['Consumed Time',      '-25% Recuperação de Cooldown'],
+  ['Absolute Limbo',     '-50% Recuperação de Cooldown'],
+  ['Boulder Fall',       '3% Chance de Boulder na Morte'],
+  ['Lingering Evil',     '-25% Velocidade de Movimento'],
+  ['Fatal Wounds',       '10% Chance de Dano Duplo dos Monstros'],
+  ['Bloated Veins',      '+70% Vida dos Monstros'],
+  ['Abnormal Dwelling',  '+130% Vida dos Monstros'],
+  ['Colossal Bloating',  '+200% Vida dos Monstros'],
+  ['Necrosis',           '1% de Vida drenada por segundo'],
+  ['Venomous Presence',  '+200% Duração de Veneno'],
+  ['Flaming Agony',      'Nova de Fogo na morte dos monstros'],
+  ['Unholy Agility',     'Monstros mais rápidos e agressivos'],
+  ['Broken Armor',       'Você não pode bloquear ataques'],
+  ['Hemorrhage',         'Ataques de monstros causam sangramento'],
+  ['Crippling Slow',     'Ataques infligem 50% de lentidão'],
+]
+
+// Zone area names sourced from hs-tracker buffs.js ZONES table
+const ZONE_AREAS = {
+  1: ['Outskirts of Inoya', 'Fields of Battle', 'The Pumpkin Patch', 'Woodhill Plains', "King's Garden", 'Witching River'],
+  2: ['Crystal Village', 'Chilling Lake', 'Arctic Tundra', 'Snowy Mountains', 'The Glacial Trail'],
+  3: ['Corrupted Oasis', 'Dry Hills', "Mos'Arathim Desert", 'Pyramid Level 1', 'Pyramid Level 2', 'Curacan Hollow'],
+  4: ['Old Mining Village', 'The Highland Mines', 'Corrupted Cave', 'The Nightmare', "The Devil's Breach"],
+  5: ['Mt. Fuji', 'Misty Swamp', 'Fuji Coast', 'Sea of Karponia', 'Temple of Zamjo'],
+  6: ['Highland Graveyard', 'The Cathedral', 'Prison Dungeon', 'Steam Train', 'The Depths of Hell'],
+  7: ['Deep Space', 'Event Horizon', 'The Black Hole', 'Parallel Dimension', 'Subconscious Mind', 'Shattered Realm'],
+  8: ['Forest of the Slain', 'Flooded Plains', 'Forgotten Caves', 'Camp of Souls', 'Helheim'],
+  9: ['Abyss Jungle', 'Shipwreck Cove', 'Tormented Reef', 'Boreal Island', 'Volcanic Island', 'Abyss Realm'],
 }
 
-function _fmtZoneName(code) {
-  if (SATANIC_ZONE_MAP[code]) return SATANIC_ZONE_MAP[code]
-  const m = String(code).match(/^ACT_(\d+)_(\d+)$/i)
-  if (m) return `Act ${parseInt(m[1])} — Area ${parseInt(m[2])}`
-  return code
+// Parses zone codes like "Satanic_5_5", "Act_08_02", "SZ_8_2" — the prefix is ignored,
+// only the act number (second segment) and area index (third) matter.
+function _fmtZoneName(raw) {
+  const parts = String(raw).split('_')
+  if (parts.length >= 3) {
+    const act = parseInt(parts[parts.length - 2], 10)
+    const idx = parseInt(parts[parts.length - 1], 10)
+    if (!isNaN(act) && !isNaN(idx) && act > 0) {
+      const areas = ZONE_AREAS[act]
+      if (areas && idx >= 1 && idx <= areas.length) return `Act ${act} — ${areas[idx - 1]}`
+      return `Act ${act} — Área ${idx}`
+    }
+  }
+  return String(raw)
 }
 
 function _updateSatanic(satanic) {
@@ -1038,25 +1110,46 @@ function _updateSatanic(satanic) {
     return
   }
   const zoneName = _fmtZoneName(satanic.zone)
-  const buffs   = satanic.buffs   || []
-  const debuffs = satanic.debuffs || []
-  const prosCols = buffs.length
-    ? buffs.map(b => `<div class="szb-mod">${b}</div>`).join('')
+  const buffIds   = satanic.buffs   || []
+  const debuffIds = satanic.debuffs || []
+
+  const renderBuff = (id) => {
+    const b = SATANIC_BUFFS[id]
+    const name = b ? b[0] : `Buff ${id}`
+    const desc = b ? b[1] : ''
+    return `<div class="szb-mod">
+      <div class="szb-mod-name pros">${name}</div>
+      ${desc ? `<div class="szb-mod-desc">${desc}</div>` : ''}
+    </div>`
+  }
+  const renderDebuff = (id) => {
+    const d = SATANIC_DEBUFFS[id - 1]
+    const name = d ? d[0] : `Debuff ${id}`
+    const desc = d ? d[1] : ''
+    return `<div class="szb-mod">
+      <div class="szb-mod-name cons">${name}</div>
+      ${desc ? `<div class="szb-mod-desc">${desc}</div>` : ''}
+    </div>`
+  }
+
+  const prosHtml = buffIds.length
+    ? buffIds.map(renderBuff).join('')
     : '<div class="szb-mod-empty">—</div>'
-  const consCols = debuffs.length
-    ? debuffs.map(d => `<div class="szb-mod">${d}</div>`).join('')
+  const consHtml = debuffIds.length
+    ? debuffIds.map(renderDebuff).join('')
     : '<div class="szb-mod-empty">—</div>'
+
   el.innerHTML = `
     <div class="satanic-zone-block">
       <div class="szb-name">${zoneName}</div>
       <div class="szb-cols">
         <div class="szb-col">
           <div class="szb-col-label pros">PROS</div>
-          ${prosCols}
+          ${prosHtml}
         </div>
         <div class="szb-col">
           <div class="szb-col-label cons">CONS</div>
-          ${consCols}
+          ${consHtml}
         </div>
       </div>
     </div>`

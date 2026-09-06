@@ -895,8 +895,10 @@ function spawnSniffer() {
         const nameLower = (drop.name || '').toLowerCase()
         if (NOTABLE_NAMES.has(nameLower)) {
           _sessNotable[drop.name] = (_sessNotable[drop.name] || 0) + 1
-          _sendStatsUpdate()
         }
+        const _r = drop.rarity || 'Unknown'
+        _sessResources[_r] = (_sessResources[_r] || 0) + 1
+        _sendStatsUpdate()
         const isSiteFiltered = serverEnabledItems !== null && !serverEnabledItems.has(drop.name)
         const logMsg = `⚔ ${drop.name}${tierTag} (${drop.rarity})${charPart} ✓`
         const collectedPayload = { ...drop, _logMsg: logMsg, _tierTag: tierTag, _category: categoryVal, _siteFiltered: isSiteFiltered }

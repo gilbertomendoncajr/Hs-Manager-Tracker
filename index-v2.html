@@ -700,19 +700,27 @@ body.tab-liga .ua-player { display: block; }
 }
 .stats-kv-empty { font-size: var(--fs-sm); color: var(--text3); font-style: italic; }
 
-/* Tally grid (bosses/chests) */
-.stats-tally-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  gap: 4px;
+/* Tally grid (bosses/chests/clears) */
+.stats-tally-grid { display: flex; flex-direction: column; gap: 8px; }
+.stc-group-label {
+  font-size: var(--fs-xs); font-weight: 700; letter-spacing: .15em;
+  color: var(--text3); margin-bottom: 3px;
 }
-.stats-tally-card {
+.stc-group {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 4px;
+}
+.stc-card {
   background: var(--surf-hi); border: 1px solid var(--brt);
-  padding: 6px 10px; display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 10px; display: flex; flex-direction: column;
+  align-items: flex-start; gap: 2px; min-width: 0;
 }
-.stc-name { font-size: var(--fs-xs); color: var(--text2); text-transform: capitalize; }
-.stc-val {
-  font-family: 'Space Mono', monospace;
-  font-size: var(--fs-sm); font-weight: 700; color: var(--text);
+.stc-count {
+  font-family: 'Space Mono', monospace; font-size: 20px; font-weight: 700;
+  line-height: 1; letter-spacing: -.02em;
+}
+.stc-label {
+  font-size: var(--fs-xs); color: var(--text2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
 }
 
 /* Satanic zone */
@@ -722,22 +730,19 @@ body.tab-liga .ua-player { display: block; }
 }
 .szb-name {
   font-size: var(--fs-sm); font-weight: 700; color: var(--satanic);
-  text-transform: uppercase; letter-spacing: .1em; margin-bottom: 4px;
+  text-transform: uppercase; letter-spacing: .1em; margin-bottom: 6px;
 }
-.szb-tags { display: flex; flex-wrap: wrap; gap: 4px; }
-.szb-tag {
-  font-size: var(--fs-xs); padding: 2px 6px;
-  border: 1px solid var(--border); color: var(--text2);
-  background: var(--bg);
-}
-.szb-tag.buff  { border-color: #4caf50; color: #4caf50; }
-.szb-tag.debuf { border-color: #f44336; color: #f44336; }
 .satanic-none { font-size: var(--fs-sm); color: var(--text3); font-style: italic; }
-.szb-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
+.szb-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .szb-col-label { font-size: var(--fs-xs); font-weight: 700; letter-spacing: .14em; margin-bottom: 5px; }
 .szb-col-label.pros { color: #4caf50; }
 .szb-col-label.cons { color: #f44336; }
-.szb-mod { font-size: var(--fs-xs); color: var(--text2); padding: 2px 0; line-height: 1.4; }
+.szb-mod { padding: 4px 0; border-bottom: 1px solid var(--brt); }
+.szb-mod:last-child { border-bottom: none; }
+.szb-mod-name { font-size: var(--fs-xs); font-weight: 600; line-height: 1.3; }
+.szb-mod-name.pros { color: #4caf50; }
+.szb-mod-name.cons { color: #f44336; }
+.szb-mod-desc { font-size: 10px; color: var(--text3); line-height: 1.3; margin-top: 1px; }
 .szb-mod-empty { font-size: var(--fs-xs); color: var(--text3); }
 
 /* Item timeline */
@@ -1291,17 +1296,17 @@ body.tab-liga .ua-player { display: block; }
 
         <!-- Notable Resources -->
         <div class="stats-section">
-          <div class="stats-section-title">NOTABLE RESOURCES</div>
+          <div class="stats-section-title" style="color:var(--angelic)">NOTABLE RESOURCES</div>
           <div id="notableList" class="stats-kv-list">
             <div class="stats-kv-empty">Nenhum item notable ainda</div>
           </div>
         </div>
 
-        <!-- Resources -->
+        <!-- Resources (drops por raridade) -->
         <div class="stats-section">
-          <div class="stats-section-title">RESOURCES</div>
+          <div class="stats-section-title" style="color:var(--heroic)">DROPS POR RARIDADE</div>
           <div id="resourceList" class="stats-kv-list">
-            <div class="stats-kv-empty">Nenhum resource ainda</div>
+            <div class="stats-kv-empty">Nenhum drop coletado ainda</div>
           </div>
         </div>
 
