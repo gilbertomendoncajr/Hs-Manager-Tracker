@@ -556,10 +556,6 @@ def process_messages(messages: list[dict], src_ip: str):
                     log_debug(f"  [skip foreign {'drop' if ground else 'item'}] fp_account={fp_acc} my_uid={_my_uid}")
                     continue
 
-            if rarity not in JOURNAL_RARITIES:
-                log_debug(f"  raridade comum ignorada: {rarity} name={name}")
-                continue
-
             ts = int(time.time() * 1000)
             fp_str = str(fp or "")
 

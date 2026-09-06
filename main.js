@@ -902,6 +902,10 @@ function spawnSniffer() {
         return
       }
       if (msg.type === 'stat:resource') {
+        const nameLower = (msg.name || '').toLowerCase().replace(/[‘’‛]/g, "'")
+        if (NOTABLE_NAMES.has(nameLower)) {
+          _sessNotable[msg.name] = (_sessNotable[msg.name] || 0) + 1
+        }
         const r = msg.rarity || 'Unknown'
         _sessResources[r] = (_sessResources[r] || 0) + 1
         _sendStatsUpdate()
@@ -943,6 +947,18 @@ function spawnSniffer() {
       const uid = parseInt((drop.fp || '').split('-')[1] || '0', 10)
       if (uid && charMap[uid]) drop.charName = charMap[uid]
 
+      // Count stats for ALL collected items before the display filter
+      // (mirrors hs-tracker: every sighting increments rarity counters)
+      if (drop.type === 'collected') {
+        const nameLower = (drop.name || '').toLowerCase().replace(/[''‛]/g, "'")
+        if (NOTABLE_NAMES.has(nameLower)) {
+          _sessNotable[drop.name] = (_sessNotable[drop.name] || 0) + 1
+        }
+        const _r = drop.rarity || 'Unknown'
+        _sessResources[_r] = (_sessResources[_r] || 0) + 1
+        _sendStatsUpdate()
+      }
+
       const matches = LOOT_FILTER.some((w) => {
         const wl = w.toLowerCase()
         return (
@@ -971,13 +987,6 @@ function spawnSniffer() {
       }
 
       if (drop.type === 'collected') {
-        const nameLower = (drop.name || '').toLowerCase()
-        if (NOTABLE_NAMES.has(nameLower)) {
-          _sessNotable[drop.name] = (_sessNotable[drop.name] || 0) + 1
-        }
-        const _r = drop.rarity || 'Unknown'
-        _sessResources[_r] = (_sessResources[_r] || 0) + 1
-        _sendStatsUpdate()
         const isSiteFiltered = serverEnabledItems !== null && !serverEnabledItems.has(drop.name)
         const logMsg = `⚔ ${drop.name}${tierTag} (${drop.rarity})${charPart} ✓`
         const collectedPayload = { ...drop, _logMsg: logMsg, _tierTag: tierTag, _category: categoryVal, _siteFiltered: isSiteFiltered }
