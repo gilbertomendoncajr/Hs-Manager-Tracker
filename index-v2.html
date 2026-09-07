@@ -152,37 +152,58 @@ body {
 
 /* Brand block */
 .side-brand {
-  padding: 16px 14px 14px;
   border-bottom: 1px solid var(--border);
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 11px;
   flex-shrink: 0;
   -webkit-app-region: drag;
+  overflow: hidden;
 }
 .side-logo {
-  width: 42px; height: 42px;
-  border-radius: 50%;
+  width: 100%;
+  aspect-ratio: 1 / 1;
   overflow: hidden;
-  border: 2px solid var(--brt);
-  flex-shrink: 0;
   background: var(--surf);
+  position: relative;
 }
-.side-logo img { width: 100%; height: 100%; object-fit: cover; }
-.side-titles { display: flex; flex-direction: column; gap: 2px; }
+.side-logo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 40%, var(--sidebar) 100%);
+  pointer-events: none;
+}
+.side-logo img { width: 100%; height: 100%; object-fit: cover; object-position: center top; display: block; }
+.side-titles {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 12px 12px;
+  width: 100%;
+}
 .side-name {
   font-family: 'Space Mono', monospace;
-  font-size: var(--fs-xs); font-weight: 700;
+  font-size: 11px; font-weight: 700;
   color: var(--amber);
-  letter-spacing: .14em;
-  text-transform: uppercase;
-  line-height: 1;
-}
-.side-sub {
-  font-size: var(--fs-xs); font-weight: 600;
-  color: var(--accent);
   letter-spacing: .18em;
   text-transform: uppercase;
+  line-height: 1;
+  text-align: center;
+}
+.side-sub {
+  font-size: 9px; font-weight: 600;
+  color: var(--accent);
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.side-sub::before, .side-sub::after {
+  content: '—';
+  opacity: .6;
 }
 
 /* Nav */
@@ -1192,7 +1213,7 @@ body.no-bp.tab-liga .bp-disabled-overlay { display: flex; }
 
     <!-- Brand block -->
     <div class="side-brand">
-      <div class="side-logo"><img src="icon.png" alt=""></div>
+      <div class="side-logo"><img src="icon.png" alt="Caramelo"></div>
       <div class="side-titles">
         <div class="side-name">HS Drop Logger</div>
         <div class="side-sub">Blood Pact</div>

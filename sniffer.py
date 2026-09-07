@@ -21,12 +21,15 @@ from datetime import datetime
 
 _DEBUG = os.environ.get("HS_SNIFFER_DEBUG", "").lower() in ("1", "true")
 _debug_fh = None
+_DEBUG_PATH = os.path.join(os.environ.get("TEMP", os.environ.get("TMP", "/tmp")),
+                           "hs-drop-logger", "sniffer_debug.txt")
 
 def log_debug(msg: str):
     global _debug_fh
     if not _DEBUG: return
     if _debug_fh is None:
-        _debug_fh = open("sniffer_debug.txt", "a", encoding="utf-8", buffering=1)
+        os.makedirs(os.path.dirname(_DEBUG_PATH), exist_ok=True)
+        _debug_fh = open(_DEBUG_PATH, "w", encoding="utf-8", buffering=1)
     ts = datetime.now().strftime("%H:%M:%S.%f")[:-3]
     _debug_fh.write(f"[{ts}] {msg}" + chr(10))
 
@@ -544,10 +547,16 @@ def process_messages(messages: list[dict], src_ip: str):
                 if not rarity:
                     rarity = _rarity_from_name(name)
 
+            is_relic = (fp_type_v == RELIC_TYPE)
             if not rarity:
-                b_val = _i(item, ["b"])
-                log_debug(f"  sem raridade: fp={fp} name={name} b={b_val} item={json.dumps(item)[:200]}")
-                continue
+                if is_relic:
+                    if not name:
+                        name = _get_name(item, fp)
+                    rarity = "Relic"
+                else:
+                    b_val = _i(item, ["b"])
+                    log_debug(f"  sem raridade: fp={fp} name={name} b={b_val} item={json.dumps(item)[:200]}")
+                    continue
             log_debug(f"  item detectado: fp={fp} name={name} rarity={rarity}")
 
             if _my_uid is not None:
@@ -754,6 +763,10 @@ def _check_account(msg: dict):
         season     = int(msg.get("season") or 0)
         char_class = msg.get("class")
         if name:
+            is_me = (_my_char_name is None or
+                     name.lower() == _my_char_name.lower())
+            if not is_me:
+                return
             emit_line({"type": "stat:account", "name": name, "level": level,
                        "heroLevel": hlevel, "mf": mf, "hardcore": hardcore,
                        "difficulty": diff, "bloodPact": blood_pact, "season": season,

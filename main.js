@@ -939,13 +939,15 @@ function spawnSniffer() {
       }
       if (msg.type === 'stat:account') {
         sendToWin(mainWin, 'stats:account', msg)
-        if (msg.charClass != null) currentCharClass = msg.charClass
+        const isMe = !currentCharName || !msg.name || msg.name.toLowerCase() === currentCharName.toLowerCase()
+        sendToWin(mainWin, 'log:entry', { type: 'info', message: `[DEBUG stat:account] name=${msg.name} charClass=${JSON.stringify(msg.charClass)} currentClass=${currentCharClass} isMe=${isMe}`, ts: Date.now() })
+        if (isMe && msg.charClass != null) currentCharClass = msg.charClass
         if (msg.bloodPact) {
           _tryAutoSelectByBloodPact(msg.bloodPact, msg.name)
         } else if (msg.name) {
           _tryAutoSelectLeague(msg.name)
         }
-        sendToWin(mainWin, 'monitor:bpMode', { active: !!msg.bloodPact, charName: msg.name, charClass: currentCharClass })
+        if (isMe) sendToWin(mainWin, 'monitor:bpMode', { active: !!msg.bloodPact, charName: msg.name, charClass: currentCharClass })
         return
       }
       if (msg.type === 'stat:vitals') {
