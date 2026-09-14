@@ -1,6 +1,6 @@
 {
   "name": "hs-drop-logger",
-  "version": "1.9.2",
+  "version": "2.2.2",
   "description": "Auto-logger de drops para HS Manager",
   "main": "main.js",
   "scripts": {
@@ -30,6 +30,9 @@
       "ticker.html",
       "compact.html",
       "renderer.js",
+      "satanic-tiers.js",
+      "zone-drops-data.js",
+      "icon.png",
       "package.json",
       "assets/**/*",
       "node_modules/**/*"
@@ -82,3 +85,4 @@
     "electron-builder": "^26.15.3"
   }
 }
+

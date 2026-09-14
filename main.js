@@ -4,6 +4,7 @@ const path = require('path')
 const fs = require('fs')
 const { spawn } = require('child_process')
 const readline = require('readline')
+const SATANIC_TIERS = require('./satanic-tiers')
 
 // ── File logger ──────────────────────────────────────────────────────────────
 let _logFilePath = null
@@ -59,6 +60,8 @@ let filterWin = null
 let serverEnabledItems = null   // Set<string> | null — null = not loaded yet (allow all)
 let serverTierMap = {}          // Record<string, string> — name → tier
 let serverCategoryMap = {}      // Record<string, string> — name → category (item type)
+const _recentDrops = new Map()   // dedup: `${name}|${charName}` → timestamp ms
+const _floorDropped = new Map()  // itens que passaram pelo chão: `${name}|${charName}` → timestamp ms
 let dropHistory = []            // Array of {ch, payload} — replayed to compact on open
 const DROP_HISTORY_MAX = 300
 let currentLang = 'pt'
@@ -87,6 +90,25 @@ function savePersonalFilter() {
   try { fs.writeFileSync(personalFilterPath(), JSON.stringify({ enabled: [...personalFilter] })) }
   catch {}
 }
+
+// ── Filtro de Relics (local) ─────────────────────────────────────────────────
+const RELIC_CSV_PATH = 'C:/Program Files (x86)/Steam/steamapps/common/HeroSiege/bin/translationsRelic.csv'
+let relicFilter = new Set()  // Set<string> — relic names that trigger overlay
+
+function relicFilterPath() {
+  return path.join(app.getPath('userData'), 'relic-filter.json')
+}
+function loadRelicFilter() {
+  try {
+    const data = JSON.parse(fs.readFileSync(relicFilterPath(), 'utf8'))
+    relicFilter = new Set(Array.isArray(data.enabled) ? data.enabled : [])
+  } catch { relicFilter = new Set() }
+}
+function saveRelicFilter() {
+  try { fs.writeFileSync(relicFilterPath(), JSON.stringify({ enabled: [...relicFilter] })) }
+  catch {}
+}
+
 let snifferProc = null
 let sseAbort = null   // AbortController para fechar a conexão SSE ao parar
 let isMonitoring = false
@@ -155,7 +177,7 @@ function _sendStatsUpdate() {
 
 // ── Janela principal ────────────────────────────────────────────────────────
 function createMainWindow() {
-  const useV2 = process.env.HSDL_UI === 'v2'
+  const useV2 = process.env.HSDL_UI !== 'v1'
   mainWin = new BrowserWindow({
     width: useV2 ? 1100 : 780,
     height: useV2 ? 720 : 580,
@@ -274,6 +296,7 @@ app.whenReady().then(async () => {
   const s = await getStore()
   currentLang = s.get('appLang', 'pt')
   loadPersonalFilter()
+  loadRelicFilter()
   ensureIconsDir().catch(() => {})
   createMainWindow()
   createOverlays()
@@ -646,7 +669,8 @@ async function _tryAutoSelectByBloodPact(bloodPactId, charName) {
       charName: charName || '',
     })
   } else {
-    // Liga BP detectada mas sem vínculo — loga o ID para o admin configurar
+    // Liga BP detectada mas sem vínculo — avisa na tela e no log
+    sendToWin(mainWin, 'monitor:bpUnlinked', { bloodPactId })
     sendToWin(mainWin, 'log:entry', {
       type: 'warn',
       message: `Liga Blood Pact detectada (ID: ${bloodPactId}) sem vínculo. Contate um administrador para vincular a liga.`,
@@ -695,7 +719,7 @@ async function postDrop(leagueId, drop) {
     const charPart = drop.charName || myDiscordUsername || ''
     const discordPart = drop.charName && myDiscordUsername ? ` / ${myDiscordUsername}` : ''
     const who = charPart ? ` [${charPart}${discordPart}]` : ''
-    const tierVal = drop.tier ?? serverTierMap[drop.name] ?? null
+    const tierVal = drop.tier ?? serverTierMap[drop.name] ?? SATANIC_TIERS[drop.name] ?? null
     const tier = tierVal ? ` [${tierVal}]` : ''
     sendLog('detect', `🎯 ${drop.name}${tier} (${drop.rarity})${who}`, drop, 'liga')
   } else {
@@ -755,7 +779,7 @@ async function connectSSE(leagueId) {
             ? `${evt.charName} (${evt.dropper.username})`
             : (evt.charName ?? evt.dropper?.username ?? 'Alguém')
           sendLog('detect', t(`🌐 ${who} dropou: ${drop.name} (${drop.rarity || '?'})`, `🌐 ${who} dropped: ${drop.name} (${drop.rarity || '?'})`), drop, 'liga')
-          sendOverlay(drop)
+          if (personalFilter.size > 0 && personalFilter.has(drop.name)) sendOverlay(drop)
         } catch { /* linha malformada */ }
       }
     }
@@ -984,13 +1008,17 @@ function spawnSniffer() {
       })
       if (!matches) return
 
-      const tierVal    = serverTierMap[drop.name] ?? null
+      const tierVal    = serverTierMap[drop.name] ?? SATANIC_TIERS[drop.name] ?? null
       const tierTag    = tierVal ? ` [${tierVal}]` : ''
       const charPart   = drop.charName ? ` [${drop.charName}]` : ''
       const categoryVal = serverCategoryMap[drop.name] ?? null
 
       if (drop.type === 'floor_drop') {
-        if (personalFilter.size > 0 && personalFilter.has(drop.name)) sendOverlay(drop)
+        if (drop.rarity === 'Relic') {
+          if (relicFilter.size > 0 && relicFilter.has(drop.name)) sendOverlay(drop)
+        } else {
+          if (personalFilter.size > 0 && personalFilter.has(drop.name)) sendOverlay(drop)
+        }
         const isPendingSiteFiltered = serverEnabledItems !== null && !serverEnabledItems.has(drop.name)
         const _charDisplay = drop.charName && myDiscordUsername
           ? `${drop.charName} / ${myDiscordUsername}`
@@ -999,6 +1027,10 @@ function spawnSniffer() {
         pushHistory('drop:pending', pendingPayload)
         sendToWin(mainWin, 'drop:pending', pendingPayload)
         sendToWin(compactWin, 'drop:pending', pendingPayload)
+        // Registra que este item passou pelo chão (distingue de pegar do baú)
+        const floorKey = `${drop.name}|${drop.charName ?? ''}`
+        _floorDropped.set(floorKey, Date.now())
+        if (_floorDropped.size > 200) _floorDropped.delete(_floorDropped.keys().next().value)
         return
       }
 
@@ -1013,7 +1045,20 @@ function spawnSniffer() {
           sendLog('info', t(`⊘ ${drop.name}${tierTag} [${drop.rarity}] filtrado pelo ADM`, `⊘ ${drop.name}${tierTag} [${drop.rarity}] filtered by ADM`), drop, 'liga-filtrado')
           return
         }
-        if (charIdentified) await postDrop(currentLeagueId, drop)
+        if (charIdentified) {
+          const dedupKey = `${drop.name}|${drop.charName ?? ''}`
+          const now = Date.now()
+          // Ignora pacotes duplicados (< 500ms)
+          const lastSeen = _recentDrops.get(dedupKey)
+          if (lastSeen && now - lastSeen < 500) return
+          // Só posta se o item passou pelo chão (não veio do baú)
+          const floorTs = _floorDropped.get(dedupKey)
+          if (!floorTs || now - floorTs > 30000) return // sem floor_drop nos últimos 30s = baú
+          _floorDropped.delete(dedupKey)
+          _recentDrops.set(dedupKey, now)
+          if (_recentDrops.size > 200) _recentDrops.delete(_recentDrops.keys().next().value)
+          await postDrop(currentLeagueId, drop)
+        }
         return
       }
 
@@ -1028,7 +1073,18 @@ function spawnSniffer() {
         sendLog('info', `⊘ ${drop.name}${tierTag} filtrado pelo ADM`, drop, 'liga-filtrado')
         return
       }
-      if (charIdentified) await postDrop(currentLeagueId, drop)
+      if (charIdentified) {
+        const dedupKeyFb = `${drop.name}|${drop.charName ?? ''}`
+        const lastSeenFb = _recentDrops.get(dedupKeyFb)
+        const nowFb = Date.now()
+        if (lastSeenFb && nowFb - lastSeenFb < 500) return
+        _recentDrops.set(dedupKeyFb, nowFb)
+        if (_recentDrops.size > 200) {
+          const oldestFb = _recentDrops.keys().next().value
+          _recentDrops.delete(oldestFb)
+        }
+        await postDrop(currentLeagueId, drop)
+      }
     } catch (err) {
       sendLog('error', t(`❌ Erro ao processar drop: ${err.message}`, `❌ Error processing drop: ${err.message}`))
     }
@@ -1229,12 +1285,113 @@ async function fetchServerFilter() {
   } catch { return null }
 }
 
+const ITEM_CSV_PATH = 'C:/Program Files (x86)/Steam/steamapps/common/HeroSiege/bin/translationsItem.csv'
+const ITEM_SECTION_TO_CAT = {
+  'weapon_melee_unique': 'Weapon', 'weapon_throwing_unique': 'Weapon',
+  'weapon_spell_unique': 'Weapon', 'weapon_bow_unique': 'Weapon',
+  'weapon_claw_unique': 'Weapon', 'weapon_spear_unique': 'Weapon',
+  'weapon_gun_unique': 'Weapon', 'weapon_chainsaw_unique': 'Weapon',
+  'weapon_flask_unique': 'Weapon', 'weapon_universal': 'Weapon',
+  'armors_unique': 'Armor', 'helms_unique': 'Helmet',
+  'gloves_unique': 'Gloves', 'boots_unique': 'Boots',
+  'amulets_unique': 'Amulet', 'charms_unique': 'Charm',
+  'shields_unique': 'Shield', 'rings_unique': 'Ring', 'belts_unique': 'Belt',
+}
+const ITEM_RARITY_ORDER = { Satanic: 0, Angelic: 1, Unholy: 2, Heroic: 3, Set: 4 }
+
+function inferTier(rarity) {
+  if (rarity === 'Heroic' || rarity === 'Angelic' || rarity === 'Unholy') return 'SS'
+  if (rarity === 'Set') return 'S'
+  return null // Satanic: admin-defined via Blood Pact
+}
+
+function buildLocalItemCatalog(enabledNames = new Set()) {
+  let zoneRarity = {}
+  try {
+    const zdContent = fs.readFileSync(path.join(__dirname, 'zone-drops-data.js'), 'utf8')
+    const m = zdContent.match(/^const ZONE_RARITY\s*=\s*(\{[^\n]+\})\s*;/m)
+    if (m) zoneRarity = JSON.parse(m[1])
+  } catch {}
+
+  const grouped = {}
+  try {
+    const lines = fs.readFileSync(ITEM_CSV_PATH, 'utf8').split('\n')
+    let currentCat = null
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (trimmed.startsWith('[') && trimmed.includes(']')) {
+        const section = trimmed.slice(1, trimmed.indexOf(']')).toLowerCase()
+        currentCat = ITEM_SECTION_TO_CAT[section] || null
+        continue
+      }
+      if (!currentCat || !trimmed) continue
+      const parts = trimmed.split('|')
+      if (parts.length < 2) continue
+      const name = parts[1].trim()
+      if (!name) continue
+      const rarity = zoneRarity[name.toLowerCase()]
+      if (!rarity) continue  // skip normal/non-unique items
+      if (!grouped[currentCat]) grouped[currentCat] = []
+      const localIcon = path.join(ICONS_DIR, sanitizeIconName(name) + '.png')
+      let iconPath = null
+      try { fs.accessSync(localIcon); iconPath = itemIconRelPath(name) } catch {}
+      const tier = serverTierMap[name] ?? SATANIC_TIERS[name] ?? inferTier(rarity)
+      grouped[currentCat].push({ name, rarity, enabled: enabledNames.has(name.toLowerCase()), image_url: iconPath, tier })
+    }
+  } catch {}
+
+  // Deduplicate weapons (appear in multiple sections) and sort
+  for (const cat of Object.keys(grouped)) {
+    const seen = new Set()
+    grouped[cat] = grouped[cat].filter(i => {
+      const k = i.name.toLowerCase()
+      if (seen.has(k)) return false
+      seen.add(k); return true
+    })
+    grouped[cat].sort((a, b) =>
+      (ITEM_RARITY_ORDER[a.rarity] ?? 9) - (ITEM_RARITY_ORDER[b.rarity] ?? 9) || a.name.localeCompare(b.name)
+    )
+  }
+  return grouped
+}
+
+async function prefetchItemIcons(grouped) {
+  await ensureIconsDir()
+  const BATCH = 4
+  const missing = []
+  for (const items of Object.values(grouped)) {
+    for (const item of items) {
+      if (!item.image_url) missing.push(item.name)
+    }
+  }
+  for (let i = 0; i < missing.length; i += BATCH) {
+    await Promise.all(missing.slice(i, i + BATCH).map(async name => {
+      try {
+        const res = await apiFetch(`/api/wiki/search?q=${encodeURIComponent(name)}&exact=1`)
+        if (!res.ok) return
+        const results = await res.json()
+        if (results[0]?.imageUrl) {
+          await downloadOneIcon(name, results[0].imageUrl)
+        }
+      } catch {}
+    }))
+  }
+}
+
 ipcMain.handle('filter:getItems', async () => {
   const data = await fetchServerFilter()
-  if (!data) return {}
-  // Convert grouped (by category name) to grouped by category name with enabled state
-  return data.grouped  // { "Weapon": [{name, rarity, enabled}], ... }
+  const enabledSet = new Set((data?.enabledNames || []).map(n => n.toLowerCase()))
+  // Use server data if it has items (has image URLs + tier); otherwise build from local game files
+  if (data?.grouped && Object.keys(data.grouped).some(k => data.grouped[k]?.length > 0)) {
+    return data.grouped
+  }
+  const grouped = buildLocalItemCatalog(enabledSet)
+  // Fetch missing icons in background — caller gets data immediately
+  prefetchItemIcons(grouped).catch(() => {})
+  return grouped
 })
+
+ipcMain.handle('filter:getTiers', () => serverTierMap)
 
 ipcMain.handle('filter:getPrefs', async () => {
   return { hiddenItems: [] }
@@ -1260,6 +1417,37 @@ ipcMain.handle('personal:setAll', (_, names, value) => {
     else personalFilter.delete(name)
   }
   savePersonalFilter()
+})
+
+// ── Relic filter ─────────────────────────────────────────────────────────────
+ipcMain.handle('relic:getAll', () => {
+  try {
+    const lines = fs.readFileSync(RELIC_CSV_PATH, 'utf8').split('\n')
+    return lines.slice(1)
+      .map((line, idx) => {
+        const parts = line.split('|')
+        const name = parts[1] ? parts[1].trim() : ''
+        return name ? { id: idx, name } : null
+      })
+      .filter(Boolean)
+  } catch { return [] }
+})
+
+ipcMain.handle('relic:getEnabled', () => [...relicFilter])
+
+ipcMain.handle('relic:toggle', (_, name) => {
+  if (relicFilter.has(name)) relicFilter.delete(name)
+  else relicFilter.add(name)
+  saveRelicFilter()
+  return relicFilter.has(name)
+})
+
+ipcMain.handle('relic:setAll', (_, names, value) => {
+  for (const name of names) {
+    if (value) relicFilter.add(name)
+    else relicFilter.delete(name)
+  }
+  saveRelicFilter()
 })
 
 ipcMain.handle('monitor:getState', () => ({ isMonitoring, leagueId: currentLeagueId, charIdentified }))
