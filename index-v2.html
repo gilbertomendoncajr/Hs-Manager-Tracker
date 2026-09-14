@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta http-equiv="Content-Security-Policy"
-  content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'">
+  content="default-src 'self'; img-src 'self' data: https: http:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'">
 <title>HS Drop Logger</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -874,6 +874,11 @@ body.tab-liga .ua-player { display: block; }
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
 }
 
+.stc-empty {
+  color: var(--text3); font-size: var(--fs-sm); text-align: center;
+  padding: 32px 16px; line-height: 1.6;
+}
+
 /* Satanic zone */
 .satanic-zone-block {
   background: var(--surf); border: 1px solid var(--satanic);
@@ -897,6 +902,33 @@ body.tab-liga .ua-player { display: block; }
 .szb-mod-name.cons { color: #f44336; }
 .szb-mod-desc { font-family: var(--font-sans); font-size: 11px; color: var(--text3); line-height: 1.4; }
 .szb-mod-empty { font-family: var(--font-sans); font-size: var(--fs-xs); color: var(--text3); }
+
+/* Zone drops */
+.szd-block {
+  background: var(--surf); border: 1px solid var(--brt);
+  border-left: 3px solid var(--heroic); padding: 10px 14px; margin-top: 6px;
+}
+.szd-header {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin-bottom: 8px;
+}
+.szd-title {
+  font-size: var(--fs-xs); font-weight: 700; letter-spacing: .14em;
+  color: var(--heroic);
+}
+.szd-zone {
+  font-size: var(--fs-xs); color: var(--text3);
+}
+.szd-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 4px 0; border-bottom: 1px solid var(--brt);
+}
+.szd-row:last-child { border-bottom: none; }
+.szd-name { font-size: var(--fs-sm); font-weight: 600; flex: 1; }
+.szd-rate {
+  font-family: 'Space Mono', monospace; font-size: var(--fs-xs);
+  color: var(--text3); white-space: nowrap; margin-left: 10px;
+}
 
 /* Item timeline */
 .stats-timeline { display: flex; flex-direction: column; gap: 4px; }
@@ -1019,6 +1051,260 @@ body.tab-liga .ua-player { display: block; }
   transition: opacity .12s;
 }
 .filtro-open-btn:hover { opacity: .85; }
+
+/* ── Item Filter (inline) ────────────────────────────────────────────── */
+#p-filtro { flex-direction: column; padding: 0; overflow: hidden; }
+#p-filtro.active { display: flex; }
+
+.if-toolbar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; border-bottom: 1px solid var(--brt); flex-shrink: 0;
+}
+.if-search {
+  flex: 1; background: var(--surf-hi); border: 1px solid var(--brt);
+  color: var(--text); font-size: var(--fs-xs); font-family: 'Chakra Petch', sans-serif;
+  padding: 5px 10px; outline: none; transition: border-color .15s;
+}
+.if-search:focus { border-color: var(--heroic); }
+.if-clear, .if-btn {
+  background: none; border: 1px solid var(--brt); color: var(--text2);
+  font-size: var(--fs-xs); font-family: 'Chakra Petch', sans-serif;
+  padding: 5px 10px; cursor: pointer; white-space: nowrap; transition: all .15s;
+}
+.if-clear:hover { border-color: var(--satanic); color: var(--satanic); }
+.if-btn:hover   { border-color: var(--text2); color: var(--text); }
+.if-count { font-size: var(--fs-xs); color: var(--text3); font-family: 'Space Mono', monospace; white-space: nowrap; }
+
+.if-cat-bar {
+  display: flex; flex-wrap: wrap; gap: 4px;
+  padding: 8px 14px; border-bottom: 1px solid var(--brt); flex-shrink: 0;
+}
+.if-cat-tab {
+  display: flex; align-items: center; gap: 5px; padding: 4px 10px;
+  background: var(--surf-hi); border: 1px solid var(--brt); color: var(--text2);
+  cursor: pointer; font-family: 'Chakra Petch', sans-serif; font-size: var(--fs-xs);
+  font-weight: 600; white-space: nowrap; transition: all .15s; letter-spacing: .04em;
+}
+.if-cat-tab:hover { border-color: var(--brt2); color: var(--text); }
+.if-cat-tab.active { border-color: var(--heroic); color: var(--heroic); background: rgba(0,216,150,.08); }
+.if-cat-tab .cat-icon { font-size: 13px; }
+.if-cat-tab .cat-badge {
+  font-size: 9px; background: var(--brt); padding: 1px 5px;
+  border-radius: 8px; color: var(--text2);
+}
+.if-cat-tab.active .cat-badge { background: rgba(0,216,150,.15); color: var(--heroic); }
+
+.if-rarity-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 14px; border-bottom: 1px solid var(--brt); flex-shrink: 0;
+}
+.if-rarity-label { font-size: var(--fs-xs); color: var(--text3); font-family: 'Chakra Petch', sans-serif; letter-spacing: .08em; flex-shrink: 0; }
+.if-rarity-chips { display: flex; gap: 5px; flex-wrap: wrap; }
+.if-rchip {
+  padding: 2px 9px; border: 1px solid transparent;
+  font-size: var(--fs-xs); font-family: 'Chakra Petch', sans-serif;
+  font-weight: 600; cursor: pointer; transition: all .15s; opacity: .35;
+}
+.if-rchip.active { opacity: 1; }
+.if-rchip.All     { border-color: var(--brt2); color: var(--text); background: var(--surf-hi); opacity: 1; }
+.if-rchip.Satanic { border-color: var(--satanic); color: var(--satanic); background: rgba(200,32,32,.07); }
+.if-rchip.Angelic  { border-color: var(--angelic);  color: var(--angelic);  background: rgba(240,200,40,.07); }
+.if-rchip.Unholy   { border-color: var(--unholy);   color: var(--unholy);   background: rgba(208,72,136,.07); }
+.if-rchip.Heroic   { border-color: var(--heroic);   color: var(--heroic);   background: rgba(0,216,150,.07); }
+.if-rchip.Set      { border-color: var(--set);      color: var(--set);      background: rgba(62,200,62,.07); }
+
+.if-tier-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 14px; border-bottom: 1px solid var(--brt); flex-shrink: 0;
+}
+.if-tier-label { font-size: var(--fs-xs); color: var(--text3); font-family: 'Chakra Petch', sans-serif; letter-spacing: .08em; flex-shrink: 0; }
+.if-tier-chips { display: flex; gap: 4px; flex-wrap: wrap; }
+.if-tchip {
+  padding: 2px 8px; border: 1px solid transparent;
+  font-size: var(--fs-xs); font-family: 'Space Mono', monospace;
+  font-weight: 700; cursor: pointer; transition: all .15s; opacity: .35;
+  letter-spacing: .02em;
+}
+.if-tchip.active { opacity: 1; }
+.if-tchip.All  { border-color: var(--brt2); color: var(--text2); background: var(--surf-hi); opacity: 1; }
+.if-tchip.D    { border-color: #607080; color: #8090a0; background: rgba(96,112,128,.07); }
+.if-tchip.C    { border-color: #4090c0; color: #60b0e0; background: rgba(64,144,192,.07); }
+.if-tchip.B    { border-color: #40c060; color: #60d880; background: rgba(64,192,96,.07); }
+.if-tchip.A    { border-color: #c08000; color: #e8a820; background: rgba(192,128,0,.07); }
+.if-tchip.S    { border-color: #e04000; color: #f06020; background: rgba(224,64,0,.07); }
+.if-tchip.SS   { border-color: #c020c0; color: #e040e0; background: rgba(192,32,192,.07); }
+
+.if-tier-badge {
+  font-size: 9px; font-family: 'Space Mono', monospace; font-weight: 700;
+  padding: 1px 5px; letter-spacing: .03em;
+}
+.if-tier-badge.D  { color: #8090a0; border: 1px solid #607080; }
+.if-tier-badge.C  { color: #60b0e0; border: 1px solid #4090c0; }
+.if-tier-badge.B  { color: #60d880; border: 1px solid #40c060; }
+.if-tier-badge.A  { color: #e8a820; border: 1px solid #c08000; }
+.if-tier-badge.S  { color: #f06020; border: 1px solid #e04000; }
+.if-tier-badge.SS { color: #e040e0; border: 1px solid #c020c0; }
+
+.if-content {
+  flex: 1; overflow-y: auto; padding: 12px 14px;
+}
+.if-content::-webkit-scrollbar { width: 4px; }
+.if-content::-webkit-scrollbar-thumb { background: var(--brt2); }
+
+.if-cat-header {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+}
+.if-cat-header h3 {
+  font-family: 'Chakra Petch', sans-serif; font-size: var(--fs-xs);
+  font-weight: 700; color: var(--heroic); letter-spacing: .1em;
+}
+.if-cat-header .sep { flex: 1; height: 1px; background: var(--brt); }
+
+.if-select-row { display: flex; gap: 6px; margin-bottom: 10px; }
+.if-btn-mini {
+  background: none; border: 1px solid var(--brt); color: var(--text2);
+  padding: 3px 8px; cursor: pointer; font-size: 10px;
+  font-family: 'Chakra Petch', sans-serif; transition: all .15s; letter-spacing: .04em;
+}
+.if-btn-mini:hover { border-color: var(--heroic); color: var(--heroic); }
+.if-btn-mini.deselect:hover { border-color: var(--satanic); color: var(--satanic); }
+
+.if-item-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 6px; margin-bottom: 16px;
+}
+.if-item-card {
+  background: var(--surf); border: 1px solid var(--brt);
+  padding: 8px 10px; display: flex; align-items: center; gap: 8px;
+  transition: border-color .15s, opacity .15s;
+  cursor: pointer; position: relative; user-select: none;
+}
+.if-item-card:hover { border-color: var(--brt2); }
+.if-item-card.personal-off { opacity: .38; }
+.if-item-card.personal-on  { border-color: rgba(0,216,150,.3); }
+.if-item-card.personal-on:hover { border-color: rgba(0,216,150,.6); }
+.if-item-card::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+}
+.if-item-card.Satanic::before { background: var(--satanic); }
+.if-item-card.Angelic::before  { background: var(--angelic); }
+.if-item-card.Unholy::before   { background: var(--unholy); }
+.if-item-card.Heroic::before   { background: var(--heroic); }
+.if-item-card.Set::before      { background: var(--set); }
+
+.if-item-icon {
+  width: 32px; height: 32px; background: var(--surf-hi); border: 1px solid var(--brt);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; flex-shrink: 0; overflow: hidden;
+}
+.if-item-icon img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+.if-item-card.Satanic .if-item-icon { border-color: rgba(200,32,32,.3); }
+.if-item-card.Angelic  .if-item-icon { border-color: rgba(240,200,40,.3); }
+.if-item-card.Unholy   .if-item-icon { border-color: rgba(208,72,136,.3); }
+.if-item-card.Heroic   .if-item-icon { border-color: rgba(0,216,150,.3); }
+.if-item-card.Set      .if-item-icon { border-color: rgba(62,200,62,.3); }
+
+.if-item-info { flex: 1; min-width: 0; }
+.if-item-name {
+  font-size: var(--fs-xs); font-weight: 600; color: var(--text);
+  line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.if-item-meta { display: flex; align-items: center; gap: 4px; margin-top: 2px; }
+.if-item-rarity {
+  font-size: 9px; font-family: 'Chakra Petch', sans-serif; letter-spacing: .04em;
+}
+.if-item-rarity.Satanic { color: var(--satanic); }
+.if-item-rarity.Angelic  { color: var(--angelic); }
+.if-item-rarity.Unholy   { color: var(--unholy); }
+.if-item-rarity.Heroic   { color: var(--heroic); }
+.if-item-rarity.Set      { color: var(--set); }
+.if-adm-badge {
+  font-size: 8px; font-family: 'Chakra Petch', sans-serif;
+  padding: 1px 4px; letter-spacing: .03em; font-weight: 700;
+}
+.if-adm-badge.on  { color: var(--text2); background: rgba(200,200,200,.1); border: 1px solid var(--brt2); }
+.if-adm-badge.off { color: var(--text3); background: transparent; border: 1px solid var(--brt); }
+
+.if-toggle { position: relative; width: 26px; height: 14px; flex-shrink: 0; pointer-events: none; }
+.if-toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+.if-toggle-track { position: absolute; inset: 0; background: var(--brt2); transition: background .2s; border-radius: 7px; }
+.if-toggle-track::after {
+  content: ''; position: absolute; width: 10px; height: 10px;
+  background: var(--text3); border-radius: 50%;
+  top: 2px; left: 2px; transition: transform .2s, background .2s;
+}
+input:checked + .if-toggle-track { background: rgba(0,216,150,.25); border: 1px solid var(--heroic); }
+input:checked + .if-toggle-track::after { transform: translateX(12px); background: var(--heroic); }
+
+.if-empty {
+  text-align: center; padding: 36px; color: var(--text3);
+  font-size: var(--fs-xs); font-family: 'Chakra Petch', sans-serif;
+}
+.if-loading {
+  display: flex; align-items: center; justify-content: center;
+  height: 120px; color: var(--text3);
+  font-family: 'Chakra Petch', sans-serif; letter-spacing: .1em; font-size: var(--fs-xs);
+}
+
+/* ── Relic Filter page ───────────────────────────────────────────────── */
+.rfc-toolbar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 16px 12px; flex-wrap: wrap;
+}
+.rfc-search {
+  flex: 1; min-width: 120px;
+  background: var(--surf); border: 1px solid var(--brt);
+  color: var(--text); font-size: var(--fs-xs);
+  font-family: 'Chakra Petch', sans-serif;
+  padding: 5px 10px; border-radius: 4px; outline: none;
+}
+.rfc-search:focus { border-color: var(--heroic); }
+.rfc-btn {
+  background: var(--surf); border: 1px solid var(--brt);
+  color: var(--text2); font-size: var(--fs-xs);
+  font-family: 'Chakra Petch', sans-serif; letter-spacing: .06em;
+  padding: 5px 10px; border-radius: 4px; cursor: pointer;
+  white-space: nowrap;
+}
+.rfc-btn:hover { border-color: var(--heroic); color: var(--text); }
+.rfc-btn-off:hover { border-color: var(--satanic); }
+.rfc-count {
+  font-size: var(--fs-xs); color: var(--text3);
+  font-family: 'Space Mono', monospace; white-space: nowrap; margin-left: 4px;
+}
+.rfc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 6px; padding: 0 16px 16px; overflow-y: auto;
+}
+.rfc-card {
+  background: var(--surf); border: 1px solid var(--brt);
+  border-radius: 5px; padding: 8px 10px;
+  display: flex; align-items: center; gap: 8px;
+  cursor: pointer; transition: border-color .15s, background .15s;
+  user-select: none;
+}
+.rfc-card:hover { border-color: var(--brt2); }
+.rfc-card.on { border-color: var(--heroic); background: var(--accent-lo); }
+.rfc-card.on .rfc-icon { background: var(--heroic); color: #000; }
+.rfc-icon {
+  width: 28px; height: 28px; border-radius: 4px; flex-shrink: 0;
+  background: var(--brt); position: relative; overflow: hidden;
+}
+.rfc-init {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; color: var(--text2); letter-spacing: 0;
+}
+.rfc-icon img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%; object-fit: cover;
+}
+.rfc-name {
+  font-size: var(--fs-xs); font-family: 'Chakra Petch', sans-serif;
+  color: var(--text); line-height: 1.2; word-break: break-word;
+}
 
 /* ── Status page (ghost) ─────────────────────────────────────────────── */
 /* Kept for renderer compat; content lives in header MONITORING card */
@@ -1263,6 +1549,13 @@ body.no-bp.tab-liga .bp-disabled-overlay { display: flex; }
         <span class="nav-btn-label" data-i18n="nav.filter">Filtro</span>
       </button>
 
+      <button class="nav-btn" data-page="relics">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/>
+        </svg>
+        <span class="nav-btn-label">Relic Filter</span>
+      </button>
+
       <div class="nav-div"></div>
 
       <button class="nav-btn nav-compact-btn" id="btnCompact">
@@ -1270,7 +1563,7 @@ body.no-bp.tab-liga .bp-disabled-overlay { display: flex; }
           <rect x="2" y="3" width="20" height="14" rx="2"/>
           <rect x="13" y="8" width="7" height="5" rx="1"/>
         </svg>
-        <span class="nav-btn-label" data-i18n="nav.compact">Modo Compacto</span>
+        <span class="nav-btn-label" data-i18n="nav.compact">Compact Mode</span>
       </button>
 
       <div class="nav-sp"></div>
@@ -1303,7 +1596,7 @@ body.no-bp.tab-liga .bp-disabled-overlay { display: flex; }
       </div>
     </div>
 
-    <div class="side-version">v1.9.2</div>
+    <div class="side-version">v2.2.5</div>
   </nav>
 
   <!-- ══ MAIN COLUMN ════════════════════════════════════════ -->
@@ -1347,16 +1640,6 @@ body.no-bp.tab-liga .bp-disabled-overlay { display: flex; }
       <div id="statRares" style="display:none">
         <b id="rareCount">0</b>
         <span data-i18n="stat.rares">raros</span>
-      </div>
-
-      <!-- Visible header count cards (mirrored by v2-shim.js) -->
-      <div class="hdr-card-vis" id="hdrDropsCard">
-        <div class="hdr-card-num" id="hdrDropCount">0</div>
-        <div class="hdr-card-label-vis">DROPS</div>
-      </div>
-      <div class="hdr-card-vis" id="hdrRaresCard">
-        <div class="hdr-card-num" id="hdrRareCount">0</div>
-        <div class="hdr-card-label-vis" data-i18n="hdr.rares">COLETADOS</div>
       </div>
 
       <div class="hdr-sp"></div>
@@ -1457,6 +1740,22 @@ body.no-bp.tab-liga .bp-disabled-overlay { display: flex; }
           </table>
         </div>
 
+
+        <!-- Liga feed — visível apenas na aba Liga -->
+        <div id="ligaSection" style="display:none">
+          <table id="ligaTable">
+            <thead>
+              <tr>
+                <th data-i18n="th.item">Item</th>
+                <th data-i18n="th.dropped">Dropou</th>
+              </tr>
+            </thead>
+            <tbody id="ligaBody"></tbody>
+          </table>
+          <div class="log-empty" id="ligaEmpty" style="display:none">
+            <span>Aguardando drops da liga...</span>
+          </div>
+        </div>
 
       </div><!-- /#p-drops -->
 
@@ -1565,17 +1864,54 @@ body.no-bp.tab-liga .bp-disabled-overlay { display: flex; }
 
       <!-- FILTRO -->
       <div class="page" id="p-filtro">
+        <div class="if-toolbar">
+          <input type="text" class="if-search" id="ifSearch" placeholder="Search item...">
+          <button class="if-clear" id="ifSearchClear" hidden>✕</button>
+          <span class="if-count" id="ifCount"></span>
+          <button class="if-btn" id="ifRefresh">↻ Refresh</button>
+        </div>
+        <div class="if-cat-bar" id="ifCatBar"></div>
+        <div class="if-rarity-bar">
+          <span class="if-rarity-label">RARITY:</span>
+          <div class="if-rarity-chips" id="ifRarityChips">
+            <span class="if-rchip All active" data-rarity="All">All</span>
+            <span class="if-rchip Satanic active" data-rarity="Satanic">Satanic</span>
+            <span class="if-rchip Angelic active" data-rarity="Angelic">Angelic</span>
+            <span class="if-rchip Unholy active" data-rarity="Unholy">Unholy</span>
+            <span class="if-rchip Heroic active" data-rarity="Heroic">Heroic</span>
+            <span class="if-rchip Set active" data-rarity="Set">Set</span>
+          </div>
+        </div>
+        <div class="if-tier-bar" id="ifTierBar">
+          <span class="if-tier-label">TIER:</span>
+          <div class="if-tier-chips" id="ifTierChips">
+            <span class="if-tchip All active" data-tier="All">All</span>
+            <span class="if-tchip SS active" data-tier="SS">SS</span>
+            <span class="if-tchip S active" data-tier="S">S</span>
+            <span class="if-tchip A active" data-tier="A">A</span>
+            <span class="if-tchip B active" data-tier="B">B</span>
+            <span class="if-tchip C active" data-tier="C">C</span>
+            <span class="if-tchip D active" data-tier="D">D</span>
+          </div>
+        </div>
+        <div class="if-content" id="ifContent">
+          <div class="if-loading">LOADING ITEMS...</div>
+        </div>
+      </div>
+
+      <!-- RELIC FILTER -->
+      <div class="page" id="p-relics">
         <div class="page-header">
-          <h2 data-i18n="filter.title">Filtro de Itens</h2>
-          <p data-i18n="filter.desc">Configure quais itens serão monitorados</p>
+          <h2>Relic Filter</h2>
+          <p>Choose which relics trigger an overlay alert when dropped.</p>
         </div>
-        <div class="filtro-launcher">
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
-            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
-          </svg>
-          <p data-i18n="filter.openDesc">Abra o painel de filtro para gerenciar raridades e itens detectados.</p>
-          <button class="filtro-open-btn" id="btnOpenFilter" data-i18n="filter.openBtn">Abrir Filtro</button>
+        <div class="rfc-toolbar">
+          <input class="rfc-search" id="rfcSearch" type="text" placeholder="Search relics...">
+          <button class="rfc-btn" id="rfcEnableAll">Enable All</button>
+          <button class="rfc-btn rfc-btn-off" id="rfcDisableAll">Disable All</button>
+          <span class="rfc-count" id="rfcCount"></span>
         </div>
+        <div class="rfc-grid" id="rfcGrid"></div>
       </div>
 
       <!-- CONFIG -->
@@ -1654,7 +1990,7 @@ body.no-bp.tab-liga .bp-disabled-overlay { display: flex; }
         <div class="sobre-card">
           <div class="sobre-logo"><img src="icon.png" alt="HS Drop Logger"></div>
           <div class="sobre-name">HS Drop Logger</div>
-          <div class="sobre-version">v1.9.2</div>
+          <div class="sobre-version">v2.2.5</div>
         </div>
       </div>
 
@@ -1711,6 +2047,7 @@ body.no-bp.tab-liga .bp-disabled-overlay { display: flex; }
 </div>
 </div><!-- /screenApp -->
 
+<script src="zone-drops-data.js"></script>
 <script src="renderer.js"></script>
 <script src="v2-shim.js"></script>
 

@@ -116,17 +116,53 @@ function switchTab(tab) {
   document.body.classList.toggle('tab-liga', tab === 'liga')
   tabMeusBtn.classList.toggle('active', tab === 'meus')
   tabLigaBtn.classList.toggle('active', tab === 'liga')
-  // Hide site-filtered rows in Liga tab, show in My Drops tab
-  uaBody.querySelectorAll('tr.ua-site-filtered').forEach(r => {
-    r.style.display = tab === 'liga' ? 'none' : ''
-  })
-  _refreshUaCount()
+
+  const ligaSection = document.getElementById('ligaSection')
+  const logList = document.getElementById('logList')
+  const uaSectionEl = document.getElementById('uaSection')
+
+  if (tab === 'liga') {
+    if (ligaSection) ligaSection.style.display = ''
+    if (logList) logList.style.display = 'none'
+    if (uaSectionEl) uaSectionEl.style.display = 'none'
+  } else {
+    if (ligaSection) ligaSection.style.display = 'none'
+    if (logList) logList.style.display = ''
+    if (uaSectionEl) uaSectionEl.style.display = uaBody.children.length > 0 ? 'block' : 'none'
+    _refreshUaCount()
+  }
+
   updateEmptyState()
   updateStatsBar()
-  // Show/hide stats bar based on tab
   const hasMon = isMonitoring
   statDrops.style.display = hasMon ? 'flex' : 'none'
   statRares.style.display = hasMon ? 'flex' : 'none'
+}
+
+function _fmtTime(ts) {
+  return new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+}
+
+function addLigaRow(drop) {
+  const body = document.getElementById('ligaBody')
+  const empty = document.getElementById('ligaEmpty')
+  if (!body) return
+  if (empty) empty.style.display = 'none'
+
+  const color = RARITY_COLOR_MAP[drop.rarity] || 'var(--text)'
+  const tierTag = drop.tier ? ` <span class="drop-tier">[${drop.tier}]</span>` : ''
+  const player = drop.charName && drop.discordUser
+    ? `${drop.charName} / ${drop.discordUser}`
+    : (drop.charName || drop.discordUser || '')
+  const playerHtml = player ? ` <span class="drop-who">${player}</span>` : ''
+  const srcIcon = drop.source === 'sse' ? '🌐 ' : ''
+
+  const row = document.createElement('tr')
+  row.innerHTML = `
+    <td><span style="color:${color};font-weight:600">${srcIcon}${drop.name}</span>${tierTag}${playerHtml}</td>
+    <td style="white-space:nowrap">${_fmtTime(drop.ts)}</td>
+  `
+  body.insertBefore(row, body.firstChild)
 }
 
 function addLogEntry({ type, message, item, ts, tab = 'both' }) {
@@ -281,7 +317,11 @@ function navTo(page) {
 }
 
 document.querySelectorAll('.nav-btn[data-page]').forEach(btn => {
-  btn.addEventListener('click', () => navTo(btn.dataset.page))
+  btn.addEventListener('click', () => {
+    navTo(btn.dataset.page)
+    if (btn.dataset.page === 'relics') _initRelicFilter()
+    if (btn.dataset.page === 'filtro') _initItemFilter()
+  })
 })
 
 // ── i18n ─────────────────────────────────────────────────────────────────────
@@ -347,6 +387,7 @@ const I18N = {
     'cfg.startup': 'Start with Windows', 'cfg.startupDesc': 'Opens automatically at startup',
     'cfg.onClose': 'On Close', 'cfg.onCloseDesc': 'What happens when you close the window',
     'cfg.tray': 'Tray', 'cfg.exit': 'Quit',
+    'cfg.compact': 'Compact Mode', 'cfg.compactDesc': 'Smaller window with minimal UI',
     'cfg.overlay': 'Overlay', 'cfg.showOverlay': 'Show overlay',
     'cfg.showOverlayDesc': 'Displays drops in real time over the game',
     'hdr.logout': 'Sign Out',
@@ -454,7 +495,7 @@ const btnLogoutCfg = document.getElementById('btnLogoutCfg')
 if (btnLogoutCfg) btnLogoutCfg.addEventListener('click', () => btnLogout.click())
 
 const btnOpenFilter = document.getElementById('btnOpenFilter')
-if (btnOpenFilter) btnOpenFilter.addEventListener('click', () => window.api.openFilter())
+if (btnOpenFilter) btnOpenFilter.addEventListener('click', () => { navTo('filtro'); _initItemFilter() })
 
 // ── Status tab elements ───────────────────────────────────────────────────────
 const stMonDot = document.getElementById('st-mon-dot')
@@ -565,6 +606,16 @@ function setMonitorUI(watching, charIdentified) {
     if (_heartbeatTimer) { clearInterval(_heartbeatTimer); _heartbeatTimer = null }
     if (stEvtDot) stEvtDot.className = 'st-dot'
     if (stEvtVal) stEvtVal.textContent = '—'
+    // Resetar estado de BP: reabilitar dropdown e limpar opções especiais
+    if (_bpAutoLocked || leagueSelect.disabled) {
+      leagueSelect.disabled = false
+      _bpAutoLocked = false
+    }
+    const noBpOpt = leagueSelect.querySelector('option[value="__no_bp__"]')
+    if (noBpOpt) noBpOpt.remove()
+    const unlinkedOpt = leagueSelect.querySelector('option[value="__bp_unlinked__"]')
+    if (unlinkedOpt) unlinkedOpt.remove()
+    document.body.classList.remove('no-bp')
   } else if (!charIdentified) {
     btnToggle.textContent = tr('btn.stop')
     btnToggle.className = 'stop'
@@ -691,7 +742,7 @@ btnLogin.addEventListener('click', async () => {
   }
 })
 
-btnFilter.addEventListener('click', () => window.api.openFilter())
+btnFilter.addEventListener('click', () => { navTo('filtro'); _initItemFilter() })
 
 leagueSelect.addEventListener('change', () => {
   if (window.api.setLeague && leagueSelect.value) {
@@ -893,6 +944,10 @@ window.api.onDropCollected((drop) => {
   _refreshUaCount()
 })
 
+if (window.api.onLigaDrop) {
+  window.api.onLigaDrop((drop) => addLigaRow(drop))
+}
+
 // ── Stats avançados (gold/xp/kills/tallies/resources/notable/satanic) ────────
 const RARITY_COLOR_MAP = {
   Satanic: 'var(--satanic)', Angelic: 'var(--angelic)',
@@ -1020,16 +1075,27 @@ function _updateTallies(tallies) {
   const el = document.getElementById('tallyGrid')
   if (!el) return
   const t = tallies || {}
-  const renderGroup = (keys, col) => keys.map(k =>
-    `<div class="stc-card">
-      <span class="stc-count" style="color:${col}">${t[k] || 0}</span>
-      <span class="stc-label">${TALLY_LABELS[k]}</span>
-    </div>`
-  ).join('')
+  const renderGroup = (keys, col) => {
+    const active = keys.filter(k => (t[k] || 0) > 0)
+    return active.map(k =>
+      `<div class="stc-card">
+        <span class="stc-count" style="color:${col}">${t[k]}</span>
+        <span class="stc-label">${TALLY_LABELS[k]}</span>
+      </div>`
+    ).join('')
+  }
+  const bossHtml   = renderGroup(_TALLY_BOSSES, 'var(--satanic)')
+  const chestHtml  = renderGroup(_TALLY_CHESTS, 'var(--heroic)')
+  const clearHtml  = renderGroup(_TALLY_CLEARS, 'var(--angelic)')
+  const hasAny = bossHtml || chestHtml || clearHtml
+  if (!hasAny) {
+    el.innerHTML = '<div class="stc-empty">No activity recorded yet.<br>Start farming to track your kills and chests.</div>'
+    return
+  }
   el.innerHTML =
-    `<div class="stc-group-label">BOSSES</div><div class="stc-group">${renderGroup(_TALLY_BOSSES, 'var(--satanic)')}</div>` +
-    `<div class="stc-group-label">BAÚS</div><div class="stc-group">${renderGroup(_TALLY_CHESTS, 'var(--heroic)')}</div>` +
-    `<div class="stc-group-label">CLEARS</div><div class="stc-group">${renderGroup(_TALLY_CLEARS, 'var(--angelic)')}</div>`
+    (bossHtml  ? `<div class="stc-group-label">BOSSES</div><div class="stc-group">${bossHtml}</div>`  : '') +
+    (chestHtml ? `<div class="stc-group-label">CHESTS</div><div class="stc-group">${chestHtml}</div>` : '') +
+    (clearHtml ? `<div class="stc-group-label">CLEARS</div><div class="stc-group">${clearHtml}</div>` : '')
 }
 
 // Buff/debuff decode tables — sourced from hs-tracker buffs.js
@@ -1160,6 +1226,8 @@ function _updateSatanic(satanic) {
     ? debuffIds.map(renderDebuff).join('')
     : '<div class="szb-mod-empty">—</div>'
 
+  const zoneDropsHtml = _renderZoneDrops(satanic.zone)
+
   el.innerHTML = `
     <div class="satanic-zone-block">
       <div class="szb-name">${zoneName}</div>
@@ -1173,7 +1241,56 @@ function _updateSatanic(satanic) {
           ${consHtml}
         </div>
       </div>
+    </div>
+    ${zoneDropsHtml}`
+}
+
+function _fmtDropRate(rate) {
+  if (!rate) return '?'
+  if (rate >= 1_000_000) return `1 / ${(rate / 1_000_000).toFixed(1)}M`
+  if (rate >= 1_000)     return `1 / ${Math.round(rate / 1_000)}k`
+  return `1 / ${rate}`
+}
+
+function _renderZoneDrops(rawZone) {
+  if (typeof ZONE_DROPS === 'undefined' || typeof ZONE_DROP_RATE === 'undefined') return ''
+  const parts = String(rawZone).split('_')
+  if (parts.length < 3) return ''
+  const act = parseInt(parts[parts.length - 2], 10)
+  const idx = parseInt(parts[parts.length - 1], 10)
+  if (isNaN(act) || isNaN(idx)) return ''
+  const code   = `${act}-${idx}`
+  const codeBD = `${act}-BD`
+  const codeD  = `${act}-D`
+
+  const results = []
+  for (const [name, zones] of Object.entries(ZONE_DROPS)) {
+    if (zones.includes(code) || zones.includes(codeBD) || zones.includes(codeD)) {
+      results.push({ name, rate: ZONE_DROP_RATE[name] || 9999999, rarity: (typeof ZONE_RARITY !== 'undefined' ? ZONE_RARITY[name] : null) || 'Set' })
+    }
+  }
+  if (!results.length) return ''
+  results.sort((a, b) => a.rate - b.rate)
+  const top = results.slice(0, 6)
+
+  const RARITY_COL = { Satanic: 'var(--satanic)', Angelic: 'var(--angelic)', Unholy: 'var(--unholy)', Heroic: 'var(--heroic)', Set: 'var(--set)' }
+
+  const rows = top.map(it => {
+    const col = RARITY_COL[it.rarity] || 'var(--text)'
+    const cap = it.name.replace(/\b\w/g, c => c.toUpperCase())
+    return `<div class="szd-row">
+      <span class="szd-name" style="color:${col}">${cap}</span>
+      <span class="szd-rate">${it.rarity === 'Set' ? 'SS' : it.rarity.slice(0,2).toUpperCase()} &nbsp; ${_fmtDropRate(it.rate)}</span>
     </div>`
+  }).join('')
+
+  return `<div class="szd-block">
+    <div class="szd-header">
+      <span class="szd-title">DROPS IN THIS ZONE</span>
+      <span class="szd-zone">${_fmtZoneName(rawZone)}</span>
+    </div>
+    ${rows}
+  </div>`
 }
 
 function _addToTimeline(drop) {
@@ -1224,11 +1341,15 @@ if (window.api.onDropCollected) {
   window.api.onDropCollected((drop) => { _addToTimeline(drop) })
 }
 
+let _bpAutoLocked = false
+
 if (window.api.onLeagueAutoSelected) {
   window.api.onLeagueAutoSelected(({ leagueId, leagueName, charName }) => {
     const opt = leagueSelect.querySelector(`option[value="${leagueId}"]`)
     if (opt) {
       leagueSelect.value = leagueId
+      leagueSelect.disabled = true
+      _bpAutoLocked = true
       if (window.api.setLeague) window.api.setLeague(leagueId)
       addLogEntry({ type: 'info', message: `Liga detectada automaticamente: ${leagueName} (${charName})`, ts: Date.now() })
     }
@@ -1307,6 +1428,20 @@ if (window.api.onBpMode) {
   })
 }
 
+if (window.api.onBpUnlinked) {
+  window.api.onBpUnlinked(() => {
+    leagueSelect.disabled = true
+    const prev = leagueSelect.querySelector('option[value="__bp_unlinked__"]')
+    if (!prev) {
+      const opt = document.createElement('option')
+      opt.value = '__bp_unlinked__'
+      opt.textContent = '⚠️ Blood Pact não configurado'
+      leagueSelect.insertBefore(opt, leagueSelect.firstChild)
+    }
+    leagueSelect.value = '__bp_unlinked__'
+  })
+}
+
 const btnResetSession  = document.getElementById('btnResetSession')
 const resetModal       = document.getElementById('resetModal')
 const resetModalChar   = document.getElementById('resetModalChar')
@@ -1343,7 +1478,6 @@ if (btnWinClose)    btnWinClose.addEventListener('click',    () => window.api.wi
 const btnCompact = document.getElementById('btnCompact')
 if (btnCompact) {
   btnCompact.addEventListener('click', async () => {
-    // Main window will be hidden by main.js — no toggle needed here
     await window.api.toggleCompact()
   })
 }
@@ -1390,6 +1524,457 @@ function _initDebugLog() {
     if (empty) { empty.style.display = 'block'; list.appendChild(empty) }
     btn.classList.remove('has-entries')
   })
+}
+
+// ── Relic Filter page ─────────────────────────────────────────────────────────
+let _rfcAllRelics = []
+let _rfcEnabled   = new Set()
+let _rfcLoaded    = false
+
+async function _initRelicFilter() {
+  if (!_rfcLoaded) {
+    _rfcAllRelics = await window.api.getRelics()
+    const enabled = await window.api.getRelicEnabled()
+    _rfcEnabled   = new Set(enabled)
+    _rfcLoaded    = true
+    _rfcBindActions()
+  }
+  _rfcRender(document.getElementById('rfcSearch')?.value?.trim() ?? '')
+}
+
+function _rfcBindActions() {
+  const search = document.getElementById('rfcSearch')
+  if (search) search.addEventListener('input', e => _rfcRender(e.target.value.trim()))
+
+  document.getElementById('rfcEnableAll')?.addEventListener('click', async () => {
+    const visible = _rfcVisible(document.getElementById('rfcSearch')?.value?.trim() ?? '')
+    const names = visible.map(r => r.name)
+    await window.api.setAllRelics(names, true)
+    for (const n of names) _rfcEnabled.add(n)
+    _rfcRender(document.getElementById('rfcSearch')?.value?.trim() ?? '')
+  })
+
+  document.getElementById('rfcDisableAll')?.addEventListener('click', async () => {
+    const visible = _rfcVisible(document.getElementById('rfcSearch')?.value?.trim() ?? '')
+    const names = visible.map(r => r.name)
+    await window.api.setAllRelics(names, false)
+    for (const n of names) _rfcEnabled.delete(n)
+    _rfcRender(document.getElementById('rfcSearch')?.value?.trim() ?? '')
+  })
+}
+
+function _rfcVisible(q) {
+  if (!q) return _rfcAllRelics
+  const lq = q.toLowerCase()
+  return _rfcAllRelics.filter(r => r.name.toLowerCase().includes(lq))
+}
+
+function _rfcRender(q) {
+  const grid  = document.getElementById('rfcGrid')
+  const count = document.getElementById('rfcCount')
+  if (!grid) return
+
+  const visible = _rfcVisible(q)
+  const enabledCount = [..._rfcEnabled].filter(n => _rfcAllRelics.some(r => r.name === n)).length
+  if (count) count.textContent = `${enabledCount} / ${_rfcAllRelics.length} enabled`
+
+  grid.innerHTML = ''
+  for (const relic of visible) {
+    const isOn = _rfcEnabled.has(relic.name)
+    const card = document.createElement('div')
+    card.className = `rfc-card${isOn ? ' on' : ''}`
+    const initials = relic.name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase()
+    const slug = relic.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
+    card.innerHTML = `
+      <div class="rfc-icon">
+        <span class="rfc-init">${initials}</span>
+        <img src="assets/icons/relics/${slug}.png" alt="" onerror="this.remove()">
+      </div>
+      <span class="rfc-name">${relic.name}</span>
+    `
+    card.addEventListener('click', async () => {
+      const newState = await window.api.toggleRelic(relic.name)
+      if (newState) _rfcEnabled.add(relic.name)
+      else _rfcEnabled.delete(relic.name)
+      card.classList.toggle('on', newState)
+      card.querySelector('.rfc-icon').style.background = newState ? 'var(--heroic)' : ''
+      card.querySelector('.rfc-icon').style.color = newState ? '#000' : ''
+      const en = [..._rfcEnabled].filter(n => _rfcAllRelics.some(r => r.name === n)).length
+      if (count) count.textContent = `${en} / ${_rfcAllRelics.length} enabled`
+    })
+    grid.appendChild(card)
+  }
+}
+
+// ── Item Filter (inline) ──────────────────────────────────────────────────────
+const IF_CAT_ICONS = {
+  Helmet: '⛑', Armor: '🔰', Boots: '👢', Weapon: '⚔',
+  Gloves: '🥊', Amulet: '📿', Shield: '🛡', Ring: '💍',
+  Belt: '🔗', Charm: '✨',
+}
+const IF_CAT_ORDER = ['Weapon', 'Shield', 'Helmet', 'Boots', 'Armor', 'Gloves', 'Belt', 'Amulet', 'Ring', 'Charm']
+
+let _ifAllItems    = {}
+let _ifPersonal    = new Set()
+let _ifActiveCat   = null
+let _ifRarities    = new Set(['Satanic', 'Angelic', 'Unholy', 'Heroic', 'Set'])
+let _ifTiers       = new Set(['D', 'C', 'B', 'A', 'S', 'SS'])
+let _ifSearch      = ''
+let _ifLoaded      = false
+let _ifHasTiers    = false
+
+async function _initItemFilter() {
+  if (_ifLoaded) { _ifUpdateCount(); return }
+  document.getElementById('ifContent').innerHTML = '<div class="if-loading">LOADING ITEMS...</div>'
+
+  let items = {}
+  try { items = (await window.api.getFilterItems()) || {} }
+  catch (err) {
+    document.getElementById('ifContent').innerHTML =
+      `<div class="if-empty">Erro ao carregar itens.<br><small style="color:var(--satanic)">${err.message || err}</small></div>`
+    return
+  }
+
+  if (!items || Object.keys(items).length === 0) {
+    document.getElementById('ifContent').innerHTML =
+      '<div class="if-empty">Aguardando configuração do admin.</div>'
+    return
+  }
+
+  let enabledNames = []
+  try {
+    enabledNames = await Promise.race([
+      window.api.getPersonalEnabled(),
+      new Promise(r => setTimeout(() => r([]), 3000)),
+    ])
+  } catch {}
+
+  _ifAllItems  = items
+  _ifPersonal  = new Set(Array.isArray(enabledNames) ? enabledNames : [])
+
+  // Merge tier data from server (independent of whether server returned items)
+  try {
+    const tiers = await window.api.getFilterTiers()  // Record<name, tier>
+    if (tiers && Object.keys(tiers).length > 0) {
+      for (const arr of Object.values(_ifAllItems)) {
+        for (const item of arr) {
+          if (!item.tier && tiers[item.name]) item.tier = tiers[item.name]
+        }
+      }
+    }
+  } catch {}
+
+  _ifLoaded    = true
+  _ifHasTiers  = Object.values(_ifAllItems).some(arr => arr.some(i => i.tier))
+
+  _ifBuildCatTabs()
+  _ifBindRarityChips()
+  _ifBindTierChips()
+  _ifBindSearchBar()
+
+  const first = IF_CAT_ORDER.find(c => _ifAllItems[c]?.length > 0)
+  if (first) { _ifActiveCat = first; _ifSelectCategory(first) }
+  _ifUpdateCount()
+}
+
+function _ifBuildCatTabs() {
+  const bar = document.getElementById('ifCatBar')
+  bar.innerHTML = ''
+  for (const cat of IF_CAT_ORDER) {
+    if (!_ifAllItems[cat]?.length) continue
+    const total = _ifAllItems[cat].length
+    const myOn  = _ifAllItems[cat].filter(i => _ifPersonal.has(i.name)).length
+    const tab = document.createElement('div')
+    tab.className = 'if-cat-tab'
+    tab.dataset.cat = cat
+    tab.innerHTML = `<span class="cat-icon">${IF_CAT_ICONS[cat] || '•'}</span>${cat}<span class="cat-badge">${myOn}/${total}</span>`
+    tab.addEventListener('click', () => _ifSelectCategory(cat))
+    bar.appendChild(tab)
+  }
+}
+
+function _ifRefreshCatBadge(cat) {
+  const tab = document.querySelector(`.if-cat-tab[data-cat="${cat}"]`)
+  if (!tab) return
+  const total = _ifAllItems[cat]?.length || 0
+  const myOn  = (_ifAllItems[cat] || []).filter(i => _ifPersonal.has(i.name)).length
+  tab.querySelector('.cat-badge').textContent = `${myOn}/${total}`
+}
+
+function _ifBindRarityChips() {
+  document.querySelectorAll('#p-filtro .if-rchip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const r = chip.dataset.rarity
+      if (r === 'All') {
+        const allActive = _ifRarities.size === 5
+        if (allActive) {
+          _ifRarities.clear()
+          document.querySelectorAll('#p-filtro .if-rchip').forEach(c => c.classList.remove('active'))
+        } else {
+          _ifRarities = new Set(['Satanic', 'Angelic', 'Unholy', 'Heroic', 'Set'])
+          document.querySelectorAll('#p-filtro .if-rchip').forEach(c => c.classList.add('active'))
+        }
+      } else {
+        if (_ifRarities.has(r)) { _ifRarities.delete(r); chip.classList.remove('active') }
+        else { _ifRarities.add(r); chip.classList.add('active') }
+        const allChip = document.querySelector('#p-filtro .if-rchip.All')
+        if (allChip) allChip.classList.toggle('active', _ifRarities.size === 5)
+      }
+      if (_ifSearch) _ifRenderSearch()
+      else _ifRenderItems(_ifActiveCat)
+    })
+  })
+}
+
+function _ifBindTierChips() {
+  document.querySelectorAll('#p-filtro .if-tchip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const t = chip.dataset.tier
+      if (t === 'All') {
+        const allActive = _ifTiers.size === 6
+        if (allActive) {
+          _ifTiers.clear()
+          document.querySelectorAll('#p-filtro .if-tchip').forEach(c => c.classList.remove('active'))
+        } else {
+          _ifTiers = new Set(['D', 'C', 'B', 'A', 'S', 'SS'])
+          document.querySelectorAll('#p-filtro .if-tchip').forEach(c => c.classList.add('active'))
+        }
+      } else {
+        if (_ifTiers.has(t)) { _ifTiers.delete(t); chip.classList.remove('active') }
+        else { _ifTiers.add(t); chip.classList.add('active') }
+        const allChip = document.querySelector('#p-filtro .if-tchip.All')
+        if (allChip) allChip.classList.toggle('active', _ifTiers.size === 6)
+      }
+      if (_ifSearch) _ifRenderSearch()
+      else _ifRenderItems(_ifActiveCat)
+    })
+  })
+}
+
+function _ifBindSearchBar() {
+  const searchEl = document.getElementById('ifSearch')
+  const clearBtn = document.getElementById('ifSearchClear')
+  const refreshBtn = document.getElementById('ifRefresh')
+
+  if (searchEl) {
+    searchEl.addEventListener('input', e => {
+      _ifSearch = e.target.value.trim()
+      if (clearBtn) clearBtn.hidden = !_ifSearch
+      if (_ifSearch) _ifRenderSearch()
+      else _ifRenderItems(_ifActiveCat)
+      _ifUpdateCount()
+    })
+  }
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      if (searchEl) searchEl.value = ''
+      _ifSearch = ''
+      clearBtn.hidden = true
+      _ifRenderItems(_ifActiveCat)
+      _ifUpdateCount()
+    })
+  }
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', () => {
+      _ifLoaded = false
+      _ifAllItems = {}
+      _ifSearch = ''
+      if (searchEl) searchEl.value = ''
+      if (clearBtn) clearBtn.hidden = true
+      _initItemFilter()
+    })
+  }
+}
+
+function _ifSelectCategory(cat) {
+  _ifActiveCat = cat
+  document.querySelectorAll('.if-cat-tab').forEach(t => t.classList.toggle('active', t.dataset.cat === cat))
+  _ifRenderItems(cat)
+}
+
+function _ifPassesTierFilter(item) {
+  if (!item.tier) return true   // unrated items always pass through
+  return _ifTiers.has(item.tier)
+}
+
+function _ifRenderItems(cat) {
+  const content = document.getElementById('ifContent')
+  if (!content) return
+  const items = (_ifAllItems[cat] || []).filter(it => _ifRarities.has(it.rarity) && _ifPassesTierFilter(it))
+
+  if (items.length === 0) {
+    content.innerHTML = '<div class="if-empty">Nenhum item encontrado.</div>'
+    return
+  }
+
+  const icon = IF_CAT_ICONS[cat] || '•'
+  const myOn = items.filter(i => _ifPersonal.has(i.name)).length
+
+  content.innerHTML = `
+    <div class="if-cat-header">
+      <h3>${icon} ${cat.toUpperCase()}</h3>
+      <div class="sep"></div>
+      <span style="font-size:10px;color:var(--text2)">${myOn} no overlay / ${items.length} total</span>
+    </div>
+    <div class="if-select-row">
+      <button class="if-btn-mini" id="ifBtnSelectAll">▶ Marcar todos</button>
+      <button class="if-btn-mini deselect" id="ifBtnDeselectAll">✕ Desmarcar todos</button>
+    </div>
+    <div class="if-item-grid" id="ifItemGrid"></div>
+  `
+
+  document.getElementById('ifBtnSelectAll').addEventListener('click', async () => {
+    const names = items.map(i => i.name)
+    await window.api.setAllPersonal(names, true)
+    for (const n of names) _ifPersonal.add(n)
+    _ifRenderItems(cat); _ifRefreshCatBadge(cat); _ifUpdateCount()
+  })
+
+  document.getElementById('ifBtnDeselectAll').addEventListener('click', async () => {
+    const names = items.map(i => i.name)
+    await window.api.setAllPersonal(names, false)
+    for (const n of names) _ifPersonal.delete(n)
+    _ifRenderItems(cat); _ifRefreshCatBadge(cat); _ifUpdateCount()
+  })
+
+  const grid = document.getElementById('ifItemGrid')
+  for (const item of items) {
+    const isOn = _ifPersonal.has(item.name)
+    const admOn = item.enabled
+    const iconContent = item.image_url
+      ? `<img src="${item.image_url}" alt="" onerror="this.remove()">`
+      : icon
+
+    const card = document.createElement('div')
+    card.className = `if-item-card ${item.rarity} ${isOn ? 'personal-on' : 'personal-off'}`
+    card.title = isOn ? 'Clique para remover do overlay' : 'Clique para ativar no overlay'
+    const tierBadge = item.tier ? `<span class="if-tier-badge ${item.tier}">${item.tier}</span>` : ''
+    card.innerHTML = `
+      <div class="if-item-icon">${iconContent}</div>
+      <div class="if-item-info">
+        <div class="if-item-name" title="${item.name}">${item.name}</div>
+        <div class="if-item-meta">
+          <span class="if-item-rarity ${item.rarity}">${item.rarity.toUpperCase()}</span>
+          ${tierBadge}
+          <span class="if-adm-badge ${admOn ? 'on' : 'off'}">${admOn ? 'ADM ✓' : 'ADM ✗'}</span>
+        </div>
+      </div>
+      <label class="if-toggle">
+        <input type="checkbox" ${isOn ? 'checked' : ''}>
+        <span class="if-toggle-track"></span>
+      </label>
+    `
+
+    card.addEventListener('click', async () => {
+      const newState = await window.api.togglePersonal(item.name)
+      if (newState) _ifPersonal.add(item.name)
+      else _ifPersonal.delete(item.name)
+
+      card.classList.toggle('personal-on', newState)
+      card.classList.toggle('personal-off', !newState)
+      card.title = newState ? 'Clique para remover do overlay' : 'Clique para ativar no overlay'
+      card.querySelector('input').checked = newState
+
+      const header = content.querySelector('.if-cat-header span')
+      if (header) {
+        const myCount = items.filter(i => _ifPersonal.has(i.name)).length
+        header.textContent = `${myCount} no overlay / ${items.length} total`
+      }
+      _ifRefreshCatBadge(cat)
+      _ifUpdateCount()
+    })
+
+    grid.appendChild(card)
+  }
+}
+
+function _ifRenderSearch() {
+  const content = document.getElementById('ifContent')
+  if (!content) return
+  const q = _ifSearch.toLowerCase()
+
+  const results = []
+  for (const cat of IF_CAT_ORDER) {
+    for (const item of (_ifAllItems[cat] || [])) {
+      if (!_ifRarities.has(item.rarity)) continue
+      if (!_ifPassesTierFilter(item)) continue
+      if (!item.name.toLowerCase().includes(q)) continue
+      results.push({ ...item, cat })
+    }
+  }
+
+  if (results.length === 0) {
+    content.innerHTML = `<div class="if-empty">Nenhum item encontrado para "<strong>${_ifSearch}</strong>".</div>`
+    return
+  }
+
+  content.innerHTML = `
+    <div class="if-cat-header">
+      <h3>🔍 RESULTADOS</h3>
+      <div class="sep"></div>
+      <span style="font-size:10px;color:var(--text2)">${results.length} item(s)</span>
+    </div>
+    <div class="if-item-grid" id="ifItemGrid"></div>
+  `
+
+  const grid = document.getElementById('ifItemGrid')
+  for (const item of results) {
+    const isOn = _ifPersonal.has(item.name)
+    const admOn = item.enabled
+    const icon = IF_CAT_ICONS[item.cat] || '•'
+    const iconContent = item.image_url
+      ? `<img src="${item.image_url}" alt="" onerror="this.remove()">`
+      : icon
+    const tierBadge = item.tier ? `<span class="if-tier-badge ${item.tier}">${item.tier}</span>` : ''
+
+    const card = document.createElement('div')
+    card.className = `if-item-card ${item.rarity} ${isOn ? 'personal-on' : 'personal-off'}`
+    card.title = isOn ? 'Clique para remover do overlay' : 'Clique para ativar no overlay'
+    card.innerHTML = `
+      <div class="if-item-icon">${iconContent}</div>
+      <div class="if-item-info">
+        <div class="if-item-name" title="${item.name}">${item.name}</div>
+        <div class="if-item-meta">
+          <span class="if-item-rarity ${item.rarity}">${item.rarity.toUpperCase()}</span>
+          <span style="font-size:9px;color:var(--text2);font-family:'Chakra Petch',sans-serif">${item.cat}</span>
+          ${tierBadge}
+          <span class="if-adm-badge ${admOn ? 'on' : 'off'}">${admOn ? 'ADM ✓' : 'ADM ✗'}</span>
+        </div>
+      </div>
+      <label class="if-toggle">
+        <input type="checkbox" ${isOn ? 'checked' : ''}>
+        <span class="if-toggle-track"></span>
+      </label>
+    `
+
+    card.addEventListener('click', async () => {
+      const newState = await window.api.togglePersonal(item.name)
+      if (newState) _ifPersonal.add(item.name)
+      else _ifPersonal.delete(item.name)
+
+      card.classList.toggle('personal-on', newState)
+      card.classList.toggle('personal-off', !newState)
+      card.title = newState ? 'Clique para remover do overlay' : 'Clique para ativar no overlay'
+      card.querySelector('input').checked = newState
+
+      _ifRefreshCatBadge(item.cat)
+      _ifUpdateCount()
+    })
+
+    grid.appendChild(card)
+  }
+}
+
+function _ifUpdateCount() {
+  let total = 0, myActive = 0
+  for (const cat of Object.keys(_ifAllItems)) {
+    for (const item of _ifAllItems[cat]) {
+      total++
+      if (_ifPersonal.has(item.name)) myActive++
+    }
+  }
+  const el = document.getElementById('ifCount')
+  if (el) el.textContent = total > 0 ? `${myActive} no overlay / ${total} total` : ''
 }
 
 // ── Init ─────────────────────────────────────────────────────────────────────

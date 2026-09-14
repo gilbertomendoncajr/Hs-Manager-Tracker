@@ -196,6 +196,38 @@
     .rchip.Set      { border-color: var(--set);     color: var(--set);     background: rgba(62,200,62,.08); }
     .rchip.All { border-color: var(--border2); color: var(--text); background: var(--bg3); opacity: 1; }
 
+    /* ── Tier Filter Row ── */
+    .tier-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .tier-label {
+      font-size: 10px; color: var(--text2);
+      font-family: 'Chakra Petch', sans-serif;
+      letter-spacing: .5px; flex-shrink: 0;
+    }
+    .tier-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .tchip {
+      padding: 3px 10px;
+      border: 1px solid transparent;
+      font-size: 11px;
+      font-family: 'Chakra Petch', sans-serif;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .15s;
+      opacity: .4;
+    }
+    .tchip.active { opacity: 1; }
+    .tchip-all  { border-color: var(--border2); color: var(--text); background: var(--bg3); opacity: 1; }
+    .tchip-red  { border-color: #c03030; color: #e05050; background: rgba(192,48,48,.08); }
+    .tchip-green { border-color: var(--green); color: var(--green); background: rgba(62,218,140,.08); }
+    .tchip.tier-disabled { opacity: .2 !important; cursor: not-allowed; pointer-events: none; }
+
     /* ── Item Grid ── */
     .content {
       flex: 1;
@@ -433,6 +465,19 @@
     <span class="rchip Unholy active" data-rarity="Unholy">Unholy</span>
     <span class="rchip Heroic active" data-rarity="Heroic">Heroic</span>
     <span class="rchip Set active" data-rarity="Set">Set</span>
+  </div>
+</div>
+
+<div class="tier-bar">
+  <span class="tier-label">TIER:</span>
+  <div class="tier-chips" id="tierChips">
+    <span class="tchip tchip-all active" data-tier="All">Todos</span>
+    <span class="tchip tchip-red active" data-tier="D">D</span>
+    <span class="tchip tchip-red active" data-tier="C">C</span>
+    <span class="tchip tchip-red active" data-tier="B">B</span>
+    <span class="tchip tchip-red active" data-tier="A">A</span>
+    <span class="tchip tchip-red active" data-tier="S">S</span>
+    <span class="tchip tchip-green active" data-tier="SS">SS</span>
   </div>
 </div>
 

@@ -9,7 +9,11 @@ let allItems = {}
 let personalEnabled = new Set()
 let activeCategory = null
 let activeRarities = new Set(['Satanic', 'Angelic', 'Unholy', 'Heroic', 'Set'])
+let activeTiers = new Set(['D', 'C', 'B', 'A', 'S', 'SS'])
 let searchQuery = ''
+
+const ALL_TIERS = ['D', 'C', 'B', 'A', 'S', 'SS']
+const RED_TIERS  = ['D', 'C', 'B', 'A', 'S']
 
 async function init() {
   document.getElementById('content').innerHTML = '<div id="loading">CARREGANDO ITENS...</div>'
@@ -25,7 +29,7 @@ async function init() {
 
   if (!items || Object.keys(items).length === 0) {
     document.getElementById('content').innerHTML =
-      '<div class="empty">Nenhum item encontrado. Execute o Scan Wiki no dashboard.</div>'
+      '<div class="empty">Awaiting filter configuration by admin.</div>'
     return
   }
 
@@ -44,6 +48,7 @@ async function init() {
 
   buildCatTabs()
   buildRarityChips()
+  buildTierChips()
   const first = CAT_ORDER.find(c => allItems[c]?.length > 0)
   if (first) activeCategory = first
   if (searchQuery) {
@@ -93,6 +98,7 @@ function buildRarityChips() {
           chip.classList.add('active')
           document.querySelectorAll('.rchip:not(.All)').forEach(c => c.classList.add('active'))
         }
+        updateTierAvailability()
       } else {
         if (activeRarities.has(r)) { activeRarities.delete(r); chip.classList.remove('active') }
         else { activeRarities.add(r); chip.classList.add('active') }
@@ -100,10 +106,60 @@ function buildRarityChips() {
         if (activeRarities.size === 5) allChip.classList.add('active')
         else allChip.classList.remove('active')
       }
+      updateTierAvailability()
       if (searchQuery) renderSearch()
       else renderItems(activeCategory)
     })
   })
+}
+
+function buildTierChips() {
+  document.querySelectorAll('.tchip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const t = chip.dataset.tier
+      if (t === 'All') {
+        const allActive = activeTiers.size === ALL_TIERS.length
+        if (allActive) {
+          activeTiers.clear()
+          chip.classList.remove('active')
+          document.querySelectorAll('.tchip:not([data-tier="All"])').forEach(c => c.classList.remove('active'))
+        } else {
+          activeTiers = new Set(ALL_TIERS)
+          chip.classList.add('active')
+          document.querySelectorAll('.tchip:not([data-tier="All"])').forEach(c => {
+            if (!c.classList.contains('tier-disabled')) c.classList.add('active')
+          })
+        }
+      } else {
+        if (activeTiers.has(t)) { activeTiers.delete(t); chip.classList.remove('active') }
+        else { activeTiers.add(t); chip.classList.add('active') }
+        const allChip = document.querySelector('.tchip[data-tier="All"]')
+        if (activeTiers.size === ALL_TIERS.length) allChip.classList.add('active')
+        else allChip.classList.remove('active')
+      }
+      if (searchQuery) renderSearch()
+      else renderItems(activeCategory)
+    })
+  })
+}
+
+function updateTierAvailability() {
+  const hasSatanicOrSet = activeRarities.has('Satanic') || activeRarities.has('Set')
+  const redChips = document.querySelectorAll('.tchip.tchip-red')
+  if (hasSatanicOrSet) {
+    redChips.forEach(c => c.classList.remove('tier-disabled'))
+  } else {
+    redChips.forEach(c => {
+      c.classList.add('tier-disabled')
+      c.classList.remove('active')
+      activeTiers.delete(c.dataset.tier)
+    })
+    activeTiers.add('SS')
+    const ssChip = document.querySelector('.tchip[data-tier="SS"]')
+    if (ssChip) ssChip.classList.add('active')
+    const allChip = document.querySelector('.tchip[data-tier="All"]')
+    if (allChip) allChip.classList.remove('active')
+  }
 }
 
 function selectCategory(cat) {
@@ -116,7 +172,10 @@ function selectCategory(cat) {
 
 function renderItems(cat) {
   const content = document.getElementById('content')
-  const items = (allItems[cat] || []).filter(it => activeRarities.has(it.rarity))
+  const items = (allItems[cat] || []).filter(it =>
+    activeRarities.has(it.rarity) &&
+    (it.tier == null || activeTiers.has(it.tier))
+  )
 
   if (items.length === 0) {
     content.innerHTML = '<div class="empty">Nenhum item encontrado para os filtros selecionados.</div>'
@@ -215,6 +274,7 @@ function renderSearch() {
   for (const cat of CAT_ORDER) {
     for (const item of (allItems[cat] || [])) {
       if (!activeRarities.has(item.rarity)) continue
+      if (item.tier != null && !activeTiers.has(item.tier)) continue
       if (!item.name.toLowerCase().includes(q)) continue
       results.push({ ...item, cat })
     }

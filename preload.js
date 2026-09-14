@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('api', {
   onSessionExpired: (cb) => ipcRenderer.on('auth:sessionExpired', () => cb()),
   onDropPending: (cb) => ipcRenderer.on('drop:pending', (_e, drop) => cb(drop)),
   onDropCollected: (cb) => ipcRenderer.on('drop:collected', (_e, drop) => cb(drop)),
+  onLigaDrop: (cb) => ipcRenderer.on('drop:liga', (_e, drop) => cb(drop)),
   onFilterLoaded: (cb) => ipcRenderer.on('filter:loaded', (_e, data) => cb(data)),
   onSnifferHeartbeat: (cb) => ipcRenderer.on('sniffer:heartbeat', (_e, data) => cb(data)),
   onSessionReset: (cb) => ipcRenderer.on('session:reset', () => cb()),
@@ -31,6 +32,7 @@ contextBridge.exposeInMainWorld('api', {
   onStatsAccount: (cb) => ipcRenderer.on('stats:account', (_e, data) => cb(data)),
   onLeagueAutoSelected: (cb) => ipcRenderer.on('monitor:leagueAutoSelected', (_e, data) => cb(data)),
   onBpMode: (cb) => ipcRenderer.on('monitor:bpMode', (_e, data) => cb(data)),
+  onBpUnlinked: (cb) => ipcRenderer.on('monitor:bpUnlinked', (_e, data) => cb(data)),
   resetSession: () => ipcRenderer.invoke('monitor:resetSession'),
 
   // Auto-update
@@ -44,6 +46,7 @@ contextBridge.exposeInMainWorld('api', {
   openFilter: () => ipcRenderer.invoke('filter:open'),
   closeFilter: () => ipcRenderer.invoke('filter:close'),
   getFilterItems: () => ipcRenderer.invoke('filter:getItems'),
+  getFilterTiers: () => ipcRenderer.invoke('filter:getTiers'),
   getFilterPrefs: () => ipcRenderer.invoke('filter:getPrefs'),
   saveFilterPrefs: (prefs) => ipcRenderer.invoke('filter:savePrefs', prefs),
 
@@ -70,4 +73,10 @@ contextBridge.exposeInMainWorld('api', {
   getPersonalEnabled: () => ipcRenderer.invoke('personal:getEnabled'),
   togglePersonal: (name) => ipcRenderer.invoke('personal:toggle', name),
   setAllPersonal: (names, value) => ipcRenderer.invoke('personal:setAll', names, value),
+
+  // Relic filter
+  getRelics: () => ipcRenderer.invoke('relic:getAll'),
+  getRelicEnabled: () => ipcRenderer.invoke('relic:getEnabled'),
+  toggleRelic: (name) => ipcRenderer.invoke('relic:toggle', name),
+  setAllRelics: (names, value) => ipcRenderer.invoke('relic:setAll', names, value),
 })

@@ -1,4 +1,6 @@
 <!DOCTYPE html>
+<!-- OBSOLETO: o app carrega index-v2.html por padrão (process.env.HSDL_UI !== 'v1').
+     Alterações na UI devem ser feitas em index-v2.html, não aqui. -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -1082,6 +1084,22 @@
         <div id="logList">
           <div class="log-empty" id="logEmpty">
             <span data-i18n="empty.line1">Nenhuma atividade ainda.</span><br><span data-i18n="empty.line2">Selecione uma liga e inicie o monitor.</span>
+          </div>
+        </div>
+
+        <!-- Liga feed — visível apenas na aba Liga -->
+        <div id="ligaSection" style="display:none">
+          <table class="ua-table">
+            <thead>
+              <tr>
+                <th data-i18n="th.item">Item</th>
+                <th data-i18n="th.dropped">Dropou</th>
+              </tr>
+            </thead>
+            <tbody id="ligaBody"></tbody>
+          </table>
+          <div class="log-empty" id="ligaEmpty" style="display:none">
+            <span>Aguardando drops da liga...</span>
           </div>
         </div>
       </div>

@@ -723,6 +723,11 @@ async function postDrop(leagueId, drop) {
     const tierVal = drop.tier ?? serverTierMap[drop.name] ?? SATANIC_TIERS[drop.name] ?? null
     const tier = tierVal ? ` [${tierVal}]` : ''
     sendLog('detect', `🎯 ${drop.name}${tier} (${drop.rarity})${who}`, drop, 'liga')
+    sendToWin(mainWin, 'drop:liga', {
+      name: drop.name, rarity: drop.rarity, tier: drop.tier ?? null,
+      charName: drop.charName ?? null, discordUser: myDiscordUsername ?? null,
+      source: 'me', ts: Date.now(),
+    })
   } else {
     const err = await res.json().catch(() => ({}))
     sendLog('error', t(`✘ Falha ao registrar ${drop.name}: ${err.error ?? res.status}`, `✘ Failed to post ${drop.name}: ${err.error ?? res.status}`), drop)
@@ -780,6 +785,12 @@ async function connectSSE(leagueId) {
             ? `${evt.charName} (${evt.dropper.username})`
             : (evt.charName ?? evt.dropper?.username ?? 'Alguém')
           sendLog('detect', t(`🌐 ${who} dropou: ${drop.name} (${drop.rarity || '?'})`, `🌐 ${who} dropped: ${drop.name} (${drop.rarity || '?'})`), drop, 'liga')
+          sendToWin(mainWin, 'drop:liga', {
+            name: drop.name, rarity: drop.rarity ?? null, tier: evt.tier ?? null,
+            charName: evt.charName ?? null,
+            discordUser: evt.dropper?.username ?? null,
+            source: 'sse', ts: Date.now(),
+          })
           if (personalFilter.size > 0 && personalFilter.has(drop.name)) sendOverlay(drop)
         } catch { /* linha malformada */ }
       }

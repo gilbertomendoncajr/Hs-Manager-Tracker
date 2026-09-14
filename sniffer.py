@@ -94,6 +94,27 @@ def _load_db():
     except Exception as ex:
         log_debug(f"Erro ao carregar ITEM_DB: {ex}")
 
+    # Load relic names directly from the game's CSV
+    relic_csv = os.path.join(
+        "C:/Program Files (x86)/Steam/steamapps/common/HeroSiege/bin",
+        "translationsRelic.csv"
+    )
+    if os.path.exists(relic_csv):
+        try:
+            with open(relic_csv, encoding="utf-8") as f:
+                lines = f.readlines()
+            for idx, line in enumerate(lines[1:]):  # skip header
+                parts = line.strip().split("|")
+                if len(parts) < 2:
+                    continue
+                name = parts[1].strip()  # English name (column index 1)
+                if name:
+                    ITEM_DB[(RELIC_TYPE, idx, 0)] = (name, "Relic")
+                    RARITY_BY_NAME[name.lower()] = "Relic"
+            log_debug(f"translationsRelic.csv: {idx+1} relics carregadas")
+        except Exception as ex:
+            log_debug(f"Erro ao carregar translationsRelic.csv: {ex}")
+
 _load_db()
 
 # ─── campos (parser.rs constantes) ──────────────────────────────────────────
@@ -217,15 +238,17 @@ def item_sources(d: dict) -> list[tuple]:
                 on_floor = _lies_on_floor(item)
                 c_val      = _i(item, ["c"])
                 fp_type_v  = _fp_type(fp)
+                j_type     = _i(item, ["j"])
                 if on_floor:
-                    log_debug(f"  [FLOOR_ITEM] fp={fp} c={c_val} fp_type={fp_type_v} item={json.dumps(item)[:200]}")
+                    log_debug(f"  [FLOOR_ITEM] fp={fp} c={c_val} fp_type={fp_type_v} j={j_type} item={json.dumps(item)[:200]}")
                     # Exact hs-tracker filter: c==1 = named/confirmed drop; c==0 = loot-table
                     # candidate (pre-MF roll). Relics are always tracked regardless of c.
-                    if c_val != 1 and fp_type_v != RELIC_TYPE:
+                    # NOTE: fp_type encodes equipment slot, not item type. Relic type (16) is in the j field.
+                    if c_val != 1 and fp_type_v != RELIC_TYPE and j_type != RELIC_TYPE:
                         log_debug(f"  [skip floor c={c_val}]")
                         continue
                 else:
-                    if c_val != 1 and fp_type_v != RELIC_TYPE:
+                    if c_val != 1 and fp_type_v != RELIC_TYPE and j_type != RELIC_TYPE:
                         log_debug(f"  [skip non_floor c={c_val}] {fp}")
                         continue
                 out.append((fp, item, on_floor))
@@ -482,6 +505,15 @@ def _get_name(item: dict, fingerprint) -> str | None:
     if weapon_type == 0 and item_type == 3:
         weapon_type = _i(item, ["j"])
 
+    # Relic: j==RELIC_TYPE → lookup by (RELIC_TYPE, b, 0) regardless of fp slot
+    j_val = _i(item, ["j"])
+    if j_val == RELIC_TYPE:
+        relic_id = _i(item, ["b"])
+        entry = ITEM_DB.get((RELIC_TYPE, relic_id, 0))
+        if entry:
+            log_debug(f"  [relic-lookup] id={relic_id} → {entry[0]}")
+            return entry[0]
+
     # Lookup com weapon_type; fallback sem (wt=0) como o hs-tracker faz
     entry = ITEM_DB.get((item_type, item_id, weapon_type))
     if entry is None and weapon_type != 0:
@@ -511,8 +543,9 @@ def process_messages(messages: list[dict], src_ip: str):
         for fp, item, ground in sources:
             c_val      = _i(item, ["c"])
             fp_type_v  = _fp_type(fp)
+            j_type     = _i(item, ["j"])
             named_flag = (c_val == 1)
-            resource   = (fp_type_v in RESOURCE_TYPES) if fp_type_v is not None else False
+            resource   = (fp_type_v in RESOURCE_TYPES or j_type in RESOURCE_TYPES) if (fp_type_v is not None or j_type is not None) else False
 
             rarity = _get_rarity(item)
 
@@ -547,7 +580,7 @@ def process_messages(messages: list[dict], src_ip: str):
                 if not rarity:
                     rarity = _rarity_from_name(name)
 
-            is_relic = (fp_type_v == RELIC_TYPE)
+            is_relic = (fp_type_v == RELIC_TYPE or j_type == RELIC_TYPE)
             if not rarity:
                 if is_relic:
                     if not name:
