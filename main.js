@@ -726,7 +726,7 @@ async function postDrop(leagueId, drop) {
     sendToWin(mainWin, 'drop:liga', {
       name: drop.name, rarity: drop.rarity, tier: drop.tier ?? null,
       charName: drop.charName ?? null, discordUser: myDiscordUsername ?? null,
-      source: 'me', ts: Date.now(),
+      source: 'me', ts: Date.now(), iconPath: itemIconRelPath(drop.name),
     })
   } else {
     const err = await res.json().catch(() => ({}))
@@ -789,7 +789,7 @@ async function connectSSE(leagueId) {
             name: drop.name, rarity: drop.rarity ?? null, tier: evt.tier ?? null,
             charName: evt.charName ?? null,
             discordUser: evt.dropper?.username ?? null,
-            source: 'sse', ts: Date.now(),
+            source: 'sse', ts: Date.now(), iconPath: itemIconRelPath(drop.name),
           })
           if (personalFilter.size > 0 && personalFilter.has(drop.name)) sendOverlay(drop)
         } catch { /* linha malformada */ }

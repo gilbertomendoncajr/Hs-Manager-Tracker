@@ -150,17 +150,20 @@ function addLigaRow(drop) {
   if (empty) empty.style.display = 'none'
 
   const color = RARITY_COLOR_MAP[drop.rarity] || 'var(--text)'
-  const tierTag = drop.tier ? ` <span class="drop-tier">[${drop.tier}]</span>` : ''
+  const tierPart = drop.tier ? ` <span class="ua-tier">[${drop.tier}]</span>` : ''
+  const iconHtml = drop.iconPath
+    ? `<img class="ua-item-icon" src="${drop.iconPath}" onerror="this.style.display='none'" alt="">`
+    : ''
+  const srcBadge = drop.source === 'sse' ? '<span class="liga-sse-badge">🌐</span>' : ''
   const player = drop.charName && drop.discordUser
     ? `${drop.charName} / ${drop.discordUser}`
     : (drop.charName || drop.discordUser || '')
-  const playerHtml = player ? ` <span class="drop-who">${player}</span>` : ''
-  const srcIcon = drop.source === 'sse' ? '🌐 ' : ''
+  const playerHtml = player ? `<span class="ua-player">${player}</span>` : ''
 
   const row = document.createElement('tr')
   row.innerHTML = `
-    <td><span style="color:${color};font-weight:600">${srcIcon}${drop.name}</span>${tierTag}${playerHtml}</td>
-    <td style="white-space:nowrap">${_fmtTime(drop.ts)}</td>
+    <td class="ua-name" style="color:${color}">${iconHtml}${srcBadge}${drop.name}${tierPart}${playerHtml}</td>
+    <td class="ua-time">${_fmtTime(drop.ts)}</td>
   `
   body.insertBefore(row, body.firstChild)
 }

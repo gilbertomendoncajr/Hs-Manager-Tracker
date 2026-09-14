@@ -674,6 +674,24 @@ header button, header select, header a,
 #uaTable tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
 #uaTable tbody tr:hover { background: var(--surf-hi); }
 #uaTable tbody tr.collected { opacity: .55; }
+
+#ligaSection {
+  background: var(--surf); width: 100%;
+  flex: 1; overflow-y: auto; min-height: 0;
+}
+#ligaTable { width: 100%; border-collapse: collapse; }
+#ligaTable thead th {
+  font-size: var(--fs-xs); font-weight: 700;
+  letter-spacing: .1em; text-transform: uppercase;
+  color: var(--text3);
+  padding: 4px 12px; text-align: left;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+#ligaTable thead th:not(:first-child) { text-align: center; }
+#ligaTable tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+#ligaTable tbody tr:hover { background: var(--surf-hi); }
+.liga-sse-badge { font-size: 14px; line-height: 1; }
 .ua-name {
   font-size: var(--fs-md); font-weight: 600;
   padding: 7px 12px;
@@ -1596,7 +1614,7 @@ body.no-bp.tab-liga .bp-disabled-overlay { display: flex; }
       </div>
     </div>
 
-    <div class="side-version">v2.2.5</div>
+    <div class="side-version">v2.2.6</div>
   </nav>
 
   <!-- ══ MAIN COLUMN ════════════════════════════════════════ -->
@@ -1990,7 +2008,7 @@ body.no-bp.tab-liga .bp-disabled-overlay { display: flex; }
         <div class="sobre-card">
           <div class="sobre-logo"><img src="icon.png" alt="HS Drop Logger"></div>
           <div class="sobre-name">HS Drop Logger</div>
-          <div class="sobre-version">v2.2.5</div>
+          <div class="sobre-version">v2.2.6</div>
         </div>
       </div>
 
