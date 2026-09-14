@@ -60,8 +60,9 @@ let filterWin = null
 let serverEnabledItems = null   // Set<string> | null — null = not loaded yet (allow all)
 let serverTierMap = {}          // Record<string, string> — name → tier
 let serverCategoryMap = {}      // Record<string, string> — name → category (item type)
-const _recentDrops = new Map()   // dedup: `${name}|${charName}` → timestamp ms
-const _floorDropped = new Map()  // itens que passaram pelo chão: `${name}|${charName}` → timestamp ms
+// Dedup de fallback para o formato antigo (sem campo "type") — o sniffer atual
+// já garante unicidade via TCP SEQ + fingerprint e emite had_floor no evento collected.
+const _recentDrops = new Map()   // fallback dedup: `${name}|${charName}` → timestamp ms
 let dropHistory = []            // Array of {ch, payload} — replayed to compact on open
 const DROP_HISTORY_MAX = 300
 let currentLang = 'pt'
@@ -1027,10 +1028,6 @@ function spawnSniffer() {
         pushHistory('drop:pending', pendingPayload)
         sendToWin(mainWin, 'drop:pending', pendingPayload)
         sendToWin(compactWin, 'drop:pending', pendingPayload)
-        // Registra que este item passou pelo chão (distingue de pegar do baú)
-        const floorKey = `${drop.name}|${drop.charName ?? ''}`
-        _floorDropped.set(floorKey, Date.now())
-        if (_floorDropped.size > 200) _floorDropped.delete(_floorDropped.keys().next().value)
         return
       }
 
@@ -1046,17 +1043,9 @@ function spawnSniffer() {
           return
         }
         if (charIdentified) {
-          const dedupKey = `${drop.name}|${drop.charName ?? ''}`
-          const now = Date.now()
-          // Ignora pacotes duplicados (< 500ms)
-          const lastSeen = _recentDrops.get(dedupKey)
-          if (lastSeen && now - lastSeen < 500) return
-          // Só posta se o item passou pelo chão (não veio do baú)
-          const floorTs = _floorDropped.get(dedupKey)
-          if (!floorTs || now - floorTs > 30000) return // sem floor_drop nos últimos 30s = baú
-          _floorDropped.delete(dedupKey)
-          _recentDrops.set(dedupKey, now)
-          if (_recentDrops.size > 200) _recentDrops.delete(_recentDrops.keys().next().value)
+          // O sniffer emite had_floor=true quando o item passou pelo chão antes de ser coletado.
+          // had_floor=false significa que veio diretamente do baú — não conta como drop.
+          if (!drop.had_floor) return
           await postDrop(currentLeagueId, drop)
         }
         return
