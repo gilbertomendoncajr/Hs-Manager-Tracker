@@ -777,12 +777,13 @@ async function connectSSE(leagueId) {
           // Ignorar drops do próprio jogador (já apareceram via sniffer)
           if (myDiscordId && evt.dropper?.discordId === myDiscordId) continue
 
-          // Dedup: mesmo item + dropper em 10s (evita duplicatas por reconexão SSE)
-          const _dedupKey = `${evt.itemName}|${evt.dropper?.discordId ?? evt.dropper?.username ?? '?'}`
+          // Dedup: usa evt.id (ID único do banco) quando disponível; fallback: item+dropper em 10s
+          const _dedupKey = evt.id != null ? `id:${evt.id}` : `${evt.itemName}|${evt.dropper?.discordId ?? evt.dropper?.username ?? '?'}`
           const _now = Date.now()
-          if (_recentLigaDrops.has(_dedupKey) && _now - _recentLigaDrops.get(_dedupKey) < 10_000) continue
+          const _last = _recentLigaDrops.get(_dedupKey)
+          if (_last && (evt.id != null || _now - _last < 10_000)) continue
           _recentLigaDrops.set(_dedupKey, _now)
-          if (_recentLigaDrops.size > 100) _recentLigaDrops.delete(_recentLigaDrops.keys().next().value)
+          if (_recentLigaDrops.size > 200) _recentLigaDrops.delete(_recentLigaDrops.keys().next().value)
 
           const drop = {
             name: evt.itemName,
