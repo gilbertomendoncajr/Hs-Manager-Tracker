@@ -112,6 +112,7 @@ function saveRelicFilter() {
 
 let snifferProc = null
 let sseAbort = null   // AbortController para fechar a conexão SSE ao parar
+const _recentLigaDrops = new Map()  // dedup SSE: key → ts
 let isMonitoring = false
 let currentLeagueId = null
 const charMap = {}   // accountUID (number) → charName (string)
@@ -775,6 +776,14 @@ async function connectSSE(leagueId) {
 
           // Ignorar drops do próprio jogador (já apareceram via sniffer)
           if (myDiscordId && evt.dropper?.discordId === myDiscordId) continue
+
+          // Dedup: mesmo item + dropper em 10s (evita duplicatas por reconexão SSE)
+          const _dedupKey = `${evt.itemName}|${evt.dropper?.discordId ?? evt.dropper?.username ?? '?'}`
+          const _now = Date.now()
+          if (_recentLigaDrops.has(_dedupKey) && _now - _recentLigaDrops.get(_dedupKey) < 10_000) continue
+          _recentLigaDrops.set(_dedupKey, _now)
+          if (_recentLigaDrops.size > 100) _recentLigaDrops.delete(_recentLigaDrops.keys().next().value)
+
           const drop = {
             name: evt.itemName,
             rarity: evt.rarity,

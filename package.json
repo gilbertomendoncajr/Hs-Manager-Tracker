@@ -1,6 +1,6 @@
 {
   "name": "hs-drop-logger",
-  "version": "2.2.9",
+  "version": "2.3.0",
   "description": "Auto-logger de drops para HS Manager",
   "main": "main.js",
   "scripts": {
@@ -16,6 +16,9 @@
     "directories": {
       "output": "dist-installer"
     },
+    "asarUnpack": [
+      "assets/sounds/**"
+    ],
     "files": [
       "main.js",
       "preload.js",

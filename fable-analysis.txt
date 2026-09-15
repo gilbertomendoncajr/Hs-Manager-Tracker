@@ -1,0 +1,219 @@
+Segue o plano técnico de análise, sem execução de nada nesta etapa. Antes das fases, um aviso de método que condiciona todo o resto.
+
+Decisão que precede tudo: o build é VM ou YYC. Hero Siege é GameMaker, e existem dois tipos de build com consequências opostas para a investigação. No build VM, o data.win contém o bytecode GML no chunk CODE, os literais de string ficam no chunk STRG, e ferramentas como UndertaleModTool decompilam os scripts direto. No build YYC, o GML foi compilado para C++ nativo dentro do .exe, o chunk CODE fica ausente ou vazio, os literais de string do código ficam no .rdata do executável, e os nomes gml_Script_* aparecem como strings de registro de funções. As evidências relatadas, como nomes gml_Script_LoadSatanicDropTier, um endereço em 0x1506FB518 e instruções movsd [rip+offset], xmm, apontam fortemente para YYC. A Fase 2 confirma isso antes de qualquer análise de código, porque a estratégia certa muda por completo.
+
+Fase 1 — Definição do modelo de dados
+
+Esquema alvo. Cada registro é um item, e a chave primária é a chave interna usada pelo jogo, nunca o nome de exibição.
+
+item_key            chave canônica interna (string), ex.: "absolute_zero"
+item_id             id numérico interno, se existir (índice de array/tabela)
+internal_name       nome como aparece no código/resources (pode ser igual a item_key)
+display_name        nome em inglês exibido
+localized_names     { "pt_BR": ..., "de": ..., ... }
+rarity              common | magic | rare | satanic | heroic | angelic | unholy | set | ... (enum a confirmar)
+category            slot ou família (arma, armadura, anel, amuleto, relíquia, runa...)
+item_type           subtipo (espada, cajado, botas...)
+tier                tier de drop, numérico
+tier_scope          "common" | "satanic" | outro, conforme a tabela de origem
+stats               lista de {stat_key, min, max, scaling} ou bruto até decodificar
+drop_locations      lista de {zone_key, act, min_difficulty, condition}
+drop_tables         lista de {table_key, weight, condition}
+sprite_key          nome do sprite associado, quando existir (serve como âncora de validação)
+source              lista de {campo, origem, offset/arquivo/função}
+confidence          por campo: verified | code | file | api | inferred
+game_version        versão do build de onde o dado foi extraído
+
+Regras do modelo.
+
+O campo de junção com o tracker é definido antes de tudo. Verifique se os pacotes que o tracker já decodifica carregam id numérico, chave string ou nome de exibição. Esse campo vira obrigatório e não anulável.
+Nomes de exibição são atributos, nunca chaves. As colisões relatadas com absolute zero, daisy, tombstone e peg leg são exatamente o sintoma de juntar por nome.
+Cada campo carrega origem e confiança separadamente. Um item pode ter tier com confiança code e localização com confiança api.
+confidence = verified só é atribuída quando duas fontes independentes concordam, sendo uma delas o jogo em si, seja código, arquivo carregado pelo jogo ou observação manual na interface.
+
+Conjunto dourado. Escolha de 30 a 50 itens e registre manualmente, pela interface do jogo, nome, raridade, categoria e tier quando o tooltip ou o filtro de loot mostrarem. Inclua obrigatoriamente os quatro nomes com colisão, itens de cada raridade e itens de tiers extremos. Esse conjunto é o oráculo de validação de todas as fases seguintes.
+
+Fase 2 — Triagem do build e inventário de fontes
+
+Objetivo. Classificar o build e listar cada arquivo distribuído com uma resposta binária: o jogo abre este arquivo em tempo de execução ou não.
+
+Passos.
+
+Inspecionar o cabeçalho do data.win: listar chunks do container FORM. Se CODE está ausente ou com zero entradas, é YYC. Se CODE está preenchido e STRG contém frases claramente de código, é VM. Registrar também o chunk GEN8, que traz nome, versão e build do jogo, base para game_version.
+Verificar onde os nomes gml_Script_* aparecem: só no .exe, só no data.win, ou nos dois. Em YYC eles aparecem no .exe numa tabela de registro que associa o nome a um ponteiro de função. Essa tabela é a porta de entrada da Fase 5.
+Inventariar todos os arquivos ao lado do data.win e em subpastas, com hash, tamanho e data. Marcar quais contêm satanic-tiers.json, item_db.json, translationsItem.csv, o .yy e os lootfilters.
+Para cada nome de arquivo do inventário, procurar a string exata do nome, ou seu padrão de extensão, no .exe e no data.win. Um nome de arquivo que aparece como literal próximo de chamadas de leitura, como as famílias file_text_*, buffer_load, json_parse, load_csv ou ini_open, prova que o jogo carrega o arquivo.
+Rastrear a proveniência dos JSONs. Se satanic-tiers.json e item_db.json não estão na pasta do jogo ou não são referenciados por ele, eles vieram de terceiros e caem para o mesmo status da API pública: referência, não fonte.
+
+Critérios de saída. Tipo de build confirmado. Tabela de arquivos com coluna "carregado pelo jogo: sim/não/indeterminado". Versão do build registrada.
+
+Fase 3 — Arquivos externos
+
+Prioridade máxima, porque é a linha mais barata e, se o jogo carregar os dados de arquivo, resolve boa parte do problema sem tocar em código.
+
+Método comum a todo arquivo. Para cada arquivo, responder cinco perguntas, cada uma com evidência anotada: contém chaves internas, contém nomes de exibição, contém tiers, contém atributos, contém localização de drop. A prova de que um campo é "usado pela lógica" e não só "presente" vem da Fase 2, passo 4: se o jogo não abre o arquivo, ele é no máximo corroboração.
+
+CSV de tradução.
+
+Hipótese: translationsItem.csv é carregado com load_csv e a coluna item_key é a chave canônica do jogo.
+Teste: a string do nome do arquivo aparece no binário perto de load_csv ou file_text_open_read. Se sim, a coluna de chave desse CSV vira candidata a chave primária do modelo.
+Extrair: item_key, name_en e as demais colunas para localized_names.
+Diagnóstico das colisões: listar toda chave cujo name_en se repete e toda name_en que aparece com mais de uma chave. Verificar diferenças de caixa, espaço, sufixos numéricos e prefixos de categoria. Não resolver na mão. Anotar e resolver na Fase 8 com a raridade e a categoria vindas do código.
+
+JSONs de tiers e item_db.
+
+Contar registros, listar o conjunto de valores distintos de tier e o formato da chave.
+Comparar o formato da chave com o do CSV. Se forem diferentes, construir uma função de normalização e verificar que ela é bijetiva na amostra. Qualquer chave que não case após normalização é registrada como órfã.
+O total de aproximadamente 970 itens é uma pista útil: se a Fase 5 extrair um número próximo de pares da função de tiers satânicos, os dois provavelmente descrevem a mesma tabela, e a divergência pontual é data de patch, não erro estrutural.
+
+Arquivo .yy. É um arquivo de projeto do GameMaker, não é lido pelo jogo em execução. Verificar se pertence a uma extensão ou é sobra de build. Tratar como não autoritativo, mas ler o conteúdo uma vez: pode listar nomes de resources úteis.
+
+Saves. Se o personagem é armazenado no servidor, saves locais trazem pouco. Verificar apenas se existem e se contêm ids de itens que sirvam para confirmar o campo de junção. Não gastar mais que isso.
+
+Lootfilters. Vão para a Fase 7, com método próprio.
+
+Critérios de saída. Para cada arquivo, uma linha na tabela de fontes com os cinco campos respondidos e a classificação: autoritativo, corroborativo ou irrelevante.
+
+Fase 4 — data.win
+
+O que extrair, independente do tipo de build.
+
+Chunk STRG: todas as strings, com índice. Em YYC, elas cobrem nomes de resources e não literais de código, então o valor aqui é a lista de sprites, objetos, rooms e fontes.
+Chunk SPRT: nomes de sprites. Itens costumam ter sprite próprio com nome derivado da chave interna. A lista de sprites que seguem um padrão do tipo spr_item_* é uma fonte independente da lista de chaves e do total de itens.
+Chunk ROOM: nomes de rooms, candidatos a chaves de zona para drop_locations.
+Chunk OBJT: nomes de objetos, para identificar o objeto que gerencia loot ou banco de itens.
+Chunk SCPT e FUNC: nomes de scripts e funções. Mesmo em YYC eles existem e dão a lista completa de funções por nome, sem precisar procurar strings no .exe.
+Chunk CODE: só em VM. Se existir, decompilar as três funções suspeitas e ir direto para a extração de pares.
+
+Como distinguir string de interface de dado de lógica.
+
+Forma: chaves internas tendem a ser minúsculas com sublinhado, sem espaço e sem pontuação. Nomes de exibição têm capitalização e espaços.
+Vizinhança: no chunk STRG as strings ficam agrupadas na ordem em que o compilador as coletou. Uma sequência longa de chaves em ordem, sem texto de interface intercalado, indica tabela.
+Referência cruzada: em VM, o bytecode referencia strings por índice. Uma string usada como argumento de ds_map_add, acesso a struct ou índice de array é dado de lógica. Uma string usada apenas em draw_text ou como chave de tradução é interface.
+Correspondência com sprites: se uma string tem sprite com o mesmo radical, é chave de item.
+
+Sobre o índice de string encontrado no lootfilter. Confirmar se o índice se refere ao STRG do data.win ou a uma tabela própria do jogo. Se o índice muda entre versões do jogo mas o item é o mesmo, era índice de STRG e o lootfilter é frágil entre patches. Se não muda, é id interno estável e vira candidato a item_id.
+
+Critérios de saída. Lista de chaves candidatas vinda de sprites. Lista de zonas candidatas vinda de rooms. Lista completa de nomes de funções. Em VM, funções decompiladas.
+
+Fase 5 — Código compilado
+
+Aplicável ao .exe em YYC. Em VM, o mesmo raciocínio se aplica ao bytecode decompilado, com muito menos esforço.
+
+5.1 Confirmar os nomes e localizar as funções.
+
+Encontrar a tabela de registro de scripts: a string gml_Script_LoadSatanicDropTier tem uma referência cruzada que leva a uma entrada com ponteiro de função. Seguir o ponteiro dá o início real da função. Fazer o mesmo para LoadCommonDropTier e DefineItemInitialization.
+Determinar os limites pela seção .pdata: no Windows x64 cada função tem uma entrada RUNTIME_FUNCTION com endereço inicial e final. Isso elimina adivinhação de prólogo e epílogo.
+Confirmar que o nome corresponde ao conteúdo: uma função chamada Load de tiers deve ou chamar funções de leitura de arquivo, ou conter uma sequência longa e repetitiva de chamadas com string e número. Se contém leitura de arquivo, a fonte autoritativa é o arquivo lido e a Fase 3 é promovida. Se contém literais, a tabela é hardcoded e continua aqui.
+
+5.2 Rotular as funções nativas chamadas.
+
+O runner registra cada função nativa por nome. A string ds_map_add no .rdata tem referência cruzada até a rotina de registro, que associa nome ao ponteiro. Rotular todos os ponteiros usados dentro das três funções. Isso substitui a busca global por ds_map_add, que era o gerador de ruído.
+Listar quais contêineres a função usa: ds_map_add ou ds_map_set, variable_struct_set, escrita em array, ou ds_grid. Isso determina a estrutura da Fase 6.
+
+5.3 Convenção de argumentos.
+
+Funções nativas do runner recebem tipicamente um ponteiro de resultado, self, other, contagem e um vetor de valores GML. Cada valor GML é uma estrutura de 16 bytes com o valor nos 8 primeiros e o tipo num campo inteiro. Confirmar o layout exato no runner deste build, observando como a função de registro e as chamadas montam os argumentos na pilha.
+O número em GML é double. Um tier igual a 3 aparece como o double 3.0. Isso é o critério mais forte para reconhecer tiers em código nativo.
+1.0 = 0x3FF0000000000000
+2.0 = 0x4000000000000000
+3.0 = 0x4008000000000000
+4.0 = 0x4010000000000000
+5.0 = 0x4014000000000000
+
+5.4 Extrair pares item → tier.
+
+Percorrer a função linearmente. Para cada chamada rotulada como inserção em contêiner, resolver o argumento de chave, que virá de um literal no .rdata ou de um índice numérico, e o argumento de valor, que virá de uma constante double.
+Escrever a extração como varredura de padrão sobre a desassemblagem, não como decompilação completa. Uma função com quase mil inserções sequenciais derruba decompiladores e não precisa deles.
+Se a chave é numérica, a correspondência com o nome vem de DefineItemInitialization, que tende a associar índice, nome e sprite. Extrair essa função primeiro nesse caso.
+
+5.5 Distinguir tier de peso, flag ou outro número.
+
+Domínio: tiers formam um conjunto pequeno de valores inteiros, cada um atribuído a muitos itens. Pesos têm muitos valores distintos. Flags são só 0 e 1.
+Posição: a mesma posição de argumento em todas as chamadas da função. Se a função grava dois números por item, separar por posição e analisar o domínio de cada um.
+Leitores: quem lê o contêiner depois. Uma função de tooltip ou de filtro de loot que lê e compara com um número pequeno consome tiers. Uma função de sorteio que soma valores consome pesos.
+Confronto com o conjunto dourado: os valores extraídos para os itens do conjunto dourado precisam bater com o que a interface mostra.
+
+5.6 Reconstruir zona → itens. Três hipóteses concorrentes, a serem testadas em ordem.
+
+H1, tabelas explícitas no cliente: procurar funções com nomes ligados a drop, loot, act, zone, wormhole e verificar se inserem listas de itens por chave de zona. Se sim, extrair como na 5.4.
+H2, regra por limiar: o tier do item é comparado com um tier da zona. Nesse caso não existe lista por zona, existe uma função zona → tier máximo e a relação é derivada. Procurar comparações do valor de tier contra um valor vindo da room ou do ato atual.
+H3, sorteio no servidor: o cliente recebe o item pronto e não contém a tabela. Indício: o código de tratamento de mensagens de rede cria itens a partir de campos do pacote sem chamar nenhuma função de sorteio. Se H3 se confirmar, drop_locations não é extraível estaticamente, e a única fonte própria é a observação empírica que o tracker já faz. Isso precisa ser dito no modelo com confidence = inferred.
+
+Critérios de saída. Cada hipótese de nome de função marcada como confirmada ou refutada com endereço e evidência. Tabela item → tier extraída com contagem, domínio de valores e taxa de acerto contra o conjunto dourado. Hipótese vencedora para zonas.
+
+Fase 6 — Estruturas em memória
+
+Esta fase é só validação de hipótese sobre estruturas preenchidas na inicialização. Não é fonte primária, por dois motivos: tudo que está no mapa em memória veio de código ou de arquivo, que já são cobertos pelas Fases 3 e 5, e leitura do processo de um jogo online pode ser tratada como comportamento suspeito pelo anti-cheat, com risco para a conta. A decisão recomendada é não ler memória enquanto as Fases 3 e 5 não se esgotarem.
+
+Se a fase for necessária, evidências exigidas antes de confiar.
+
+O endereço em 0x1506FB518 precisa ser explicado estaticamente primeiro: qual instrução escreve nele, de onde vem o valor, e quem lê. Se a escrita vem imediatamente após uma chamada rotulada como criação de mapa e o valor é um double inteiro pequeno, é o id do mapa. Se o valor vem de uma constante, é outra coisa.
+Confirmar que o endereço é o primeiro campo de uma estrutura de 16 bytes cujo campo de tipo é escrito junto, com o valor de tipo correspondente a número.
+Todo leitor do endereço deve passar o valor como primeiro argumento de funções de consulta de mapa. Um único leitor que o use de outra forma refuta a hipótese.
+Diferenciar de outros mapas: contagem de inserções próxima do total de itens, chaves do tipo string ou índice consistente, valores no domínio de tiers.
+Persistência: o mapa é criado em função de inicialização chamada uma vez e não existe destruição no mesmo caminho. Se houver destruição na mesma função, é temporário e não interessa.
+Validação de conteúdo: consultar os itens do conjunto dourado e comparar com a interface.
+
+Critério de abandono. Se as Fases 3 e 5 já produzem a tabela completa e ela bate com o conjunto dourado, a Fase 6 é cancelada.
+
+Fase 7 — Lootfilters
+
+Expectativa realista. Um lootfilter é configuração do usuário. Ele referencia itens, não os define. O valor provável é confirmar o id interno estável e a lista de categorias que o jogo reconhece como filtráveis. Tiers e tabelas de drop dificilmente estão nele.
+
+Método diferencial.
+
+Criar um filtro vazio e salvar. Esse é o arquivo base e revela cabeçalho, versão e terminador.
+Adicionar uma única regra que referencie um item conhecido do conjunto dourado. Salvar. Comparar byte a byte com o base. Os bytes novos são uma entrada.
+Repetir mudando só um aspecto por vez: outro item da mesma categoria, para isolar o campo de id; mesma regra com outra ação, para isolar flags; mesma regra com outra raridade, para isolar o enum de raridade; duas regras, para isolar o contador e o tamanho de entrada.
+Procurar sinais do formato nativo de GameMaker. Buffers salvos com buffer_save têm strings terminadas em zero e números em tamanhos fixos. Arquivos comprimidos com buffer_compress começam com a assinatura zlib 78 9C ou 78 DA. Mapas serializados com ds_map_write são texto hexadecimal com tags de tipo.
+Registrar o layout final: cabeçalho, versão, contador, entrada com tipo, valor, flags e índice, e a presença ou não de checksum.
+
+Critérios objetivos.
+
+Continuar: o índice por item é estável entre patches e casa um para um com a chave do CSV ou com o item_id da Fase 5. Isso dá uma tabela id → chave validada por uma terceira fonte.
+Rebaixar a configuração: as entradas só carregam id, ação e flags, sem tier nem zona. O arquivo vira corroboração de item_id e nada mais.
+Abandonar: o índice muda entre versões sem que o item mude, ou o formato é comprimido e cifrado de forma que o custo de decodificar supere o ganho de uma fonte que, no melhor caso, só confirma ids.
+Fase 8 — Validação cruzada e reconstrução da base
+
+Juntar as fontes por chave, nunca por nome.
+
+Fonte primária de chaves: a que o jogo comprovadamente carrega ou contém, na ordem CSV carregado pelo jogo, tabela de inicialização em código, sprites do data.win.
+Toda outra fonte é anexada por chave normalizada. Chaves sem correspondência entram num relatório de órfãs e não na base.
+
+Resolver colisões. Para cada nome de exibição repetido, listar as chaves com raridade, categoria e sprite. A explicação típica é nome reutilizado entre raridades ou entre item e outra entidade, como habilidade ou relíquia. A base mantém todas as chaves e o tracker desambigua pelo campo de junção, que já é a chave.
+
+Invariantes verificáveis a cada reconstrução.
+
+Contagem de itens dentro de uma faixa esperada, com alerta se variar mais que um limite entre versões.
+Domínio de tier fechado no conjunto observado, sem valores novos silenciosos.
+Zero chaves sem nome de exibição em inglês.
+Concordância de 100 por cento com o conjunto dourado nos campos verificados, e concordância medida e relatada contra a API pública, com lista de divergências. Divergência com a API não bloqueia, mas é investigada.
+
+Formato de saída. JSON versionado por game_version para o tracker consumir, e SQLite ou similar para consulta, com a tabela de proveniência ao lado.
+
+Fase 9 — Pipeline pós-patch
+Detectar mudança por hash do .exe, do data.win e dos arquivos carregados pelo jogo, além da versão no chunk GEN8.
+Reexecutar as extrações na mesma ordem das fases, cada uma como etapa independente que falha ruidosamente quando um pressuposto quebra, por exemplo função não encontrada na tabela de registro ou layout de argumentos diferente.
+Gerar diff semântico contra a base anterior: itens adicionados, removidos, com tier alterado, com nome alterado.
+Rodar os invariantes da Fase 8 e o conjunto dourado como teste de regressão. Só publicar a base nova se tudo passar. Se falhar, a base anterior continua ativa e o relatório aponta o ponto de quebra.
+Guardar as bases antigas por versão, porque o tracker pode receber dados de jogadores em versões diferentes durante uma janela de atualização.
+Respostas diretas às oito perguntas
+Nomes e identificadores. Chaves no CSV de tradução se o jogo o carrega, na função de inicialização de itens no código, e nos nomes de sprites do data.win. Nomes de exibição no CSV. Provar na Fase 2 e extrair nas Fases 3 e 4.
+Tiers. Na função de carga de tiers, seja como literais compilados ou como leitura de um JSON distribuído. A Fase 5, item 5.1, decide qual dos dois.
+Locais de drop. Uma de três hipóteses da 5.6. A hipótese de regra por limiar de tier é a mais compatível com o nome DropTier e deve ser testada primeiro. Se o sorteio é no servidor, não há fonte estática.
+Fontes autoritativas. Só o que o jogo carrega ou contém: código do .exe ou bytecode, data.win e arquivos referenciados por eles. JSONs de terceiros, .yy e API são referência.
+Provar item → tier. Chamada rotulada, posição de argumento fixa, domínio pequeno de inteiros em double, leitor que compara e não soma, e acerto total no conjunto dourado.
+Provar zona → itens. Tabela ou regra encontrada no cliente, com chaves de zona que casam com rooms do data.win, e confirmação por observação em pelo menos uma zona por tier.
+Código compilado. Tabela de registro de scripts para achar a função, .pdata para os limites, tabela de registro de nativas para rotular chamadas, varredura de padrão em vez de decompilação.
+Base atualizável. Pipeline da Fase 9, com invariantes, conjunto dourado e diff por versão.
+Ordem de prioridade e esforço
+Linha	Prioridade	Custo	O que resolve
+Triagem do build e inventário	1	baixo	direciona tudo
+Arquivos externos carregados pelo jogo	2	baixo	chaves, nomes, possivelmente tiers
+data.win resources	3	baixo	lista de chaves e zonas independente
+Código focado nas três funções	4	médio a alto	tiers e ligação id → chave
+Lootfilters	5	médio	só ids, corroboração
+Memória	6	alto e com risco	nada que as anteriores não deem
+
+Se quiser, transformo este plano numa página de artefato com checklists marcáveis por fase para acompanhar a execução.

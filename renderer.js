@@ -148,17 +148,10 @@ function playDropSound(drop) {
   const tier = tierMatch ? tierMatch[1] : (drop.tier || '')
   const rarity = drop.rarity || ''
 
-  let src = null
-  if (tier === 'SS' || rarity === 'Angelic' || rarity === 'Unholy') {
-    src = 'assets/sounds/tink.mp3'
-  } else if (tier === 'S') {
-    src = 'assets/sounds/map.mp3'
-  }
-
-  if (src) {
-    const audio = new Audio(src)
-    audio.play().catch(() => {})
-  }
+  const src = (tier === 'SS' || rarity === 'Angelic' || rarity === 'Unholy')
+    ? 'assets/sounds/tink.mp3'
+    : 'assets/sounds/map.mp3'
+  new Audio(src).play().catch(() => {})
 }
 
 function addLigaRow(drop) {
