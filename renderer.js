@@ -928,9 +928,8 @@ window.api.onDropPending((drop) => {
       row.classList.add('ua-site-filtered')
       if (currentTab === 'liga') row.style.display = 'none'
     }
-  } else {
-    playDropSound(drop)
   }
+  if (!drop._siteFiltered || drop._inPersonalFilter) playDropSound(drop)
   _refreshUaCount()
 })
 
@@ -962,9 +961,8 @@ window.api.onDropCollected((drop) => {
         row.classList.add('ua-site-filtered')
         if (currentTab === 'liga') row.style.display = 'none'
       }
-    } else {
-      playDropSound(drop)
     }
+    if (!drop._siteFiltered || drop._inPersonalFilter) playDropSound(drop)
   }
   _refreshUaCount()
 })

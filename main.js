@@ -1032,10 +1032,11 @@ function spawnSniffer() {
           if (personalFilter.size > 0 && personalFilter.has(drop.name)) sendOverlay(drop)
         }
         const isPendingSiteFiltered = serverEnabledItems !== null && !serverEnabledItems.has(drop.name)
+        const _inPersonalFilter = personalFilter.has(drop.name)
         const _charDisplay = drop.charName && myDiscordUsername
           ? `${drop.charName} / ${myDiscordUsername}`
           : (drop.charName || myDiscordUsername || null)
-        const pendingPayload = { ...drop, _tierTag: tierTag, _category: categoryVal, _siteFiltered: isPendingSiteFiltered, _iconPath: itemIconRelPath(drop.name), _charDisplay }
+        const pendingPayload = { ...drop, _tierTag: tierTag, _category: categoryVal, _siteFiltered: isPendingSiteFiltered, _inPersonalFilter, _iconPath: itemIconRelPath(drop.name), _charDisplay }
         pushHistory('drop:pending', pendingPayload)
         sendToWin(mainWin, 'drop:pending', pendingPayload)
         sendToWin(compactWin, 'drop:pending', pendingPayload)
@@ -1045,7 +1046,7 @@ function spawnSniffer() {
       if (drop.type === 'collected') {
         const isSiteFiltered = serverEnabledItems !== null && !serverEnabledItems.has(drop.name)
         const logMsg = `⚔ ${drop.name}${tierTag} (${drop.rarity})${charPart} ✓`
-        const collectedPayload = { ...drop, _logMsg: logMsg, _tierTag: tierTag, _category: categoryVal, _siteFiltered: isSiteFiltered }
+        const collectedPayload = { ...drop, _logMsg: logMsg, _tierTag: tierTag, _category: categoryVal, _siteFiltered: isSiteFiltered, _inPersonalFilter: personalFilter.has(drop.name) }
         pushHistory('drop:collected', collectedPayload)
         sendToWin(mainWin, 'drop:collected', collectedPayload)
         sendToWin(compactWin, 'drop:collected', collectedPayload)
