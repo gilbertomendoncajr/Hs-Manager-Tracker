@@ -929,7 +929,7 @@ window.api.onDropPending((drop) => {
       if (currentTab === 'liga') row.style.display = 'none'
     }
   }
-  if (!drop._siteFiltered || drop._inPersonalFilter) playDropSound(drop)
+  if (drop._inPersonalFilter) playDropSound(drop)
   _refreshUaCount()
 })
 
@@ -962,7 +962,7 @@ window.api.onDropCollected((drop) => {
         if (currentTab === 'liga') row.style.display = 'none'
       }
     }
-    if (!drop._siteFiltered || drop._inPersonalFilter) playDropSound(drop)
+    if (drop._inPersonalFilter) playDropSound(drop)
   }
   _refreshUaCount()
 })
