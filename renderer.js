@@ -143,6 +143,24 @@ function _fmtTime(ts) {
   return new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
 
+function playDropSound(drop) {
+  const tierMatch = (drop._tierTag || '').match(/\[(\w+)\]/)
+  const tier = tierMatch ? tierMatch[1] : (drop.tier || '')
+  const rarity = drop.rarity || ''
+
+  let src = null
+  if (tier === 'SS' || rarity === 'Angelic' || rarity === 'Unholy') {
+    src = 'assets/sounds/tink.mp3'
+  } else if (tier === 'S') {
+    src = 'assets/sounds/map.mp3'
+  }
+
+  if (src) {
+    const audio = new Audio(src)
+    audio.play().catch(() => {})
+  }
+}
+
 function addLigaRow(drop) {
   const body = document.getElementById('ligaBody')
   const empty = document.getElementById('ligaEmpty')
@@ -910,6 +928,8 @@ window.api.onDropPending((drop) => {
       row.classList.add('ua-site-filtered')
       if (currentTab === 'liga') row.style.display = 'none'
     }
+  } else {
+    playDropSound(drop)
   }
   _refreshUaCount()
 })
@@ -942,6 +962,8 @@ window.api.onDropCollected((drop) => {
         row.classList.add('ua-site-filtered')
         if (currentTab === 'liga') row.style.display = 'none'
       }
+    } else {
+      playDropSound(drop)
     }
   }
   _refreshUaCount()
