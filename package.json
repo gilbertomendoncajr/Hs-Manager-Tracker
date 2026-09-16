@@ -1,6 +1,6 @@
 {
   "name": "hs-drop-logger",
-  "version": "2.5.1",
+  "version": "2.5.2",
   "description": "Auto-logger de drops para HS Manager",
   "main": "main.js",
   "scripts": {
@@ -32,6 +32,7 @@
       "flourish.html",
       "ticker.html",
       "compact.html",
+      "satanic-overlay.html",
       "renderer.js",
       "satanic-tiers.js",
       "zone-drops-data.js",
