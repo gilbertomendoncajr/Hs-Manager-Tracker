@@ -645,6 +645,38 @@ header button, header select, header a,
   margin-top: 8px; opacity: .75;
 }
 .drop-hint-sub:empty { display: none; }
+/* Steps — shown only in inactive state */
+.drop-hint-steps {
+  display: none;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0;
+  margin-top: 20px;
+}
+#dropHint[data-state="inactive"] .drop-hint-steps { display: flex; }
+.drop-hint-step {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 7px; padding: 14px 18px;
+  background: var(--surf-hi); border: 1px solid var(--border);
+  border-radius: 6px; min-width: 148px;
+}
+.drop-hint-step-num {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px; font-weight: 700;
+  letter-spacing: .14em; color: var(--accent); opacity: .55;
+}
+.drop-hint-step-icon {
+  font-size: 18px; line-height: 1; opacity: .65;
+}
+.drop-hint-step-text {
+  font-family: var(--font-sans); font-size: 11px; font-weight: 600;
+  color: var(--text2); letter-spacing: .04em; line-height: 1.4;
+  text-transform: none;
+}
+.drop-hint-step-sep {
+  display: flex; align-items: center;
+  padding: 0 8px; color: var(--text3); font-size: 14px; opacity: .4;
+}
 #dropHint[data-state="login"] .drop-hint-arrow,
 #dropHint[data-state="monitoring"] .drop-hint-arrow { display: none; }
 #dropHint[data-state="monitoring"] .drop-hint-title { color: var(--accent); }
@@ -1785,10 +1817,29 @@ body.no-bp.tab-liga .bp-disabled-overlay { display: flex; }
 
         <!-- Empty-state hint (visible until first drop appears) -->
         <div id="dropHint" class="drop-hint" data-state="inactive">
-          <div class="drop-hint-title" id="dropHintTitle">Monitor inativo</div>
+          <div class="drop-hint-title" id="dropHintTitle" data-i18n="empty.inactive">Monitor inativo</div>
           <div class="drop-hint-sub" id="dropHintSub"></div>
+          <div class="drop-hint-steps">
+            <div class="drop-hint-step">
+              <span class="drop-hint-step-num">01</span>
+              <span class="drop-hint-step-icon">🔗</span>
+              <span class="drop-hint-step-text" id="dropHintDesc1" data-i18n="empty.desc1">Selecione uma liga no rodapé</span>
+            </div>
+            <div class="drop-hint-step-sep">→</div>
+            <div class="drop-hint-step">
+              <span class="drop-hint-step-num">02</span>
+              <span class="drop-hint-step-icon">▶</span>
+              <span class="drop-hint-step-text" id="dropHintDesc2" data-i18n="empty.desc2">Pressione INICIAR para começar a registrar drops</span>
+            </div>
+            <div class="drop-hint-step-sep">→</div>
+            <div class="drop-hint-step">
+              <span class="drop-hint-step-num">03</span>
+              <span class="drop-hint-step-icon">🎮</span>
+              <span class="drop-hint-step-text" id="dropHintDesc3" data-i18n="empty.desc3">Entre no jogo com seu personagem Blood Pact</span>
+            </div>
+          </div>
           <div class="drop-hint-arrow" id="dropHintArrow">
-            <div class="drop-hint-arrow-label" id="dropHintArrowLabel">INICIAR</div>
+            <div class="drop-hint-arrow-label" id="dropHintArrowLabel" data-i18n="empty.cta">INICIAR</div>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <line x1="12" y1="5" x2="12" y2="19"/>
               <polyline points="19 12 12 19 5 12"/>
