@@ -1071,7 +1071,7 @@ body.tab-liga .ua-player { display: block; }
 .filtro-open-btn:hover { opacity: .85; }
 
 /* ── Item Filter (inline) ────────────────────────────────────────────── */
-#p-filtro { flex-direction: column; padding: 0; overflow: hidden; }
+#p-filtro { flex-direction: column; padding: 0; overflow: hidden; position: relative; }
 #p-filtro.active { display: flex; }
 
 .if-toolbar {
@@ -1092,6 +1092,58 @@ body.tab-liga .ua-player { display: block; }
 .if-clear:hover { border-color: var(--satanic); color: var(--satanic); }
 .if-btn:hover   { border-color: var(--text2); color: var(--text); }
 .if-count { font-size: var(--fs-xs); color: var(--text3); font-family: 'Space Mono', monospace; white-space: nowrap; }
+
+.if-preset-bar {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 10px; border-bottom: 1px solid var(--brt);
+  background: var(--bg2); flex-shrink: 0;
+}
+.if-preset-label { font-size: 10px; font-family: 'Chakra Petch', sans-serif; color: var(--text3); letter-spacing: .08em; white-space: nowrap; }
+.if-preset-select {
+  background: var(--bg3); border: 1px solid var(--brt); color: var(--text2);
+  font-size: 11px; font-family: 'Chakra Petch', sans-serif;
+  padding: 4px 6px; cursor: pointer; flex: 1; max-width: 200px; outline: none;
+}
+.if-preset-select:focus { border-color: var(--heroic); }
+
+.if-import-overlay {
+  position: absolute; inset: 0; background: rgba(0,0,0,.65); z-index: 50;
+  display: flex; align-items: center; justify-content: center;
+}
+.if-import-overlay[hidden] { display: none; }
+.if-modal {
+  background: var(--surf); border: 1px solid var(--brt); border-radius: 6px;
+  display: flex; flex-direction: column; overflow: hidden;
+  width: 440px; max-width: 92%;
+}
+.if-modal-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px; border-bottom: 1px solid var(--brt);
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--text2); letter-spacing: .08em;
+}
+.if-modal-close {
+  background: none; border: none; color: var(--text3);
+  cursor: pointer; font-size: 14px; padding: 0 2px; line-height: 1; transition: color .1s;
+}
+.if-modal-close:hover { color: var(--satanic); }
+.if-modal-body { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.if-modal-textarea {
+  background: var(--surf-hi); border: 1px solid var(--border); color: var(--text2);
+  font-family: var(--font-mono); font-size: 11px;
+  padding: 8px; resize: vertical; min-height: 80px; outline: none;
+  border-radius: 3px; line-height: 1.5;
+}
+.if-modal-textarea:focus { border-color: var(--heroic); }
+.if-modal-input {
+  background: var(--surf-hi); border: 1px solid var(--border); color: var(--text);
+  font-family: var(--font-mono); font-size: 12px;
+  padding: 7px 9px; outline: none; border-radius: 3px; width: 100%;
+}
+.if-modal-input:focus { border-color: var(--heroic); }
+.if-modal-input::placeholder { color: var(--text3); }
+.if-modal-actions { display: flex; gap: 6px; }
+.if-modal-status { font-size: 10px; font-family: var(--font-mono); color: var(--text3); min-height: 14px; }
 
 .if-cat-bar {
   display: flex; flex-wrap: wrap; gap: 4px;
@@ -1887,6 +1939,66 @@ body.no-bp.tab-liga .bp-disabled-overlay { display: flex; }
           <button class="if-clear" id="ifSearchClear" hidden>✕</button>
           <span class="if-count" id="ifCount"></span>
           <button class="if-btn" id="ifRefresh">↻ Refresh</button>
+          <button class="if-btn" id="ifExport" title="Copiar filtro como string">↑ Export</button>
+          <button class="if-btn" id="ifImport" title="Importar filtro de string">↓ Import</button>
+        </div>
+        <div class="if-import-overlay" id="ifExportOverlay" hidden>
+          <div class="if-modal">
+            <div class="if-modal-hdr">
+              <span><span data-i18n="filter.exportTitle">EXPORTAR FILTRO</span> — <span id="ifExportCount">0</span> <span data-i18n="filter.exportItems">{n} ITENS</span></span>
+              <button class="if-modal-close" id="ifExportClose">✕</button>
+            </div>
+            <div class="if-modal-body">
+              <textarea class="if-modal-textarea" id="ifExportOutput" readonly></textarea>
+              <div class="if-modal-actions">
+                <button class="if-btn-mini" id="ifExportCopy" data-i18n="filter.copy">📋 Copiar</button>
+                <button class="if-btn-mini" id="ifExportDownload">↓ Download .json</button>
+              </div>
+              <div class="if-modal-status" id="ifExportStatus"></div>
+            </div>
+          </div>
+        </div>
+        <div class="if-import-overlay" id="ifImportOverlay" hidden>
+          <div class="if-modal">
+            <div class="if-modal-hdr">
+              <span data-i18n="filter.importTitle">IMPORTAR FILTRO</span>
+              <button class="if-modal-close" id="ifImportCancel">✕</button>
+            </div>
+            <div class="if-modal-body">
+              <textarea class="if-modal-textarea" id="ifImportInput" data-i18n-placeholder="filter.importPlaceholder" placeholder="Cole a string do filtro aqui..."></textarea>
+              <div class="if-modal-actions">
+                <button class="if-btn-mini" id="ifImportFile">📁 Arquivo</button>
+                <button class="if-btn-mini" id="ifImportMerge" data-i18n="filter.importMerge">+ Mesclar</button>
+                <button class="if-btn-mini" id="ifImportReplace" data-i18n="filter.importReplace">↺ Substituir</button>
+              </div>
+              <div class="if-modal-status" id="ifImportStatus"></div>
+            </div>
+          </div>
+        </div>
+        <div class="if-preset-bar" id="ifPresetBar">
+          <span class="if-preset-label">PRESET:</span>
+          <select class="if-preset-select" id="ifPresetSelect">
+            <option value="" data-i18n="preset.none">— sem preset —</option>
+          </select>
+          <button class="if-btn-mini" id="ifPresetSave" data-i18n="preset.save">💾 Salvar</button>
+          <button class="if-btn-mini" id="ifPresetSaveAs">+ Novo</button>
+          <button class="if-btn-mini deselect" id="ifPresetDelete">🗑</button>
+        </div>
+        <div class="if-import-overlay" id="ifSaveAsOverlay" hidden>
+          <div class="if-modal" style="width:340px">
+            <div class="if-modal-hdr">
+              <span data-i18n="preset.saveAsTitle">SALVAR PRESET COMO</span>
+              <button class="if-modal-close" id="ifSaveAsCancel">✕</button>
+            </div>
+            <div class="if-modal-body">
+              <input type="text" class="if-modal-input" id="ifSaveAsInput"
+                data-i18n-placeholder="preset.namePlaceholder" placeholder="Nome do preset (ex: Fogo, Gelo...)">
+              <div class="if-modal-actions">
+                <button class="if-btn-mini" id="ifSaveAsConfirm" data-i18n="preset.save">💾 Salvar</button>
+              </div>
+              <div class="if-modal-status" id="ifSaveAsStatus"></div>
+            </div>
+          </div>
         </div>
         <div class="if-cat-bar" id="ifCatBar"></div>
         <div class="if-rarity-bar">
@@ -2025,7 +2137,7 @@ body.no-bp.tab-liga .bp-disabled-overlay { display: flex; }
             <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
           </svg>
         </div>
-        <select id="leagueSelect"><option value="">Carregando...</option></select>
+        <select id="leagueSelect"><option value="" data-i18n="league.loading">Carregando...</option></select>
       </div>
       <div class="bot-sep"></div>
       <span class="bot-timer" id="sessionTimer">00:00:00</span>
@@ -2033,7 +2145,7 @@ body.no-bp.tab-liga .bp-disabled-overlay { display: flex; }
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12">
           <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/>
         </svg>
-        Reiniciar Farm
+        <span data-i18n="btn.resetSession">Reiniciar Farm</span>
       </button>
       <div class="bot-sp"></div>
       <button id="btnToggleMonitor" class="start" disabled>▶ INICIAR</button>
@@ -2045,20 +2157,20 @@ body.no-bp.tab-liga .bp-disabled-overlay { display: flex; }
 <!-- Reset confirmation modal -->
 <div id="resetModal">
   <div class="reset-modal-box">
-    <div class="reset-modal-title">Reiniciar Farm</div>
-    <div class="reset-modal-char">Personagem: <span id="resetModalChar">—</span></div>
+    <div class="reset-modal-title" data-i18n="modal.resetTitle">Reiniciar Farm</div>
+    <div class="reset-modal-char"><span data-i18n="modal.resetChar">Personagem: </span><span id="resetModalChar">—</span></div>
     <button class="reset-modal-option reset-opt-cancel" id="resetOptCancel">
       <div class="reset-modal-option-icon">▶</div>
       <div>
-        <div class="reset-modal-option-label">Continuar Farm Atual</div>
-        <div class="reset-modal-option-desc">Mantém todos os dados desta sessão</div>
+        <div class="reset-modal-option-label" data-i18n="modal.keepLabel">Continuar Farm Atual</div>
+        <div class="reset-modal-option-desc" data-i18n="modal.keepDesc">Mantém todos os dados desta sessão</div>
       </div>
     </button>
     <button class="reset-modal-option reset-opt-clear" id="resetOptClear">
       <div class="reset-modal-option-icon">🗑</div>
       <div>
-        <div class="reset-modal-option-label">Limpar e Reiniciar</div>
-        <div class="reset-modal-option-desc">Zera drops e estatísticas para um novo farm</div>
+        <div class="reset-modal-option-label" data-i18n="modal.clearLabel">Limpar e Reiniciar</div>
+        <div class="reset-modal-option-desc" data-i18n="modal.clearDesc">Zera drops e estatísticas para um novo farm</div>
       </div>
     </button>
   </div>

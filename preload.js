@@ -74,6 +74,12 @@ contextBridge.exposeInMainWorld('api', {
   togglePersonal: (name) => ipcRenderer.invoke('personal:toggle', name),
   setAllPersonal: (names, value) => ipcRenderer.invoke('personal:setAll', names, value),
 
+  // Presets de filtro
+  getPresets: () => ipcRenderer.invoke('preset:getAll'),
+  savePreset: (name, items) => ipcRenderer.invoke('preset:save', name, items),
+  setActivePreset: (name) => ipcRenderer.invoke('preset:setActive', name),
+  deletePreset: (name) => ipcRenderer.invoke('preset:delete', name),
+
   // Relic filter
   getRelics: () => ipcRenderer.invoke('relic:getAll'),
   getRelicEnabled: () => ipcRenderer.invoke('relic:getEnabled'),

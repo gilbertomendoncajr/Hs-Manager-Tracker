@@ -84,8 +84,8 @@ function updateStatsBar() {
     if (currentTab === 'liga' && ligaFilteredCount > 0) {
       btnToggleFiltered.style.display = 'inline-block'
       btnToggleFiltered.textContent = showFiltered
-        ? `⊘ ocultar filtrados (${ligaFilteredCount})`
-        : `⊘ ver filtrados (${ligaFilteredCount})`
+        ? tr('filter.hideFiltered').replace('{n}', ligaFilteredCount)
+        : tr('filter.showFiltered').replace('{n}', ligaFilteredCount)
     } else {
       btnToggleFiltered.style.display = 'none'
     }
@@ -389,6 +389,36 @@ const I18N = {
     'status.active': 'Monitorando', 'status.stopped': 'Parado',
     'status.filterOk': '{n} itens ativos', 'status.charOk': '✓ {name}',
     'status.lastEvt': 'Último evento do sniffer',
+    'status.agoRecent': '< 5s atrás', 'status.agoSec': '{n}s atrás', 'status.agoMin': '{n}min atrás',
+    'filter.hideFiltered': '⊘ ocultar filtrados ({n})', 'filter.showFiltered': '⊘ ver filtrados ({n})',
+    'league.loading': 'Carregando...', 'league.none': 'Nenhuma liga ativa',
+    'league.bpDisabled': '⛔ Blood Pact desativado', 'league.bpUnlinked': '⚠️ Blood Pact não configurado',
+    'log.leagueAutoDetected': 'Liga detectada automaticamente: {name} ({char})',
+    'modal.activeChar': 'Personagem ativo',
+    'modal.resetTitle': 'Reiniciar Farm', 'modal.resetChar': 'Personagem: ',
+    'modal.keepLabel': 'Continuar Farm Atual', 'modal.keepDesc': 'Mantém todos os dados desta sessão',
+    'modal.clearLabel': 'Limpar e Reiniciar', 'modal.clearDesc': 'Zera drops e estatísticas para um novo farm',
+    'btn.resetSession': 'Reiniciar Farm',
+    'stats.noResources': 'Nenhum resource ainda', 'stats.noTimeline': 'Nenhum item Heroic+ ainda',
+    'stats.noSatanicZone': 'Nenhuma Satanic Zone ativa', 'stats.zoneArea': 'Act {act} — Área {idx}',
+    'filter.loadError': 'Erro ao carregar itens.', 'filter.waitingAdmin': 'Aguardando configuração do admin.',
+    'filter.catAll': 'Todos', 'filter.noItems': 'Nenhum item encontrado.',
+    'filter.countOverlay': '{on} no overlay / {total} total',
+    'filter.selectAll': '▶ Marcar todos', 'filter.deselectAll': '✕ Desmarcar todos',
+    'filter.cardRemove': 'Clique para remover do overlay', 'filter.cardAdd': 'Clique para ativar no overlay',
+    'filter.noSearchResults': 'Nenhum item encontrado para "{q}".',
+    'filter.copied': '✓ Copiado!', 'filter.copy': '📋 Copiar',
+    'filter.exported': '{n} itens exportados.', 'filter.fileLoaded': 'Arquivo "{file}" carregado.',
+    'filter.invalidString': '✕ String inválida.', 'filter.applied': '{n} itens aplicados{skipped}.',
+    'preset.saved': '✓ Salvo!', 'preset.save': '💾 Salvar',
+    'preset.nameRequired': '✕ Nome obrigatório.', 'preset.none': '— sem preset —',
+    'preset.deleteConfirm': 'Excluir o preset "{name}"?',
+    'filter.exportTitle': 'EXPORTAR FILTRO', 'filter.exportItems': 'ITENS',
+    'filter.importTitle': 'IMPORTAR FILTRO',
+    'filter.importPlaceholder': 'Cole a string do filtro aqui...',
+    'filter.importMerge': '+ Mesclar', 'filter.importReplace': '↺ Substituir',
+    'preset.saveAsTitle': 'SALVAR PRESET COMO',
+    'preset.namePlaceholder': 'Nome do preset (ex: Fogo, Gelo...)',
   },
   en: {
     'nav.drops': 'My Drops', 'nav.liga': 'League', 'nav.stats': 'Statistics',
@@ -440,6 +470,36 @@ const I18N = {
     'status.active': 'Monitoring', 'status.stopped': 'Stopped',
     'status.filterOk': '{n} active items', 'status.charOk': '✓ {name}',
     'status.lastEvt': 'Last sniffer event',
+    'status.agoRecent': '< 5s ago', 'status.agoSec': '{n}s ago', 'status.agoMin': '{n}min ago',
+    'filter.hideFiltered': '⊘ hide filtered ({n})', 'filter.showFiltered': '⊘ show filtered ({n})',
+    'league.loading': 'Loading...', 'league.none': 'No active leagues',
+    'league.bpDisabled': '⛔ Blood Pact disabled', 'league.bpUnlinked': '⚠️ Blood Pact not configured',
+    'log.leagueAutoDetected': 'League auto-detected: {name} ({char})',
+    'modal.activeChar': 'Active character',
+    'modal.resetTitle': 'Restart Farm', 'modal.resetChar': 'Character: ',
+    'modal.keepLabel': 'Continue Current Farm', 'modal.keepDesc': 'Keeps all data from this session',
+    'modal.clearLabel': 'Clear and Restart', 'modal.clearDesc': 'Resets drops and statistics for a new farm',
+    'btn.resetSession': 'Restart Farm',
+    'stats.noResources': 'No resources yet', 'stats.noTimeline': 'No Heroic+ items yet',
+    'stats.noSatanicZone': 'No Satanic Zone active', 'stats.zoneArea': 'Act {act} — Area {idx}',
+    'filter.loadError': 'Error loading items.', 'filter.waitingAdmin': 'Waiting for admin configuration.',
+    'filter.catAll': 'All', 'filter.noItems': 'No items found.',
+    'filter.countOverlay': '{on} in overlay / {total} total',
+    'filter.selectAll': '▶ Select all', 'filter.deselectAll': '✕ Deselect all',
+    'filter.cardRemove': 'Click to remove from overlay', 'filter.cardAdd': 'Click to activate in overlay',
+    'filter.noSearchResults': 'No items found for "{q}".',
+    'filter.copied': '✓ Copied!', 'filter.copy': '📋 Copy',
+    'filter.exported': '{n} items exported.', 'filter.fileLoaded': 'File "{file}" loaded.',
+    'filter.invalidString': '✕ Invalid string.', 'filter.applied': '{n} items applied{skipped}.',
+    'preset.saved': '✓ Saved!', 'preset.save': '💾 Save',
+    'preset.nameRequired': '✕ Name required.', 'preset.none': '— no preset —',
+    'preset.deleteConfirm': 'Delete preset "{name}"?',
+    'filter.exportTitle': 'EXPORT FILTER', 'filter.exportItems': 'ITEMS',
+    'filter.importTitle': 'IMPORT FILTER',
+    'filter.importPlaceholder': 'Paste the filter string here...',
+    'filter.importMerge': '+ Merge', 'filter.importReplace': '↺ Replace',
+    'preset.saveAsTitle': 'SAVE PRESET AS',
+    'preset.namePlaceholder': 'Preset name (e.g. Fire, Ice...)',
   },
 }
 
@@ -458,12 +518,28 @@ function applyLang(lang) {
     const key = el.dataset.i18n
     if (strings[key]) el.textContent = strings[key]
   })
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const key = el.dataset.i18nPlaceholder
+    if (strings[key]) el.placeholder = strings[key]
+  })
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    const key = el.dataset.i18nTitle
+    if (strings[key]) el.title = strings[key]
+  })
   document.querySelectorAll('.opt-btn[data-lang]').forEach(b => {
     b.classList.toggle('on', b.dataset.lang === lang)
   })
   // Re-apply dynamic texts that depend on monitoring state
   setMonitorUI(isMonitoring, _charIdentifiedLocal)
   updateStatsBar()
+  // Re-render filter UI if loaded (category tabs and item count use tr())
+  if (_ifLoaded) {
+    _ifBuildCatTabs()
+    _ifUpdateCatTabStates()
+    _ifSearch ? _ifRenderSearch() : _ifRenderItems()
+    _ifUpdateCount()
+    _ifPopulatePresetSelect()
+  }
 }
 
 function applyTheme(theme) {
@@ -530,14 +606,14 @@ function _startHeartbeatDisplay() {
     if (!stEvtVal || !_lastSnifferTs) return
     const ago = Math.round((Date.now() - _lastSnifferTs) / 1000)
     if (ago < 5) {
-      stEvtVal.textContent = '< 5s atrás'
+      stEvtVal.textContent = tr('status.agoRecent')
       if (stEvtDot) stEvtDot.className = 'st-dot active'
     } else if (ago < 60) {
-      stEvtVal.textContent = `${ago}s atrás`
+      stEvtVal.textContent = tr('status.agoSec').replace('{n}', ago)
       if (stEvtDot) stEvtDot.className = ago > 30 ? 'st-dot pending' : 'st-dot active'
     } else {
       const min = Math.round(ago / 60)
-      stEvtVal.textContent = `${min}min atrás`
+      stEvtVal.textContent = tr('status.agoMin').replace('{n}', min)
       if (stEvtDot) stEvtDot.className = 'st-dot err'
     }
   }, 1000)
@@ -661,7 +737,7 @@ function setMonitorUI(watching, charIdentified) {
 
 // ── Ligas ────────────────────────────────────────────────────────────────────
 async function loadLeagues() {
-  leagueSelect.innerHTML = '<option value="">Carregando...</option>'
+  leagueSelect.innerHTML = `<option value="">${tr('league.loading')}</option>`
   btnToggle.disabled = true
   const leagues = await window.api.getLeagues()
   leagueSelect.innerHTML = ''
@@ -669,7 +745,7 @@ async function loadLeagues() {
   if (leagues.length === 0) {
     const opt = document.createElement('option')
     opt.value = ''
-    opt.textContent = 'Nenhuma liga ativa'
+    opt.textContent = tr('league.none')
     leagueSelect.appendChild(opt)
     return
   }
@@ -1017,8 +1093,9 @@ function _fmtNum(n) {
 }
 
 function _hourRate(count, elapsedHours) {
-  if (elapsedHours < 0.01 || count === 0) return '— / hora'
-  return `${_fmtNum(Math.round(count / elapsedHours))} / hora`
+  const rateHour = tr('tiles.rateHour')
+  if (elapsedHours < 0.01 || count === 0) return `— ${rateHour}`
+  return `${_fmtNum(Math.round(count / elapsedHours))} ${rateHour}`
 }
 
 // Item timeline data
@@ -1067,7 +1144,7 @@ function _updateResources(resources) {
   const entries = Object.entries(resources || {}).filter(([,v]) => v > 0)
     .sort((a,b) => b[1]-a[1])
   if (!entries.length) {
-    el.innerHTML = '<div class="stats-kv-empty">Nenhum resource ainda</div>'
+    el.innerHTML = `<div class="stats-kv-empty">${tr('stats.noResources')}</div>`
     return
   }
   el.innerHTML = entries.map(([rarity, count]) => {
@@ -1194,7 +1271,7 @@ function _fmtZoneName(raw) {
     if (!isNaN(act) && !isNaN(idx) && act > 0) {
       const areas = ZONE_AREAS[act]
       if (areas && idx >= 1 && idx <= areas.length) return `Act ${act} — ${areas[idx - 1]}`
-      return `Act ${act} — Área ${idx}`
+      return tr('stats.zoneArea').replace('{act}', act).replace('{idx}', idx)
     }
   }
   return String(raw)
@@ -1204,7 +1281,7 @@ function _updateSatanic(satanic) {
   const el = document.getElementById('satanicZoneBlock')
   if (!el) return
   if (!satanic || !satanic.zone) {
-    el.innerHTML = '<div class="satanic-none">Nenhuma Satanic Zone ativa</div>'
+    el.innerHTML = `<div class="satanic-none">${tr('stats.noSatanicZone')}</div>`
     return
   }
   const zoneName = _fmtZoneName(satanic.zone)
@@ -1321,7 +1398,7 @@ function _renderTimeline() {
   const el = document.getElementById('itemTimeline')
   if (!el) return
   if (!_itemTimeline.length) {
-    el.innerHTML = '<div class="stl-empty">Nenhum item Heroic+ ainda</div>'
+    el.innerHTML = `<div class="stl-empty">${tr('stats.noTimeline')}</div>`
     return
   }
   const sessionStartMs = _sessionStart || Date.now()
@@ -1367,7 +1444,7 @@ if (window.api.onLeagueAutoSelected) {
       leagueSelect.disabled = true
       _bpAutoLocked = true
       if (window.api.setLeague) window.api.setLeague(leagueId)
-      addLogEntry({ type: 'info', message: `Liga detectada automaticamente: ${leagueName} (${charName})`, ts: Date.now() })
+      addLogEntry({ type: 'info', message: tr('log.leagueAutoDetected').replace('{name}', leagueName).replace('{char}', charName), ts: Date.now() })
     }
   })
 }
@@ -1380,7 +1457,7 @@ function setBpMode(active) {
     if (!prev) {
       const opt = document.createElement('option')
       opt.value = '__no_bp__'
-      opt.textContent = '⛔ Blood Pact desativado'
+      opt.textContent = tr('league.bpDisabled')
       leagueSelect.insertBefore(opt, leagueSelect.firstChild)
     }
     leagueSelect.value = '__no_bp__'
@@ -1451,7 +1528,7 @@ if (window.api.onBpUnlinked) {
     if (!prev) {
       const opt = document.createElement('option')
       opt.value = '__bp_unlinked__'
-      opt.textContent = '⚠️ Blood Pact não configurado'
+      opt.textContent = tr('league.bpUnlinked')
       leagueSelect.insertBefore(opt, leagueSelect.firstChild)
     }
     leagueSelect.value = '__bp_unlinked__'
@@ -1466,7 +1543,7 @@ const resetOptClear    = document.getElementById('resetOptClear')
 
 function openResetModal() {
   const charName = document.querySelector('.monitor-char')?.textContent?.trim()
-    || _charIdentifiedLocal && 'Personagem ativo'
+    || _charIdentifiedLocal && tr('modal.activeChar')
     || '—'
   if (resetModalChar) resetModalChar.textContent = charName
   if (resetModal) resetModal.classList.add('open')
@@ -1630,14 +1707,15 @@ const IF_CAT_ICONS = {
 }
 const IF_CAT_ORDER = ['Weapon', 'Shield', 'Helmet', 'Boots', 'Armor', 'Gloves', 'Belt', 'Amulet', 'Ring', 'Charm']
 
-let _ifAllItems    = {}
-let _ifPersonal    = new Set()
-let _ifActiveCat   = null
-let _ifRarities    = new Set(['Satanic', 'Angelic', 'Unholy', 'Heroic', 'Set'])
-let _ifTiers       = new Set(['D', 'C', 'B', 'A', 'S', 'SS'])
-let _ifSearch      = ''
-let _ifLoaded      = false
-let _ifHasTiers    = false
+let _ifAllItems         = {}
+let _ifPersonal         = new Set()
+let _ifActiveCategories = new Set()
+let _ifRarities         = new Set(['Satanic', 'Angelic', 'Unholy', 'Heroic', 'Set'])
+let _ifTiers            = new Set(['D', 'C', 'B', 'A', 'S', 'SS'])
+let _ifSearch           = ''
+let _ifLoaded           = false
+let _ifHasTiers         = false
+let _ifPresetsData      = { presets: {}, active: null }  // cache local dos presets
 
 async function _initItemFilter() {
   if (_ifLoaded) { _ifUpdateCount(); return }
@@ -1647,13 +1725,13 @@ async function _initItemFilter() {
   try { items = (await window.api.getFilterItems()) || {} }
   catch (err) {
     document.getElementById('ifContent').innerHTML =
-      `<div class="if-empty">Erro ao carregar itens.<br><small style="color:var(--satanic)">${err.message || err}</small></div>`
+      `<div class="if-empty">${tr('filter.loadError')}<br><small style="color:var(--satanic)">${err.message || err}</small></div>`
     return
   }
 
   if (!items || Object.keys(items).length === 0) {
     document.getElementById('ifContent').innerHTML =
-      '<div class="if-empty">Aguardando configuração do admin.</div>'
+      `<div class="if-empty">${tr('filter.waitingAdmin')}</div>`
     return
   }
 
@@ -1683,19 +1761,30 @@ async function _initItemFilter() {
   _ifLoaded    = true
   _ifHasTiers  = Object.values(_ifAllItems).some(arr => arr.some(i => i.tier))
 
+  try { _ifPresetsData = await window.api.getPresets() } catch {}
+
   _ifBuildCatTabs()
   _ifBindRarityChips()
   _ifBindTierChips()
   _ifBindSearchBar()
+  _ifBindPresets()
 
-  const first = IF_CAT_ORDER.find(c => _ifAllItems[c]?.length > 0)
-  if (first) { _ifActiveCat = first; _ifSelectCategory(first) }
+  _ifRenderItems()
+  _ifUpdateCatTabStates()
   _ifUpdateCount()
 }
 
 function _ifBuildCatTabs() {
   const bar = document.getElementById('ifCatBar')
   bar.innerHTML = ''
+
+  const todosTab = document.createElement('div')
+  todosTab.className = 'if-cat-tab active'
+  todosTab.dataset.cat = '__todos__'
+  todosTab.innerHTML = `<span class="cat-icon">☰</span>${tr('filter.catAll')}`
+  todosTab.addEventListener('click', () => _ifToggleCategory('__todos__'))
+  bar.appendChild(todosTab)
+
   for (const cat of IF_CAT_ORDER) {
     if (!_ifAllItems[cat]?.length) continue
     const total = _ifAllItems[cat].length
@@ -1704,7 +1793,7 @@ function _ifBuildCatTabs() {
     tab.className = 'if-cat-tab'
     tab.dataset.cat = cat
     tab.innerHTML = `<span class="cat-icon">${IF_CAT_ICONS[cat] || '•'}</span>${cat}<span class="cat-badge">${myOn}/${total}</span>`
-    tab.addEventListener('click', () => _ifSelectCategory(cat))
+    tab.addEventListener('click', () => _ifToggleCategory(cat))
     bar.appendChild(tab)
   }
 }
@@ -1737,7 +1826,7 @@ function _ifBindRarityChips() {
         if (allChip) allChip.classList.toggle('active', _ifRarities.size === 5)
       }
       if (_ifSearch) _ifRenderSearch()
-      else _ifRenderItems(_ifActiveCat)
+      else _ifRenderItems()
     })
   })
 }
@@ -1762,7 +1851,7 @@ function _ifBindTierChips() {
         if (allChip) allChip.classList.toggle('active', _ifTiers.size === 6)
       }
       if (_ifSearch) _ifRenderSearch()
-      else _ifRenderItems(_ifActiveCat)
+      else _ifRenderItems()
     })
   })
 }
@@ -1777,7 +1866,7 @@ function _ifBindSearchBar() {
       _ifSearch = e.target.value.trim()
       if (clearBtn) clearBtn.hidden = !_ifSearch
       if (_ifSearch) _ifRenderSearch()
-      else _ifRenderItems(_ifActiveCat)
+      else _ifRenderItems()
       _ifUpdateCount()
     })
   }
@@ -1786,7 +1875,7 @@ function _ifBindSearchBar() {
       if (searchEl) searchEl.value = ''
       _ifSearch = ''
       clearBtn.hidden = true
-      _ifRenderItems(_ifActiveCat)
+      _ifRenderItems()
       _ifUpdateCount()
     })
   }
@@ -1800,12 +1889,266 @@ function _ifBindSearchBar() {
       _initItemFilter()
     })
   }
+
+  // ── Export ──────────────────────────────────────────────────────────────────
+  const exportBtn      = document.getElementById('ifExport')
+  const exportOverlay  = document.getElementById('ifExportOverlay')
+  const exportOutput   = document.getElementById('ifExportOutput')
+  const exportCountEl  = document.getElementById('ifExportCount')
+  const exportStatusEl = document.getElementById('ifExportStatus')
+  const exportCopyBtn  = document.getElementById('ifExportCopy')
+  const exportDlBtn    = document.getElementById('ifExportDownload')
+  const exportCloseBtn = document.getElementById('ifExportClose')
+
+  if (exportBtn && exportOverlay) {
+    exportBtn.addEventListener('click', () => {
+      const names = [..._ifPersonal]
+      if (exportCountEl) exportCountEl.textContent = names.length
+      if (exportOutput)  exportOutput.value = btoa(JSON.stringify(names))
+      if (exportStatusEl) exportStatusEl.textContent = ''
+      exportOverlay.hidden = false
+    })
+  }
+  if (exportCloseBtn && exportOverlay) {
+    exportCloseBtn.addEventListener('click', () => { exportOverlay.hidden = true })
+  }
+  if (exportCopyBtn && exportOutput) {
+    exportCopyBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(exportOutput.value).then(() => {
+        exportCopyBtn.textContent = tr('filter.copied')
+        setTimeout(() => { exportCopyBtn.textContent = tr('filter.copy') }, 1800)
+      })
+    })
+  }
+  if (exportDlBtn) {
+    exportDlBtn.addEventListener('click', () => {
+      const names = [..._ifPersonal]
+      const blob = new Blob([JSON.stringify(names, null, 2)], { type: 'application/json' })
+      const url  = URL.createObjectURL(blob)
+      const a    = document.createElement('a')
+      a.href = url
+      a.download = 'hs-filter.json'
+      a.click()
+      URL.revokeObjectURL(url)
+      if (exportStatusEl) exportStatusEl.textContent = tr('filter.exported').replace('{n}', names.length)
+    })
+  }
+
+  // ── Import ──────────────────────────────────────────────────────────────────
+  const importBtn   = document.getElementById('ifImport')
+  const importOverlay = document.getElementById('ifImportOverlay')
+  const importInput = document.getElementById('ifImportInput')
+  const statusEl    = document.getElementById('ifImportStatus')
+  const fileBtn     = document.getElementById('ifImportFile')
+  const mergeBtn    = document.getElementById('ifImportMerge')
+  const replaceBtn  = document.getElementById('ifImportReplace')
+  const cancelBtn   = document.getElementById('ifImportCancel')
+
+  if (importBtn && importOverlay) {
+    importBtn.addEventListener('click', () => {
+      if (importInput) importInput.value = ''
+      if (statusEl) statusEl.textContent = ''
+      importOverlay.hidden = false
+      if (importInput) importInput.focus()
+    })
+  }
+  if (cancelBtn && importOverlay) {
+    cancelBtn.addEventListener('click', () => { importOverlay.hidden = true })
+  }
+  if (fileBtn && importInput) {
+    fileBtn.addEventListener('click', () => {
+      const picker = document.createElement('input')
+      picker.type = 'file'
+      picker.accept = '.json,.txt'
+      picker.onchange = e => {
+        const file = e.target.files[0]
+        if (!file) return
+        const reader = new FileReader()
+        reader.onload = ev => {
+          const raw = ev.target.result.trim()
+          // Se for JSON puro, converte para base64 para manter um único caminho de decodificação
+          try {
+            const parsed = JSON.parse(raw)
+            if (Array.isArray(parsed)) {
+              importInput.value = btoa(JSON.stringify(parsed))
+            } else {
+              importInput.value = raw
+            }
+          } catch {
+            importInput.value = raw
+          }
+          if (statusEl) statusEl.textContent = tr('filter.fileLoaded').replace('{file}', file.name)
+        }
+        reader.readAsText(file)
+      }
+      picker.click()
+    })
+  }
+
+  function _ifApplyImport(mode) {
+    if (!importInput || !statusEl) return
+    let names
+    try {
+      names = JSON.parse(atob(importInput.value.trim()))
+      if (!Array.isArray(names)) throw new Error()
+    } catch {
+      statusEl.textContent = tr('filter.invalidString')
+      statusEl.style.color = 'var(--satanic)'
+      return
+    }
+
+    const allKnown = new Set(Object.values(_ifAllItems).flat().map(i => i.name))
+    const valid   = names.filter(n => typeof n === 'string' && allKnown.has(n))
+    const skipped = names.length - valid.length
+
+    const toRemove = mode === 'replace' ? [..._ifPersonal] : []
+    if (mode === 'replace') _ifPersonal.clear()
+    for (const n of valid) _ifPersonal.add(n)
+
+    const ops = []
+    if (toRemove.length) ops.push(window.api.setAllPersonal(toRemove, false))
+    if (valid.length)    ops.push(window.api.setAllPersonal(valid, true))
+    Promise.all(ops).then(() => {
+      _ifRenderItems()
+      _ifBuildCatTabs()
+      _ifUpdateCatTabStates()
+      _ifUpdateCount()
+      importOverlay.hidden = true
+    })
+
+    statusEl.style.color = 'var(--text3)'
+    statusEl.textContent = tr('filter.applied').replace('{n}', valid.length).replace('{skipped}', skipped ? ` (${skipped})` : '')
+  }
+
+  if (mergeBtn)   mergeBtn.addEventListener('click',   () => _ifApplyImport('merge'))
+  if (replaceBtn) replaceBtn.addEventListener('click', () => _ifApplyImport('replace'))
 }
 
-function _ifSelectCategory(cat) {
-  _ifActiveCat = cat
-  document.querySelectorAll('.if-cat-tab').forEach(t => t.classList.toggle('active', t.dataset.cat === cat))
-  _ifRenderItems(cat)
+function _ifPopulatePresetSelect() {
+  const sel = document.getElementById('ifPresetSelect')
+  if (!sel) return
+  sel.innerHTML = `<option value="">${tr('preset.none')}</option>`
+  for (const name of Object.keys(_ifPresetsData.presets)) {
+    const opt = document.createElement('option')
+    opt.value = name
+    opt.textContent = name
+    if (name === _ifPresetsData.active) opt.selected = true
+    sel.appendChild(opt)
+  }
+  if (!_ifPresetsData.active) sel.value = ''
+}
+
+function _ifBindPresets() {
+  _ifPopulatePresetSelect()
+
+  const sel       = document.getElementById('ifPresetSelect')
+  const saveBtn   = document.getElementById('ifPresetSave')
+  const saveAsBtn = document.getElementById('ifPresetSaveAs')
+  const delBtn    = document.getElementById('ifPresetDelete')
+
+  // Overlay "Salvar como"
+  const saveAsOverlay = document.getElementById('ifSaveAsOverlay')
+  const saveAsInput   = document.getElementById('ifSaveAsInput')
+  const saveAsConfirm = document.getElementById('ifSaveAsConfirm')
+  const saveAsCancel  = document.getElementById('ifSaveAsCancel')
+  const saveAsStatus  = document.getElementById('ifSaveAsStatus')
+
+  if (sel) {
+    sel.addEventListener('change', async () => {
+      const name = sel.value
+      await window.api.setActivePreset(name)
+      _ifPresetsData.active = name || null
+      if (name && _ifPresetsData.presets[name]) {
+        _ifPersonal = new Set(_ifPresetsData.presets[name])
+      } else {
+        _ifPersonal = new Set(await window.api.getPersonalEnabled())
+      }
+      _ifRenderItems()
+      _ifBuildCatTabs()
+      _ifUpdateCatTabStates()
+      _ifUpdateCount()
+    })
+  }
+
+  if (saveBtn) {
+    saveBtn.addEventListener('click', async () => {
+      const name = _ifPresetsData.active
+      if (!name) {
+        if (saveAsOverlay) { saveAsOverlay.hidden = false; if (saveAsInput) saveAsInput.focus() }
+        return
+      }
+      _ifPresetsData.presets[name] = [..._ifPersonal]
+      await window.api.savePreset(name, [..._ifPersonal])
+      saveBtn.textContent = tr('preset.saved')
+      setTimeout(() => { saveBtn.textContent = tr('preset.save') }, 1600)
+    })
+  }
+
+  if (saveAsBtn && saveAsOverlay) {
+    saveAsBtn.addEventListener('click', () => {
+      if (saveAsInput) saveAsInput.value = ''
+      if (saveAsStatus) saveAsStatus.textContent = ''
+      saveAsOverlay.hidden = false
+      if (saveAsInput) saveAsInput.focus()
+    })
+  }
+  if (saveAsCancel && saveAsOverlay) {
+    saveAsCancel.addEventListener('click', () => { saveAsOverlay.hidden = true })
+  }
+  if (saveAsInput) {
+    saveAsInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') saveAsConfirm?.click()
+      if (e.key === 'Escape') saveAsCancel?.click()
+    })
+  }
+  if (saveAsConfirm) {
+    saveAsConfirm.addEventListener('click', async () => {
+      const name = saveAsInput?.value.trim()
+      if (!name) { if (saveAsStatus) saveAsStatus.textContent = tr('preset.nameRequired'); return }
+      _ifPresetsData.presets[name] = [..._ifPersonal]
+      _ifPresetsData.active = name
+      await window.api.savePreset(name, [..._ifPersonal])
+      await window.api.setActivePreset(name)
+      _ifPopulatePresetSelect()
+      saveAsOverlay.hidden = true
+    })
+  }
+
+  if (delBtn) {
+    delBtn.addEventListener('click', async () => {
+      const name = _ifPresetsData.active
+      if (!name) return
+      if (!confirm(tr('preset.deleteConfirm').replace('{name}', name))) return
+      const result = await window.api.deletePreset(name)
+      delete _ifPresetsData.presets[name]
+      _ifPresetsData.active = result.active
+      if (result.active && _ifPresetsData.presets[result.active]) {
+        _ifPersonal = new Set(_ifPresetsData.presets[result.active])
+      }
+      _ifPopulatePresetSelect()
+      _ifRenderItems()
+      _ifUpdateCount()
+    })
+  }
+}
+
+function _ifToggleCategory(cat) {
+  if (cat === '__todos__') {
+    _ifActiveCategories.clear()
+  } else {
+    if (_ifActiveCategories.has(cat)) _ifActiveCategories.delete(cat)
+    else _ifActiveCategories.add(cat)
+  }
+  _ifUpdateCatTabStates()
+  _ifRenderItems()
+}
+
+function _ifUpdateCatTabStates() {
+  const allActive = _ifActiveCategories.size === 0
+  document.querySelectorAll('.if-cat-tab').forEach(t => {
+    if (t.dataset.cat === '__todos__') t.classList.toggle('active', allActive)
+    else t.classList.toggle('active', _ifActiveCategories.has(t.dataset.cat))
+  })
 }
 
 function _ifPassesTierFilter(item) {
@@ -1813,28 +2156,42 @@ function _ifPassesTierFilter(item) {
   return _ifTiers.has(item.tier)
 }
 
-function _ifRenderItems(cat) {
+function _ifRenderItems() {
   const content = document.getElementById('ifContent')
   if (!content) return
-  const items = (_ifAllItems[cat] || []).filter(it => _ifRarities.has(it.rarity) && _ifPassesTierFilter(it))
+
+  const catsToShow = _ifActiveCategories.size > 0
+    ? IF_CAT_ORDER.filter(c => _ifActiveCategories.has(c) && _ifAllItems[c]?.length)
+    : IF_CAT_ORDER.filter(c => _ifAllItems[c]?.length)
+
+  const items = []
+  for (const cat of catsToShow) {
+    for (const it of (_ifAllItems[cat] || [])) {
+      if (_ifRarities.has(it.rarity) && _ifPassesTierFilter(it)) items.push({ ...it, cat })
+    }
+  }
 
   if (items.length === 0) {
-    content.innerHTML = '<div class="if-empty">Nenhum item encontrado.</div>'
+    content.innerHTML = `<div class="if-empty">${tr('filter.noItems')}</div>`
     return
   }
 
-  const icon = IF_CAT_ICONS[cat] || '•'
   const myOn = items.filter(i => _ifPersonal.has(i.name)).length
+  const label = _ifActiveCategories.size === 0
+    ? '☰ TODOS'
+    : _ifActiveCategories.size === 1
+      ? `${IF_CAT_ICONS[catsToShow[0]] || '•'} ${catsToShow[0].toUpperCase()}`
+      : catsToShow.map(c => IF_CAT_ICONS[c] || c).join(' ')
 
   content.innerHTML = `
     <div class="if-cat-header">
-      <h3>${icon} ${cat.toUpperCase()}</h3>
+      <h3>${label}</h3>
       <div class="sep"></div>
-      <span style="font-size:10px;color:var(--text2)">${myOn} no overlay / ${items.length} total</span>
+      <span style="font-size:10px;color:var(--text2)">${tr('filter.countOverlay').replace('{on}', myOn).replace('{total}', items.length)}</span>
     </div>
     <div class="if-select-row">
-      <button class="if-btn-mini" id="ifBtnSelectAll">▶ Marcar todos</button>
-      <button class="if-btn-mini deselect" id="ifBtnDeselectAll">✕ Desmarcar todos</button>
+      <button class="if-btn-mini" id="ifBtnSelectAll">${tr('filter.selectAll')}</button>
+      <button class="if-btn-mini deselect" id="ifBtnDeselectAll">${tr('filter.deselectAll')}</button>
     </div>
     <div class="if-item-grid" id="ifItemGrid"></div>
   `
@@ -1843,27 +2200,32 @@ function _ifRenderItems(cat) {
     const names = items.map(i => i.name)
     await window.api.setAllPersonal(names, true)
     for (const n of names) _ifPersonal.add(n)
-    _ifRenderItems(cat); _ifRefreshCatBadge(cat); _ifUpdateCount()
+    _ifRenderItems()
+    for (const cat of catsToShow) _ifRefreshCatBadge(cat)
+    _ifUpdateCount()
   })
 
   document.getElementById('ifBtnDeselectAll').addEventListener('click', async () => {
     const names = items.map(i => i.name)
     await window.api.setAllPersonal(names, false)
     for (const n of names) _ifPersonal.delete(n)
-    _ifRenderItems(cat); _ifRefreshCatBadge(cat); _ifUpdateCount()
+    _ifRenderItems()
+    for (const cat of catsToShow) _ifRefreshCatBadge(cat)
+    _ifUpdateCount()
   })
 
   const grid = document.getElementById('ifItemGrid')
   for (const item of items) {
     const isOn = _ifPersonal.has(item.name)
     const admOn = item.enabled
+    const icon = IF_CAT_ICONS[item.cat] || '•'
     const iconContent = item.image_url
       ? `<img src="${item.image_url}" alt="" onerror="this.remove()">`
       : icon
 
     const card = document.createElement('div')
     card.className = `if-item-card ${item.rarity} ${isOn ? 'personal-on' : 'personal-off'}`
-    card.title = isOn ? 'Clique para remover do overlay' : 'Clique para ativar no overlay'
+    card.title = isOn ? tr('filter.cardRemove') : tr('filter.cardAdd')
     const tierBadge = item.tier ? `<span class="if-tier-badge ${item.tier}">${item.tier}</span>` : ''
     card.innerHTML = `
       <div class="if-item-icon">${iconContent}</div>
@@ -1888,15 +2250,15 @@ function _ifRenderItems(cat) {
 
       card.classList.toggle('personal-on', newState)
       card.classList.toggle('personal-off', !newState)
-      card.title = newState ? 'Clique para remover do overlay' : 'Clique para ativar no overlay'
+      card.title = newState ? tr('filter.cardRemove') : tr('filter.cardAdd')
       card.querySelector('input').checked = newState
 
       const header = content.querySelector('.if-cat-header span')
       if (header) {
         const myCount = items.filter(i => _ifPersonal.has(i.name)).length
-        header.textContent = `${myCount} no overlay / ${items.length} total`
+        header.textContent = tr('filter.countOverlay').replace('{on}', myCount).replace('{total}', items.length)
       }
-      _ifRefreshCatBadge(cat)
+      _ifRefreshCatBadge(item.cat)
       _ifUpdateCount()
     })
 
@@ -1920,7 +2282,7 @@ function _ifRenderSearch() {
   }
 
   if (results.length === 0) {
-    content.innerHTML = `<div class="if-empty">Nenhum item encontrado para "<strong>${_ifSearch}</strong>".</div>`
+    content.innerHTML = `<div class="if-empty">${tr('filter.noSearchResults').replace('{q}', `<strong>${_ifSearch}</strong>`)}</div>`
     return
   }
 
@@ -1945,7 +2307,7 @@ function _ifRenderSearch() {
 
     const card = document.createElement('div')
     card.className = `if-item-card ${item.rarity} ${isOn ? 'personal-on' : 'personal-off'}`
-    card.title = isOn ? 'Clique para remover do overlay' : 'Clique para ativar no overlay'
+    card.title = isOn ? tr('filter.cardRemove') : tr('filter.cardAdd')
     card.innerHTML = `
       <div class="if-item-icon">${iconContent}</div>
       <div class="if-item-info">
@@ -1970,7 +2332,7 @@ function _ifRenderSearch() {
 
       card.classList.toggle('personal-on', newState)
       card.classList.toggle('personal-off', !newState)
-      card.title = newState ? 'Clique para remover do overlay' : 'Clique para ativar no overlay'
+      card.title = newState ? tr('filter.cardRemove') : tr('filter.cardAdd')
       card.querySelector('input').checked = newState
 
       _ifRefreshCatBadge(item.cat)
@@ -1990,7 +2352,7 @@ function _ifUpdateCount() {
     }
   }
   const el = document.getElementById('ifCount')
-  if (el) el.textContent = total > 0 ? `${myActive} no overlay / ${total} total` : ''
+  if (el) el.textContent = total > 0 ? tr('filter.countOverlay').replace('{on}', myActive).replace('{total}', total) : ''
 }
 
 // ── Init ─────────────────────────────────────────────────────────────────────

@@ -56,6 +56,7 @@ let tray = null
 let compactWin = null
 let flourishWin = null
 let tickerWin = null
+let satanicOverlayWin = null
 let filterWin = null
 let serverEnabledItems = null   // Set<string> | null — null = not loaded yet (allow all)
 let serverTierMap = {}          // Record<string, string> — name → tier
@@ -90,6 +91,22 @@ function loadPersonalFilter() {
 function savePersonalFilter() {
   try { fs.writeFileSync(personalFilterPath(), JSON.stringify({ enabled: [...personalFilter] })) }
   catch {}
+}
+
+// ── Filter Presets ───────────────────────────────────────────────────────────
+let _presetsPath = null
+function presetsPath() {
+  if (!_presetsPath) _presetsPath = path.join(app.getPath('userData'), 'filter-presets.json')
+  return _presetsPath
+}
+function loadPresetsFile() {
+  try {
+    const data = JSON.parse(fs.readFileSync(presetsPath(), 'utf8'))
+    return { presets: data.presets || {}, active: data.active || null }
+  } catch { return { presets: {}, active: null } }
+}
+function savePresetsFile(data) {
+  try { fs.writeFileSync(presetsPath(), JSON.stringify(data, null, 2)) } catch {}
 }
 
 // ── Filtro de Relics (local) ─────────────────────────────────────────────────
@@ -288,6 +305,18 @@ function createOverlays() {
   })
   tickerWin.loadFile('ticker.html')
   tickerWin.setIgnoreMouseEvents(true)
+
+  const { height: screenH } = screen.getPrimaryDisplay().workAreaSize
+  satanicOverlayWin = new BrowserWindow({
+    width: 620, height: 220,
+    x: Math.round(width / 2 - 310), y: screenH - 240,
+    transparent: true, frame: false,
+    alwaysOnTop: true, skipTaskbar: true,
+    resizable: false, focusable: false,
+    webPreferences: { preload: OVERLAY_PRELOAD, contextIsolation: true, nodeIntegration: false },
+  })
+  satanicOverlayWin.loadFile('satanic-overlay.html')
+  satanicOverlayWin.setIgnoreMouseEvents(true)
 }
 
 function sendOverlay(drop) {
@@ -558,6 +587,7 @@ ipcMain.handle('auth:login', () => {
       width: 900,
       height: 700,
       title: 'Login — HS Manager',
+      icon: path.join(__dirname, 'assets', 'icons', 'brand_dog.png'),
       webPreferences: { partition: `temp:hs-auth-${Date.now()}` },
     })
 
@@ -1000,6 +1030,9 @@ function spawnSniffer() {
       if (msg.type === 'stat:satanic') {
         _satanicZone = { zone: msg.zone, buffs: msg.buffs || [], debuffs: msg.debuffs || [], ts_ms: msg.ts_ms }
         _sendStatsUpdate()
+        if (satanicOverlayWin && !satanicOverlayWin.isDestroyed()) {
+          satanicOverlayWin.webContents.send('overlay:satanic', _satanicZone)
+        }
         return
       }
       if (msg.type === 'stat:resource') {
@@ -1473,6 +1506,38 @@ ipcMain.handle('personal:setAll', (_, names, value) => {
     else personalFilter.delete(name)
   }
   savePersonalFilter()
+})
+
+ipcMain.handle('preset:getAll', () => loadPresetsFile())
+
+ipcMain.handle('preset:save', (_, name, items) => {
+  const data = loadPresetsFile()
+  data.presets[name] = items
+  if (!data.active) data.active = name
+  savePresetsFile(data)
+})
+
+ipcMain.handle('preset:setActive', (_, name) => {
+  const data = loadPresetsFile()
+  if (name && !data.presets[name]) return false
+  data.active = name || null
+  savePresetsFile(data)
+  personalFilter = new Set(name ? (data.presets[name] || []) : [])
+  savePersonalFilter()
+  return true
+})
+
+ipcMain.handle('preset:delete', (_, name) => {
+  const data = loadPresetsFile()
+  delete data.presets[name]
+  if (data.active === name) {
+    const remaining = Object.keys(data.presets)
+    data.active = remaining.length ? remaining[0] : null
+    personalFilter = new Set(data.active ? (data.presets[data.active] || []) : [])
+    savePersonalFilter()
+  }
+  savePresetsFile(data)
+  return { active: data.active }
 })
 
 // ── Relic filter ─────────────────────────────────────────────────────────────

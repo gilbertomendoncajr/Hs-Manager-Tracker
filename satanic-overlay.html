@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,500;0,600;0,700;0,800;1,700&display=swap">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 620px;
+    background: transparent;
+    overflow: hidden;
+    font-family: 'Exo 2', 'Segoe UI', sans-serif;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  #container {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 280ms ease, transform 280ms cubic-bezier(0.22,1,0.36,1);
+  }
+  #container.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  #container.hiding {
+    opacity: 0;
+    transform: translateY(18px);
+    transition: opacity 320ms ease, transform 320ms ease;
+  }
+
+  .sz-card {
+    background: rgba(6,3,14,0.90);
+    border: 1px solid rgba(220,40,40,0.45);
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(200,20,20,0.25), 0 0 0 1px rgba(220,40,40,0.12);
+  }
+
+  /* ── Header ── */
+  .sz-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 12px 6px;
+    background: linear-gradient(90deg, rgba(180,20,20,0.30) 0%, rgba(180,20,20,0.10) 60%, transparent 100%);
+    border-bottom: 1px solid rgba(220,40,40,0.28);
+    gap: 8px;
+  }
+  .sz-icon {
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+  .sz-zone-name {
+    flex: 1;
+    font-size: 12px;
+    font-weight: 800;
+    font-style: italic;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    color: #ff6060;
+    text-shadow: 0 0 12px rgba(255,60,60,0.55);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .sz-timer {
+    font-size: 10px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.30);
+    letter-spacing: 0.06em;
+    font-family: 'Courier New', monospace;
+    flex-shrink: 0;
+  }
+
+  /* ── Cols ── */
+  .sz-cols {
+    display: flex;
+    gap: 0;
+  }
+  .sz-col {
+    flex: 1;
+    padding: 8px 10px 9px;
+  }
+  .sz-col + .sz-col {
+    border-left: 1px solid rgba(255,255,255,0.07);
+  }
+  .sz-col-label {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .sz-col-label.pros { color: rgba(80,220,120,0.75); }
+  .sz-col-label.cons { color: rgba(220,80,80,0.75); }
+
+  /* ── Mod row ── */
+  .sz-mod {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 3px;
+  }
+  .sz-mod:last-child { margin-bottom: 0; }
+
+  .sz-mod-icon {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+    flex-shrink: 0;
+    opacity: 0.85;
+  }
+  .sz-mod-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-left: 2px;
+  }
+  .sz-mod-dot.pros { background: rgba(80,220,120,0.70); }
+  .sz-mod-dot.cons { background: rgba(220,80,80,0.70); }
+
+  .sz-mod-body { flex: 1; min-width: 0; }
+  .sz-mod-name {
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .sz-mod-name.pros { color: #58e888; }
+  .sz-mod-name.cons { color: #f06060; }
+  .sz-mod-desc {
+    font-size: 9px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.42);
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .sz-mod-empty {
+    font-size: 11px;
+    color: rgba(255,255,255,0.20);
+  }
+</style>
+</head>
+<body>
+<div id="container">
+  <div class="sz-card">
+    <div class="sz-header">
+      <span class="sz-icon">⚔</span>
+      <span class="sz-zone-name" id="szZoneName">—</span>
+      <span class="sz-timer" id="szTimer"></span>
+    </div>
+    <div class="sz-cols">
+      <div class="sz-col">
+        <div class="sz-col-label pros">▲ PROS</div>
+        <div id="szPros"></div>
+      </div>
+      <div class="sz-col">
+        <div class="sz-col-label cons">▼ CONS</div>
+        <div id="szCons"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SATANIC_BUFFS = {
+  1:  ['Loot Goblin I',      '+1 Max Loot por Inimigo Morto'],
+  2:  ['Loot Goblin II',     '+2 Max Loot por Inimigo Morto'],
+  3:  ['Rune Master',        '+15% Chance de Drop de Runas'],
+  4:  ['Gold Hunger',        '+40% Ouro de Monstros Mortos'],
+  5:  ['Heroic Windfall',    '+3% Chance de Drop Heroic'],
+  6:  ['Angelic Fortune',    '+25% Chance de Drop Angelic'],
+  7:  ["Zephy's Grace",      '+50% Velocidade de Movimento'],
+  8:  ['Fury of Tempest',    '+60% Velocidade de Ataque'],
+  9:  ['Rapid Casting',      '+60% Velocidade de Conjuração'],
+  10: ['Onslaught',          '+100% Dano de Ataque'],
+  11: ['Nether Surge',       '+40% Dano de Magia'],
+  12: ['Relic Keepers',      '2% Chance de Relic ao Matar Ancião'],
+  13: ["Goblin's Greed",     '0.5% Chance de Goblin do Tesouro'],
+  14: ['Artifact Digger',    '+55% Magic Find'],
+  15: ['Artifact Seeker',    '+110% Magic Find'],
+  16: ['Artifact Excavator', '+170% Magic Find'],
+  17: ['Recruit',            '+10% Ganho de XP'],
+  18: ['Combat Training',    '+15% Ganho de XP'],
+  19: ['Battle Scarred',     '+20% Ganho de XP'],
+  20: ['Clairvoyance',       '+100% em toda recuperação'],
+  21: ['Aftermath',          '3% Chance de Invocar Legião na Morte'],
+  22: ['Deep Cuts',          '+200% Dano de Golpe Crítico'],
+  23: ['Old Town',           '+15% Chance de Packs Antigos'],
+  24: ['Terror Zone',        '+25% Chance de Packs Antigos'],
+  25: ['Fields of Carnage',  '+30% Chance de Packs Antigos'],
+}
+const SATANIC_DEBUFFS = [
+  ["Dusk's Shroud",      '-20% Raio de Luz'],
+  ['Elemental Erosion',  '-75% Todas as Resistências'],
+  ['Sundered Armor',     '+25% Dano Recebido'],
+  ['Vitality Drain',     '-25% Vida'],
+  ['Essence Drain',      '-25% Mana'],
+  ['Abyssal Gloom',      '+100% Escuridão'],
+  ['Skill Debilitation', '-10% Todas as Skills'],
+  ['Weakening Essence',  '-20% Todos os Atributos'],
+  ['Lifeflow Starvation','Regeneração reduzida'],
+  ['Sanguine Impairment','-75% Roubo de Vida'],
+  ['Arcane Impairment',  '-75% Roubo de Mana'],
+  ['Consumed Time',      '-25% Recuperação de Cooldown'],
+  ['Absolute Limbo',     '-50% Recuperação de Cooldown'],
+  ['Boulder Fall',       '3% Chance de Boulder na Morte'],
+  ['Lingering Evil',     '-25% Velocidade de Movimento'],
+  ['Fatal Wounds',       '10% Chance de Dano Duplo dos Monstros'],
+  ['Bloated Veins',      '+70% Vida dos Monstros'],
+  ['Abnormal Dwelling',  '+130% Vida dos Monstros'],
+  ['Colossal Bloating',  '+200% Vida dos Monstros'],
+  ['Necrosis',           '1% de Vida drenada por segundo'],
+  ['Venomous Presence',  '+200% Duração de Veneno'],
+  ['Flaming Agony',      'Nova de Fogo na morte dos monstros'],
+  ['Unholy Agility',     'Monstros mais rápidos e agressivos'],
+  ['Broken Armor',       'Você não pode bloquear ataques'],
+  ['Hemorrhage',         'Ataques de monstros causam sangramento'],
+  ['Crippling Slow',     'Ataques infligem 50% de lentidão'],
+]
+const ZONE_AREAS = {
+  1: ['Outskirts of Inoya','Fields of Battle','The Pumpkin Patch','Woodhill Plains',"King's Garden",'Witching River'],
+  2: ['Crystal Village','Chilling Lake','Arctic Tundra','Snowy Mountains','The Glacial Trail'],
+  3: ['Corrupted Oasis','Dry Hills',"Mos'Arathim Desert",'Pyramid Level 1','Pyramid Level 2','Curacan Hollow'],
+  4: ['Old Mining Village','The Highland Mines','Corrupted Cave','The Nightmare',"The Devil's Breach"],
+  5: ['Mt. Fuji','Misty Swamp','Fuji Coast','Sea of Karponia','Temple of Zamjo'],
+  6: ['Highland Graveyard','The Cathedral','Prison Dungeon','Steam Train','The Depths of Hell'],
+  7: ['Deep Space','Event Horizon','The Black Hole','Parallel Dimension','Subconscious Mind','Shattered Realm'],
+  8: ['Forest of the Slain','Flooded Plains','Forgotten Caves','Camp of Souls','Helheim'],
+  9: ['Abyss Jungle','Shipwreck Cove','Tormented Reef','Boreal Island','Volcanic Island','Abyss Realm'],
+}
+
+const TTL = 18000
+const container = document.getElementById('container')
+const szZoneName = document.getElementById('szZoneName')
+const szPros     = document.getElementById('szPros')
+const szCons     = document.getElementById('szCons')
+const szTimer    = document.getElementById('szTimer')
+
+let hideTimer   = null
+let tickInterval = null
+let hideAt      = 0
+
+function fmtZone(raw) {
+  const parts = String(raw).split('_')
+  if (parts.length >= 3) {
+    const act = parseInt(parts[parts.length - 2], 10)
+    const idx = parseInt(parts[parts.length - 1], 10)
+    if (!isNaN(act) && !isNaN(idx) && act > 0) {
+      const areas = ZONE_AREAS[act]
+      if (areas && idx >= 1 && idx <= areas.length) return `Act ${act} — ${areas[idx - 1]}`
+      return `Act ${act} — Area ${idx}`
+    }
+  }
+  return String(raw)
+}
+
+function renderBuff(id) {
+  const b = SATANIC_BUFFS[id]
+  const name = b ? b[0] : `Buff ${id}`
+  const desc = b ? b[1] : ''
+  const iconSrc = `assets/icons/buffs/${id}.png`
+  return `<div class="sz-mod">
+    <img class="sz-mod-icon" src="${iconSrc}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'sz-mod-dot pros'}))">
+    <div class="sz-mod-body">
+      <div class="sz-mod-name pros">${name}</div>
+      ${desc ? `<div class="sz-mod-desc">${desc}</div>` : ''}
+    </div>
+  </div>`
+}
+
+function renderDebuff(id) {
+  const d = SATANIC_DEBUFFS[id - 1]
+  const name = d ? d[0] : `Debuff ${id}`
+  const desc = d ? d[1] : ''
+  return `<div class="sz-mod">
+    <span class="sz-mod-dot cons"></span>
+    <div class="sz-mod-body">
+      <div class="sz-mod-name cons">${name}</div>
+      ${desc ? `<div class="sz-mod-desc">${desc}</div>` : ''}
+    </div>
+  </div>`
+}
+
+function startTick() {
+  clearInterval(tickInterval)
+  tickInterval = setInterval(() => {
+    const rem = Math.max(0, Math.ceil((hideAt - Date.now()) / 1000))
+    szTimer.textContent = rem > 0 ? `${rem}s` : ''
+    if (rem === 0) clearInterval(tickInterval)
+  }, 500)
+}
+
+function showSatanic(data) {
+  clearTimeout(hideTimer)
+  clearInterval(tickInterval)
+
+  if (!data || !data.zone) {
+    hide()
+    return
+  }
+
+  szZoneName.textContent = fmtZone(data.zone)
+
+  const buffIds   = data.buffs   || []
+  const debuffIds = data.debuffs || []
+  szPros.innerHTML = buffIds.length
+    ? buffIds.map(renderBuff).join('')
+    : '<div class="sz-mod-empty">—</div>'
+  szCons.innerHTML = debuffIds.length
+    ? debuffIds.map(renderDebuff).join('')
+    : '<div class="sz-mod-empty">—</div>'
+
+  container.classList.remove('hiding')
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => container.classList.add('visible'))
+  })
+
+  hideAt = Date.now() + TTL
+  startTick()
+  hideTimer = setTimeout(hide, TTL)
+}
+
+function hide() {
+  clearInterval(tickInterval)
+  container.classList.add('hiding')
+  container.classList.remove('visible')
+  szTimer.textContent = ''
+  setTimeout(() => container.classList.remove('hiding'), 340)
+}
+
+if (window.__HSoverlay && window.__HSoverlay.onSatanic) {
+  window.__HSoverlay.onSatanic((data) => showSatanic(data))
+} else {
+  // Preview mode: show mock data
+  document.body.style.background = '#0d0b18'
+  document.body.style.padding = '16px'
+  showSatanic({
+    zone: 'Satanic_5_5',
+    buffs: [1, 4, 6, 14],
+    debuffs: [2, 4, 17],
+  })
+}
+</script>
+</body>
+</html>

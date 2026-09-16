@@ -1,3 +1,4 @@
+console.log('[filter-renderer] v2.4.0 carregado')
 const CAT_ICONS = {
   Helmet: '⛑', Armor: '🔰', Boots: '👢', Weapon: '⚔',
   Gloves: '🥊', Amulet: '📿', Shield: '🛡', Ring: '💍',
