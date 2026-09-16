@@ -369,7 +369,7 @@ const I18N = {
     'empty.line1': 'Nenhuma atividade ainda.', 'empty.line2': 'Selecione uma liga e inicie o monitor.',
     'empty.title': 'Monitor inativo',
     'empty.desc1': 'Selecione uma liga no rodapé',
-    'empty.desc2': 'Pressione INICIAR para começar a registrar drops',
+    'empty.desc2': 'Pressione INICIAR para iniciar o rastreador',
     'empty.desc3': 'Entre no jogo com seu personagem Blood Pact',
     'empty.cta': 'INICIAR',
     'update.available': '🔄 Nova versão {v} disponível', 'update.downloading': '🔄 Baixando... {p}%',
@@ -451,7 +451,7 @@ const I18N = {
     'empty.line1': 'No activity yet.', 'empty.line2': 'Select a league and start the monitor.',
     'empty.title': 'Monitor inactive',
     'empty.desc1': 'Select a league in the footer',
-    'empty.desc2': 'Press START to begin logging drops',
+    'empty.desc2': 'Press START to begin tracking',
     'empty.desc3': 'Enter the game with your Blood Pact character',
     'empty.cta': 'START',
     'update.available': '🔄 Version {v} available', 'update.downloading': '🔄 Downloading... {p}%',
@@ -698,11 +698,8 @@ function setMonitorUI(watching, charIdentified) {
     if (_heartbeatTimer) { clearInterval(_heartbeatTimer); _heartbeatTimer = null }
     if (stEvtDot) stEvtDot.className = 'st-dot'
     if (stEvtVal) stEvtVal.textContent = '—'
-    // Resetar estado de BP: reabilitar dropdown e limpar opções especiais
-    if (_bpAutoLocked || leagueSelect.disabled) {
-      leagueSelect.disabled = false
-      _bpAutoLocked = false
-    }
+    // Limpar opções especiais de BP sem reabilitar o dropdown
+    _bpAutoLocked = false
     const noBpOpt = leagueSelect.querySelector('option[value="__no_bp__"]')
     if (noBpOpt) noBpOpt.remove()
     const unlinkedOpt = leagueSelect.querySelector('option[value="__bp_unlinked__"]')
@@ -1464,7 +1461,6 @@ function setBpMode(active) {
     }
     leagueSelect.value = '__no_bp__'
   } else {
-    leagueSelect.disabled = false
     const noBpOpt = leagueSelect.querySelector('option[value="__no_bp__"]')
     if (noBpOpt) noBpOpt.remove()
   }

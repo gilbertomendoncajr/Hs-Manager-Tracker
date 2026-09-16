@@ -648,34 +648,46 @@ header button, header select, header a,
 /* Steps — shown only in inactive state */
 .drop-hint-steps {
   display: none;
-  flex-direction: row;
-  align-items: stretch;
+  flex-direction: column;
   gap: 0;
-  margin-top: 20px;
+  margin-top: 22px;
+  width: 272px;
+  position: relative;
 }
 #dropHint[data-state="inactive"] .drop-hint-steps { display: flex; }
-.drop-hint-step {
-  display: flex; flex-direction: column; align-items: center;
-  gap: 7px; padding: 14px 18px;
-  background: var(--surf-hi); border: 1px solid var(--border);
-  border-radius: 6px; min-width: 148px;
+.dhs-item {
+  display: flex; flex-direction: row;
+  align-items: flex-start; gap: 13px;
+  position: relative; padding-bottom: 18px;
 }
-.drop-hint-step-num {
+.dhs-item:last-child { padding-bottom: 0; }
+.dhs-item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 14px; top: 31px;
+  width: 1px; bottom: 0;
+  background: linear-gradient(180deg, rgba(180,30,30,0.22) 0%, rgba(180,30,30,0.04) 100%);
+}
+.dhs-bubble {
+  flex-shrink: 0;
+  width: 30px; height: 30px; border-radius: 50%;
+  border: 1px solid rgba(180,30,30,0.32);
+  background: rgba(180,30,30,0.06);
+  display: flex; align-items: center; justify-content: center;
   font-family: 'Space Mono', monospace;
-  font-size: 10px; font-weight: 700;
-  letter-spacing: .14em; color: var(--accent); opacity: .55;
+  font-size: 9px; font-weight: 700;
+  color: rgba(180,30,30,0.75); letter-spacing: .1em;
+  position: relative; z-index: 1;
 }
-.drop-hint-step-icon {
-  font-size: 18px; line-height: 1; opacity: .65;
+.dhs-content {
+  display: flex; flex-direction: row;
+  align-items: center; gap: 8px;
+  padding-top: 6px;
 }
-.drop-hint-step-text {
-  font-family: var(--font-sans); font-size: 11px; font-weight: 600;
-  color: var(--text2); letter-spacing: .04em; line-height: 1.4;
-  text-transform: none;
-}
-.drop-hint-step-sep {
-  display: flex; align-items: center;
-  padding: 0 8px; color: var(--text3); font-size: 14px; opacity: .4;
+.dhs-icon { font-size: 13px; opacity: 0.5; }
+.dhs-text {
+  font-family: var(--font-sans); font-size: 11.5px; font-weight: 500;
+  color: rgba(255,255,255,0.38); letter-spacing: .03em; line-height: 1.35;
 }
 #dropHint[data-state="login"] .drop-hint-arrow,
 #dropHint[data-state="monitoring"] .drop-hint-arrow { display: none; }
@@ -1455,7 +1467,8 @@ input:checked + .if-toggle-track::after { transform: translateX(12px); backgroun
   letter-spacing: .02em;
 }
 #leagueSelect:disabled {
-  color: var(--text3); cursor: default; opacity: 0.7;
+  color: var(--text); cursor: default; opacity: 1;
+  -webkit-appearance: none; appearance: none;
 }
 body.no-bp .bot-league {
   opacity: 0.6;
@@ -1820,22 +1833,19 @@ body.no-bp.tab-liga .bp-disabled-overlay { display: flex; }
           <div class="drop-hint-title" id="dropHintTitle" data-i18n="empty.inactive">Monitor inativo</div>
           <div class="drop-hint-sub" id="dropHintSub"></div>
           <div class="drop-hint-steps">
-            <div class="drop-hint-step">
-              <span class="drop-hint-step-num">01</span>
-              <span class="drop-hint-step-icon">🔗</span>
-              <span class="drop-hint-step-text" id="dropHintDesc1" data-i18n="empty.desc1">Selecione uma liga no rodapé</span>
+            <div class="dhs-item">
+              <div class="dhs-bubble">01</div>
+              <div class="dhs-content">
+                <span class="dhs-icon">▶</span>
+                <span class="dhs-text" data-i18n="empty.desc2">Pressione INICIAR para começar a registrar drops</span>
+              </div>
             </div>
-            <div class="drop-hint-step-sep">→</div>
-            <div class="drop-hint-step">
-              <span class="drop-hint-step-num">02</span>
-              <span class="drop-hint-step-icon">▶</span>
-              <span class="drop-hint-step-text" id="dropHintDesc2" data-i18n="empty.desc2">Pressione INICIAR para começar a registrar drops</span>
-            </div>
-            <div class="drop-hint-step-sep">→</div>
-            <div class="drop-hint-step">
-              <span class="drop-hint-step-num">03</span>
-              <span class="drop-hint-step-icon">🎮</span>
-              <span class="drop-hint-step-text" id="dropHintDesc3" data-i18n="empty.desc3">Entre no jogo com seu personagem Blood Pact</span>
+            <div class="dhs-item">
+              <div class="dhs-bubble">02</div>
+              <div class="dhs-content">
+                <span class="dhs-icon">🎮</span>
+                <span class="dhs-text" data-i18n="empty.desc3">Entre no jogo com seu personagem Blood Pact</span>
+              </div>
             </div>
           </div>
           <div class="drop-hint-arrow" id="dropHintArrow">
@@ -2188,7 +2198,7 @@ body.no-bp.tab-liga .bp-disabled-overlay { display: flex; }
             <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
           </svg>
         </div>
-        <select id="leagueSelect"><option value="" data-i18n="league.loading">Carregando...</option></select>
+        <select id="leagueSelect" disabled><option value="" data-i18n="league.loading">Carregando...</option></select>
       </div>
       <div class="bot-sep"></div>
       <span class="bot-timer" id="sessionTimer">00:00:00</span>
