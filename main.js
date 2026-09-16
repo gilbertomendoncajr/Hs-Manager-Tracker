@@ -308,6 +308,8 @@ app.whenReady().then(async () => {
     autoUpdater.checkForUpdates()
     setInterval(() => autoUpdater.checkForUpdates(), 30 * 60 * 1000)
   }
+
+  connectAppSSE()
 })
 
 // ── Auto-updater ────────────────────────────────────────────────────────────
@@ -733,6 +735,49 @@ async function postDrop(leagueId, drop) {
     const err = await res.json().catch(() => ({}))
     sendLog('error', t(`✘ Falha ao registrar ${drop.name}: ${err.error ?? res.status}`, `✘ Failed to post ${drop.name}: ${err.error ?? res.status}`), drop)
   }
+}
+
+// ── SSE: notificações globais do app (updates, etc.) ────────────────────────
+let appSseAbort = null
+
+function connectAppSSE() {
+  if (appSseAbort) appSseAbort.abort()
+  appSseAbort = new AbortController()
+
+  ;(async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/api/app/stream`, {
+        headers: { Accept: 'text/event-stream' },
+        signal: appSseAbort.signal,
+      })
+      if (!res.ok || !res.body) throw new Error(`status ${res.status}`)
+
+      const reader = res.body.getReader()
+      const dec = new TextDecoder()
+      let buf = ''
+
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+        buf += dec.decode(value, { stream: true })
+        const parts = buf.split('\n\n')
+        buf = parts.pop()
+        for (const block of parts) {
+          if (!block.startsWith('data:')) continue
+          try {
+            const evt = JSON.parse(block.slice(5).trim())
+            if (evt.type === 'app_update') {
+              console.log('[app-sse] update disponível:', evt.version)
+              if (app.isPackaged) autoUpdater.checkForUpdates()
+            }
+          } catch {}
+        }
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') return
+      setTimeout(connectAppSSE, 60_000)
+    }
+  })()
 }
 
 // ── SSE: receber drops de outros jogadores em tempo real ────────────────────

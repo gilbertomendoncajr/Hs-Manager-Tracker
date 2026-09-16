@@ -1,0 +1,16 @@
+name: Notify update
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify HS Manager server
+        run: |
+          curl -sf -X POST http://109.199.115.128/api/app/notify-update \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.APP_NOTIFY_SECRET }}" \
+            -d "{\"version\":\"${{ github.event.release.tag_name }}\"}"

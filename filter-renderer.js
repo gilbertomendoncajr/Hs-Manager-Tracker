@@ -7,13 +7,12 @@ const CAT_ORDER = ['Weapon', 'Shield', 'Helmet', 'Boots', 'Armor', 'Gloves', 'Be
 
 let allItems = {}
 let personalEnabled = new Set()
-let activeCategory = null
+let activeCategories = new Set()
 let activeRarities = new Set(['Satanic', 'Angelic', 'Unholy', 'Heroic', 'Set'])
 let activeTiers = new Set(['D', 'C', 'B', 'A', 'S', 'SS'])
 let searchQuery = ''
 
 const ALL_TIERS = ['D', 'C', 'B', 'A', 'S', 'SS']
-const RED_TIERS  = ['D', 'C', 'B', 'A', 'S']
 
 async function init() {
   document.getElementById('content').innerHTML = '<div id="loading">CARREGANDO ITENS...</div>'
@@ -49,12 +48,15 @@ async function init() {
   buildCatTabs()
   buildRarityChips()
   buildTierChips()
+
   const first = CAT_ORDER.find(c => allItems[c]?.length > 0)
-  if (first) activeCategory = first
+  if (first) activeCategories.add(first)
+  updateCatTabStates()
+
   if (searchQuery) {
     renderSearch()
   } else {
-    if (first) selectCategory(first)
+    renderItems()
   }
   updateCount()
 }
@@ -62,6 +64,14 @@ async function init() {
 function buildCatTabs() {
   const bar = document.getElementById('catBar')
   bar.innerHTML = ''
+
+  const allTab = document.createElement('div')
+  allTab.className = 'cat-tab cat-tab-all'
+  allTab.id = 'catTabAll'
+  allTab.innerHTML = `<span class="cat-icon">☰</span>Todos`
+  allTab.addEventListener('click', () => toggleAllCategories())
+  bar.appendChild(allTab)
+
   for (const cat of CAT_ORDER) {
     if (!allItems[cat]?.length) continue
     const total = allItems[cat].length
@@ -70,9 +80,44 @@ function buildCatTabs() {
     tab.className = 'cat-tab'
     tab.dataset.cat = cat
     tab.innerHTML = `<span class="cat-icon">${CAT_ICONS[cat] || '•'}</span>${cat}<span class="cat-badge">${myEnabled}/${total}</span>`
-    tab.addEventListener('click', () => selectCategory(cat))
+    tab.addEventListener('click', () => toggleCategory(cat))
     bar.appendChild(tab)
   }
+}
+
+function toggleAllCategories() {
+  const available = CAT_ORDER.filter(c => allItems[c]?.length > 0)
+  const allActive = available.every(c => activeCategories.has(c))
+  if (allActive) {
+    activeCategories.clear()
+  } else {
+    for (const c of available) activeCategories.add(c)
+  }
+  updateCatTabStates()
+  if (searchQuery) renderSearch()
+  else renderItems()
+}
+
+function toggleCategory(cat) {
+  if (activeCategories.has(cat)) {
+    activeCategories.delete(cat)
+  } else {
+    activeCategories.add(cat)
+  }
+  updateCatTabStates()
+  if (searchQuery) renderSearch()
+  else renderItems()
+}
+
+function updateCatTabStates() {
+  document.querySelectorAll('.cat-tab[data-cat]').forEach(t => {
+    t.classList.toggle('active', activeCategories.has(t.dataset.cat))
+  })
+  const allTab = document.getElementById('catTabAll')
+  if (!allTab) return
+  const available = CAT_ORDER.filter(c => allItems[c]?.length > 0)
+  const allActive = available.length > 0 && available.every(c => activeCategories.has(c))
+  allTab.classList.toggle('active', allActive)
 }
 
 function refreshCatBadge(cat) {
@@ -98,7 +143,6 @@ function buildRarityChips() {
           chip.classList.add('active')
           document.querySelectorAll('.rchip:not(.All)').forEach(c => c.classList.add('active'))
         }
-        updateTierAvailability()
       } else {
         if (activeRarities.has(r)) { activeRarities.delete(r); chip.classList.remove('active') }
         else { activeRarities.add(r); chip.classList.add('active') }
@@ -108,7 +152,7 @@ function buildRarityChips() {
       }
       updateTierAvailability()
       if (searchQuery) renderSearch()
-      else renderItems(activeCategory)
+      else renderItems()
     })
   })
 }
@@ -138,7 +182,7 @@ function buildTierChips() {
         else allChip.classList.remove('active')
       }
       if (searchQuery) renderSearch()
-      else renderItems(activeCategory)
+      else renderItems()
     })
   })
 }
@@ -162,32 +206,38 @@ function updateTierAvailability() {
   }
 }
 
-function selectCategory(cat) {
-  activeCategory = cat
-  document.querySelectorAll('.cat-tab').forEach(t => {
-    t.classList.toggle('active', t.dataset.cat === cat)
-  })
-  renderItems(cat)
-}
-
-function renderItems(cat) {
+function renderItems() {
   const content = document.getElementById('content')
-  const items = (allItems[cat] || []).filter(it =>
-    activeRarities.has(it.rarity) &&
-    (it.tier == null || activeTiers.has(it.tier))
-  )
+
+  if (activeCategories.size === 0) {
+    content.innerHTML = '<div class="empty">Selecione pelo menos uma categoria.</div>'
+    return
+  }
+
+  const items = []
+  for (const cat of CAT_ORDER) {
+    if (!activeCategories.has(cat)) continue
+    for (const item of (allItems[cat] || [])) {
+      if (!activeRarities.has(item.rarity)) continue
+      if (item.tier != null && !activeTiers.has(item.tier)) continue
+      items.push({ ...item, cat })
+    }
+  }
 
   if (items.length === 0) {
     content.innerHTML = '<div class="empty">Nenhum item encontrado para os filtros selecionados.</div>'
     return
   }
 
-  const icon = CAT_ICONS[cat] || '•'
   const myEnabled = items.filter(i => personalEnabled.has(i.name)).length
+  const multiCat = activeCategories.size > 1
+  const catLabel = multiCat
+    ? `☰ ${activeCategories.size} CATEGORIAS`
+    : (() => { const c = [...activeCategories][0]; return `${CAT_ICONS[c] || '•'} ${c.toUpperCase()}` })()
 
   content.innerHTML = `
     <div class="cat-header">
-      <h2>${icon} ${cat.toUpperCase()}</h2>
+      <h2>${catLabel}</h2>
       <div class="sep"></div>
       <span style="font-size:11px;color:var(--text2)">${myEnabled} no meu overlay / ${items.length} total</span>
     </div>
@@ -202,8 +252,8 @@ function renderItems(cat) {
     const names = items.map(i => i.name)
     await window.api.setAllPersonal(names, true)
     for (const n of names) personalEnabled.add(n)
-    renderItems(cat)
-    refreshCatBadge(cat)
+    renderItems()
+    for (const cat of activeCategories) refreshCatBadge(cat)
     updateCount()
   })
 
@@ -211,8 +261,8 @@ function renderItems(cat) {
     const names = items.map(i => i.name)
     await window.api.setAllPersonal(names, false)
     for (const n of names) personalEnabled.delete(n)
-    renderItems(cat)
-    refreshCatBadge(cat)
+    renderItems()
+    for (const cat of activeCategories) refreshCatBadge(cat)
     updateCount()
   })
 
@@ -220,7 +270,7 @@ function renderItems(cat) {
   for (const item of items) {
     const isOn = personalEnabled.has(item.name)
     const admOn = item.enabled
-
+    const icon = CAT_ICONS[item.cat] || '•'
     const iconContent = item.image_url
       ? `<img src="${item.image_url}" alt="" onerror="this.outerHTML='${icon}'">`
       : icon
@@ -234,6 +284,7 @@ function renderItems(cat) {
         <div class="item-name" title="${item.name}">${item.name}</div>
         <div class="item-meta">
           <span class="item-rarity ${item.rarity}">${item.rarity.toUpperCase()}</span>
+          ${multiCat ? `<span style="font-size:9px;color:var(--text2);font-family:'Chakra Petch',sans-serif">${item.cat}</span>` : ''}
           <span class="adm-badge ${admOn ? 'on' : 'off'}">${admOn ? 'ADM ✓' : 'ADM ✗'}</span>
         </div>
       </div>
@@ -258,7 +309,7 @@ function renderItems(cat) {
         const myCount = items.filter(i => personalEnabled.has(i.name)).length
         countEl.textContent = `${myCount} no meu overlay / ${items.length} total`
       }
-      refreshCatBadge(cat)
+      refreshCatBadge(item.cat)
       updateCount()
     })
 
@@ -363,7 +414,7 @@ document.getElementById('searchInput').addEventListener('input', e => {
   if (searchQuery) {
     renderSearch()
   } else {
-    renderItems(activeCategory)
+    renderItems()
   }
   updateCount()
 })
@@ -372,7 +423,7 @@ document.getElementById('searchClear').addEventListener('click', () => {
   document.getElementById('searchInput').value = ''
   searchQuery = ''
   document.getElementById('searchClear').classList.remove('visible')
-  renderItems(activeCategory)
+  renderItems()
   updateCount()
 })
 
