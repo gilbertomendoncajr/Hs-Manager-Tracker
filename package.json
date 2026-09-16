@@ -1,6 +1,6 @@
 {
   "name": "hs-drop-logger",
-  "version": "2.5.2",
+  "version": "2.5.3",
   "description": "Auto-logger de drops para HS Manager",
   "main": "main.js",
   "scripts": {
@@ -12,6 +12,7 @@
   "build": {
     "appId": "com.bloodpact.hs-drop-logger",
     "productName": "HS Drop Logger",
+    "artifactName": "HS-Drop-Logger-Setup-${version}.${ext}",
     "icon": "icon.png",
     "directories": {
       "output": "dist-installer"
