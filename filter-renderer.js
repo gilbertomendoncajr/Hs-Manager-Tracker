@@ -2,9 +2,9 @@ console.log('[filter-renderer] v2.4.0 carregado')
 const CAT_ICONS = {
   Helmet: '⛑', Armor: '🔰', Boots: '👢', Weapon: '⚔',
   Gloves: '🥊', Amulet: '📿', Shield: '🛡', Ring: '💍',
-  Belt: '🔗', Charm: '✨',
+  Belt: '🔗', Charm: '✨', Potion: '🧪',
 }
-const CAT_ORDER = ['Weapon', 'Shield', 'Helmet', 'Boots', 'Armor', 'Gloves', 'Belt', 'Amulet', 'Ring', 'Charm']
+const CAT_ORDER = ['Weapon', 'Shield', 'Helmet', 'Boots', 'Armor', 'Gloves', 'Belt', 'Amulet', 'Ring', 'Charm', 'Potion']
 
 let allItems = {}
 let personalEnabled = new Set()

@@ -1383,7 +1383,7 @@ const ITEM_SECTION_TO_CAT = {
   'weapon_spell_unique': 'Weapon', 'weapon_bow_unique': 'Weapon',
   'weapon_claw_unique': 'Weapon', 'weapon_spear_unique': 'Weapon',
   'weapon_gun_unique': 'Weapon', 'weapon_chainsaw_unique': 'Weapon',
-  'weapon_flask_unique': 'Weapon', 'weapon_universal': 'Weapon',
+  'weapon_flask_unique': 'Potion', 'weapon_universal': 'Weapon',
   'armors_unique': 'Armor', 'helms_unique': 'Helmet',
   'gloves_unique': 'Gloves', 'boots_unique': 'Boots',
   'amulets_unique': 'Amulet', 'charms_unique': 'Charm',

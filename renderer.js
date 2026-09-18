@@ -1703,9 +1703,9 @@ function _rfcRender(q) {
 const IF_CAT_ICONS = {
   Helmet: '⛑', Armor: '🔰', Boots: '👢', Weapon: '⚔',
   Gloves: '🥊', Amulet: '📿', Shield: '🛡', Ring: '💍',
-  Belt: '🔗', Charm: '✨',
+  Belt: '🔗', Charm: '✨', Potion: '🧪',
 }
-const IF_CAT_ORDER = ['Weapon', 'Shield', 'Helmet', 'Boots', 'Armor', 'Gloves', 'Belt', 'Amulet', 'Ring', 'Charm']
+const IF_CAT_ORDER = ['Weapon', 'Shield', 'Helmet', 'Boots', 'Armor', 'Gloves', 'Belt', 'Amulet', 'Ring', 'Charm', 'Potion']
 
 let _ifAllItems         = {}
 let _ifPersonal         = new Set()
