@@ -1,0 +1,15 @@
+/* Neutros compartilhados pelos overlays (ticker, flourish, satanic-overlay).
+   As cores de raridade ficam em rarity-colors.js. */
+:root {
+  --ov-surface:      rgba(5, 3, 12, 0.90);   /* painéis escuros sobre o jogo */
+  --ov-surface-dim:  rgba(5, 3, 12, 0.84);
+  --ov-surface-soft: rgba(8, 6, 14, 0.82);   /* flourish */
+  --ov-hairline:     rgba(255, 255, 255, 0.07);
+  --ov-text-muted:   rgba(255, 255, 255, 0.50);
+  --ov-preview-bg:   #0d0b18;                /* fundo do modo preview no navegador */
+
+  /* Satanic Zone */
+  --sz-zone: #ff6060;
+  --sz-pros: #58e888;
+  --sz-cons: #f06060;
+}

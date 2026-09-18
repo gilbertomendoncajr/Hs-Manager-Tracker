@@ -2,6 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
+<link rel="stylesheet" href="overlay-theme.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,500;0,700;0,800;1,800&display=swap">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -17,7 +18,7 @@
   }
 
   body.preview-mode {
-    background: #0d0b18;
+    background: var(--ov-preview-bg);
     padding: 16px;
     width: 640px;
     min-height: 100vh;
@@ -78,8 +79,8 @@
     justify-content: center;
     padding: 0 12px;
     flex-shrink: 0;
-    background: rgba(5, 3, 12, 0.9);
-    border-right: 1px solid rgba(255,255,255,0.07);
+    background: var(--ov-surface);
+    border-right: 1px solid var(--ov-hairline);
     min-width: 74px;
   }
 
@@ -99,7 +100,7 @@
     flex-direction: column;
     justify-content: center;
     padding: 0 12px;
-    background: rgba(5, 3, 12, 0.84);
+    background: var(--ov-surface-dim);
     gap: 2px;
   }
 
@@ -115,7 +116,7 @@
 
   .who {
     font-size: 12px;
-    color: rgba(255,255,255,0.5);
+    color: var(--ov-text-muted);
     white-space: nowrap;
     line-height: 1;
   }
@@ -126,8 +127,8 @@
     align-items: center;
     justify-content: center;
     padding: 0 11px;
-    background: rgba(5, 3, 12, 0.9);
-    border-left: 1px solid rgba(255,255,255,0.07);
+    background: var(--ov-surface);
+    border-left: 1px solid var(--ov-hairline);
     flex-shrink: 0;
   }
 
@@ -143,20 +144,14 @@
   }
 </style>
 <script src="motion-pref.js"></script>
+<script src="rarity-colors.js"></script>
 </head>
 <body>
 <div class="preview-label">◈ HS Drop Overlay — Preview Mode</div>
 <div id="list"></div>
 
 <script>
-  const COLORS = {
-    Satanic: '#e03030',
-    Set:     '#3ec83e',
-    Heroic:  '#00e8a0',
-    Angelic: '#f0e855',
-    Unholy:  '#d94880',
-    Blessed: '#9b7af0',
-  };
+  const COLORS = HS_RARITY_COLORS;
 
   const MAX = 5;
   const TTL = 9000;
@@ -186,7 +181,7 @@
         ${drop.charName ? `<span class="who">↓ ${drop.charName}</span>` : ''}
       </div>
       ${tierStr ? `
-      <div class="tier-wrap" style="background:rgba(5,3,12,0.82)">
+      <div class="tier-wrap" style="background:var(--ov-surface-dim)">
         <span class="tier" style="color:${color};border-color:${color}44">${tierStr}</span>
       </div>` : ''}
     `;

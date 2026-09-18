@@ -2,6 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
+<link rel="stylesheet" href="overlay-theme.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,500;0,600;0,700;0,800;1,700&display=swap">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -36,7 +37,7 @@
   html[data-reduce-motion="1"] #container, html[data-reduce-motion="1"] #container.visible, html[data-reduce-motion="1"] #container.hiding { transform: none; transition: opacity 200ms ease; }
 
   .sz-card {
-    background: rgba(6,3,14,0.90);
+    background: var(--ov-surface);
     border: 1px solid rgba(220,40,40,0.45);
     border-radius: 6px;
     overflow: hidden;
@@ -56,7 +57,7 @@
   .sz-icon {
     font-size: 13px;
     flex-shrink: 0;
-    color: #ff6060;
+    color: var(--sz-zone);
   }
   .sz-zone-name {
     flex: 1;
@@ -65,7 +66,7 @@
     font-style: italic;
     letter-spacing: 0.10em;
     text-transform: uppercase;
-    color: #ff6060;
+    color: var(--sz-zone);
     text-shadow: 0 0 12px rgba(255,60,60,0.55);
     white-space: nowrap;
     overflow: hidden;
@@ -90,7 +91,7 @@
     padding: 8px 10px 9px;
   }
   .sz-col + .sz-col {
-    border-left: 1px solid rgba(255,255,255,0.07);
+    border-left: 1px solid var(--ov-hairline);
   }
   .sz-col-label {
     font-size: 11px;
@@ -140,8 +141,8 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .sz-mod-name.pros { color: #58e888; }
-  .sz-mod-name.cons { color: #f06060; }
+  .sz-mod-name.pros { color: var(--sz-pros); }
+  .sz-mod-name.cons { color: var(--sz-cons); }
   .sz-mod-desc {
     font-size: 11px;
     font-weight: 500;
@@ -353,7 +354,7 @@ if (window.__HSoverlay && window.__HSoverlay.onSatanic) {
   window.__HSoverlay.onSatanic((data) => showSatanic(data))
 } else {
   // Preview mode: show mock data
-  document.body.style.background = '#0d0b18'
+  document.body.style.background = 'var(--ov-preview-bg)'
   document.body.style.padding = '16px'
   showSatanic({
     zone: 'Satanic_5_5',

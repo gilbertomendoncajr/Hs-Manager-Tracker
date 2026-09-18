@@ -27,6 +27,8 @@
       "index-v2.html",
       "v2-shim.js",
       "motion-pref.js",
+      "rarity-colors.js",
+      "overlay-theme.css",
       "filter.html",
       "filter-renderer.js",
       "flourish.html",

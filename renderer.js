@@ -58,10 +58,7 @@ function fmtTime(ts) {
   return new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
 
-const RARITY_COLORS = {
-  Satanic: '#e03030', Set: '#3ec83e', Heroic: '#00d896',
-  Angelic: '#f0e040', Unholy: '#d04888', Blessed: '#9b7af0',
-}
+const RARITY_COLORS = HS_RARITY_COLORS
 
 function rarityFromMsg(message) {
   for (const r of Object.keys(RARITY_COLORS)) {
