@@ -196,11 +196,10 @@ function _sendStatsUpdate() {
 
 // ── Janela principal ────────────────────────────────────────────────────────
 function createMainWindow() {
-  const useV2 = process.env.HSDL_UI !== 'v1'
   mainWin = new BrowserWindow({
-    width: useV2 ? 1100 : 780,
-    height: useV2 ? 720 : 580,
-    minWidth: useV2 ? 960 : 680,
+    width: 1100,
+    height: 720,
+    minWidth: 960,
     minHeight: 480,
     frame: false,
     icon: path.join(__dirname, 'icon.png'),
@@ -211,7 +210,7 @@ function createMainWindow() {
       nodeIntegration: false,
     },
   })
-  mainWin.loadFile(useV2 ? 'index-v2.html' : 'index.html')
+  mainWin.loadFile('index-v2.html')
   mainWin.setMenuBarVisibility(false)
 }
 
@@ -279,6 +278,15 @@ ipcMain.handle('settings:setOverlayEnabled', async (e, val) => {
   s.set('overlayEnabled', overlayEnabled)
   applyOverlayVisibility()
 })
+ipcMain.handle('settings:getSatanicDuration', () => satanicDuration)
+ipcMain.handle('settings:setSatanicDuration', async (e, val) => {
+  const n = Number(val)
+  if (!SATANIC_TTL_OPTIONS.includes(n)) return satanicDuration
+  const s = await getStore()
+  satanicDuration = n
+  s.set('satanicDuration', n)
+  return satanicDuration
+})
 ipcMain.handle('settings:getVolume', async () => {
   const s = await getStore()
   return s.get('soundVolume', 100)
@@ -338,6 +346,8 @@ function createOverlays() {
 }
 
 let overlayEnabled = true
+const SATANIC_TTL_OPTIONS = [5, 8, 10, 15, 18, 25, 30]
+let satanicDuration = 18   // segundos que o overlay da Satanic Zone fica na tela
 
 function applyOverlayVisibility() {
   for (const win of [flourishWin, tickerWin, satanicOverlayWin]) {
@@ -356,6 +366,8 @@ app.whenReady().then(async () => {
   const s = await getStore()
   currentLang = s.get('appLang', 'pt')
   overlayEnabled = s.get('overlayEnabled', true)
+  const savedTtl = s.get('satanicDuration', 18)
+  satanicDuration = SATANIC_TTL_OPTIONS.includes(savedTtl) ? savedTtl : 18
   loadPersonalFilter()
   loadRelicFilter()
   ensureIconsDir().catch(() => {})
@@ -619,8 +631,11 @@ ipcMain.handle('auth:login', () => {
       height: 700,
       title: 'Login — HS Manager',
       icon: path.join(__dirname, 'assets', 'icons', 'brand_dog.png'),
+      autoHideMenuBar: true,
+      backgroundColor: '#09080A',
       webPreferences: { partition: `temp:hs-auth-${Date.now()}` },
     })
+    authWin.removeMenu()
 
     authWin.loadURL(`${BASE_URL}/api/auth/signin/discord`)
 
@@ -1063,7 +1078,7 @@ function spawnSniffer() {
         _satanicZone = { zone: msg.zone, buffs: msg.buffs || [], debuffs: msg.debuffs || [], ts_ms: msg.ts_ms, lang: currentLang }
         _sendStatsUpdate()
         if (overlayEnabled && msg.zone !== prevZone && satanicOverlayWin && !satanicOverlayWin.isDestroyed()) {
-          satanicOverlayWin.webContents.send('overlay:satanic', _satanicZone)
+          satanicOverlayWin.webContents.send('overlay:satanic', { ..._satanicZone, ttl: satanicDuration })
         }
         return
       }

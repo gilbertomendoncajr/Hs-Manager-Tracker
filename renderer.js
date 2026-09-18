@@ -1,3 +1,7 @@
+// Escapa strings externas (nomes de itens, jogadores, mensagens) antes de interpolar em innerHTML
+const _ESC_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
+function esc(v) { return String(v ?? '').replace(/[&<>"']/g, c => _ESC_MAP[c]) }
+
 // ── DOM refs ────────────────────────────────────────────────────────────────
 const screenLogin   = document.getElementById('screenLogin')
 const screenApp     = document.getElementById('screenApp')
@@ -145,6 +149,14 @@ function _fmtTime(ts) {
 
 let _soundVolume = 100
 
+// Anuncia drops do filtro pessoal para leitores de tela (região #srLive, só na UI v2)
+function announceDrop(drop) {
+  const live = document.getElementById('srLive')
+  if (!live) return
+  live.textContent = ''
+  requestAnimationFrame(() => { live.textContent = `Drop: ${drop.name || ''} ${drop.rarity || ''}`.trim() })
+}
+
 function playDropSound(drop) {
   if (_soundVolume <= 0) return
   const tierMatch = (drop._tierTag || '').match(/\[(\w+)\]/)
@@ -166,19 +178,19 @@ function addLigaRow(drop) {
   if (empty) empty.style.display = 'none'
 
   const color = RARITY_COLOR_MAP[drop.rarity] || 'var(--text)'
-  const tierPart = drop.tier ? ` <span class="ua-tier">[${drop.tier}]</span>` : ''
+  const tierPart = drop.tier ? ` <span class="ua-tier">[${esc(drop.tier)}]</span>` : ''
   const iconHtml = drop.iconPath
-    ? `<img class="ua-item-icon" src="${drop.iconPath}" onerror="this.style.display='none'" alt="">`
+    ? `<img class="ua-item-icon" src="${esc(drop.iconPath)}" onerror="this.style.display='none'" alt="">`
     : ''
   const srcBadge = drop.source === 'sse' ? '<span class="liga-sse-badge">🌐</span>' : ''
   const player = drop.charName && drop.discordUser
     ? `${drop.charName} / ${drop.discordUser}`
     : (drop.charName || drop.discordUser || '')
-  const playerHtml = player ? `<span class="ua-player">${player}</span>` : ''
+  const playerHtml = player ? `<span class="ua-player">${esc(player)}</span>` : ''
 
   const row = document.createElement('tr')
   row.innerHTML = `
-    <td class="ua-name" style="color:${color}">${iconHtml}${srcBadge}${drop.name}${tierPart}${playerHtml}</td>
+    <td class="ua-name" style="color:${color}">${iconHtml}${srcBadge}${esc(drop.name)}${tierPart}${playerHtml}</td>
     <td class="ua-time">${_fmtTime(drop.ts)}</td>
   `
   body.insertBefore(row, body.firstChild)
@@ -353,10 +365,12 @@ const I18N = {
     'cfg.theme': 'Tema', 'cfg.themeDesc': 'Aparência geral do app',
     'cfg.dark': 'Escuro', 'cfg.light': 'Claro',
     'cfg.lang': 'Idioma',
+    'cfg.reduceMotion': 'Reduzir animações', 'cfg.reduceMotionDesc': 'Para os pontos piscando e os deslizes das janelas',
     'cfg.startup': 'Iniciar com Windows', 'cfg.startupDesc': 'Abre automaticamente ao ligar o PC',
     'cfg.onClose': 'Ao fechar', 'cfg.onCloseDesc': 'O que acontece ao fechar a janela',
     'cfg.tray': 'Bandeja', 'cfg.exit': 'Fechar',
     'cfg.overlay': 'Overlay', 'cfg.showOverlay': 'Mostrar overlay',
+    'cfg.satanicDuration': 'Duração do overlay da Satanic Zone', 'cfg.satanicDurationDesc': 'Quanto tempo o painel de pros e cons fica na tela',
     'cfg.showOverlayDesc': 'Exibe drops e zonas satânicas em tempo real sobre o jogo',
     'cfg.volume': 'Volume do som', 'cfg.volumeDesc': 'Volume do alerta de itens do filtro (0 = mudo)',
     'hdr.logout': 'Sair',
@@ -435,11 +449,13 @@ const I18N = {
     'cfg.theme': 'Theme', 'cfg.themeDesc': 'Overall app appearance',
     'cfg.dark': 'Dark', 'cfg.light': 'Light',
     'cfg.lang': 'Language',
+    'cfg.reduceMotion': 'Reduce motion', 'cfg.reduceMotionDesc': 'Stops blinking dots and sliding windows',
     'cfg.startup': 'Start with Windows', 'cfg.startupDesc': 'Opens automatically at startup',
     'cfg.onClose': 'On Close', 'cfg.onCloseDesc': 'What happens when you close the window',
     'cfg.tray': 'Tray', 'cfg.exit': 'Quit',
     'cfg.compact': 'Compact Mode', 'cfg.compactDesc': 'Smaller window with minimal UI',
     'cfg.overlay': 'Overlay', 'cfg.showOverlay': 'Show overlay',
+    'cfg.satanicDuration': 'Satanic Zone overlay duration', 'cfg.satanicDurationDesc': 'How long the pros and cons panel stays on screen',
     'cfg.showOverlayDesc': 'Displays drops and satanic zones in real time over the game',
     'cfg.volume': 'Sound volume', 'cfg.volumeDesc': 'Volume of the item filter alert (0 = muted)',
     'hdr.logout': 'Sign Out',
@@ -585,7 +601,7 @@ document.querySelectorAll('.opt-btn[data-close]').forEach(btn => {
 })
 
 document.querySelectorAll('.cfg-toggle').forEach(tog => {
-  if (tog.id === 'togStartup' || tog.id === 'togOverlay') return  // handled separately with IPC
+  if (tog.id === 'togStartup' || tog.id === 'togOverlay' || tog.id === 'togReduceMotion') return  // handled separately with IPC
   tog.addEventListener('click', () => {
     tog.classList.toggle('on')
   })
@@ -799,13 +815,14 @@ async function initAuth() {
 
 async function loadSettings() {
   if (!window.api.getTheme) return
-  const [theme, lang, startup, closeBehavior, overlayEnabled, volume] = await Promise.all([
+  const [theme, lang, startup, closeBehavior, overlayEnabled, volume, satanicDuration] = await Promise.all([
     window.api.getTheme(),
     window.api.getLang(),
     window.api.getStartup(),
     window.api.getCloseBehavior(),
     window.api.getOverlayEnabled(),
     window.api.getVolume(),
+    window.api.getSatanicDuration ? window.api.getSatanicDuration() : 18,
   ])
   applyTheme(theme || 'dark')
   applyLang(lang || 'pt')
@@ -816,6 +833,9 @@ async function loadSettings() {
   const togOverlay = document.getElementById('togOverlay')
   if (togOverlay) togOverlay.classList.toggle('on', overlayEnabled !== false)
 
+  const selSatanicTtl = document.getElementById('selSatanicDuration')
+  if (selSatanicTtl) selSatanicTtl.value = String(satanicDuration || 18)
+
   _soundVolume = typeof volume === 'number' ? volume : 100
   const rngVolume = document.getElementById('rngVolume')
   const volumeVal = document.getElementById('volumeVal')
@@ -824,6 +844,22 @@ async function loadSettings() {
 
   document.querySelectorAll('.opt-btn[data-close]').forEach(b => {
     b.classList.toggle('on', b.dataset.close === (closeBehavior || 'tray'))
+  })
+}
+
+const selSatanicDurationEl = document.getElementById('selSatanicDuration')
+if (selSatanicDurationEl) {
+  selSatanicDurationEl.addEventListener('change', () => {
+    window.api.setSatanicDuration && window.api.setSatanicDuration(Number(selSatanicDurationEl.value))
+  })
+}
+
+const togReduceMotionEl = document.getElementById('togReduceMotion')
+if (togReduceMotionEl && window.getReduceMotion) {
+  togReduceMotionEl.classList.toggle('on', window.getReduceMotion())
+  togReduceMotionEl.addEventListener('click', () => {
+    togReduceMotionEl.classList.toggle('on')
+    window.setReduceMotion(togReduceMotionEl.classList.contains('on'))
   })
 }
 
@@ -1004,11 +1040,11 @@ function _addPendingRow(drop, collected = false) {
   row.dataset.rarity = drop.rarity || ''
   if (collected) row.classList.add('collected')
   const tierPart = drop._tierTag || ''
-  const catPart = drop._category ? `<span class="ua-cat">${drop._category}</span>` : ''
-  const iconHtml = drop._iconPath ? `<img class="ua-item-icon" src="${drop._iconPath}" onerror="this.style.display='none'" alt="">` : ''
-  const playerPart = drop._charDisplay ? `<span class="ua-player">${drop._charDisplay}</span>` : ''
+  const catPart = drop._category ? `<span class="ua-cat">${esc(drop._category)}</span>` : ''
+  const iconHtml = drop._iconPath ? `<img class="ua-item-icon" src="${esc(drop._iconPath)}" onerror="this.style.display='none'" alt="">` : ''
+  const playerPart = drop._charDisplay ? `<span class="ua-player">${esc(drop._charDisplay)}</span>` : ''
   row.innerHTML = `
-    <td class="ua-name" style="color:${color}">${iconHtml}${drop.name}${tierPart}${catPart}${playerPart}</td>
+    <td class="ua-name" style="color:${color}">${iconHtml}${esc(drop.name)}${tierPart}${catPart}${playerPart}</td>
     <td class="ua-time">${fmtTime(drop.ts_ms)}</td>
     <td class="ua-collect" id="ua-c-${safeId}">${collected ? fmtTime(drop.ts_ms) : '⏳'}</td>
   `
@@ -1038,7 +1074,7 @@ window.api.onDropPending((drop) => {
       if (currentTab === 'liga') row.style.display = 'none'
     }
   }
-  if (drop._inPersonalFilter) playDropSound(drop)
+  if (drop._inPersonalFilter) { playDropSound(drop); announceDrop(drop) }
   _refreshUaCount()
 })
 
@@ -1071,7 +1107,7 @@ window.api.onDropCollected((drop) => {
         if (currentTab === 'liga') row.style.display = 'none'
       }
     }
-    if (drop._inPersonalFilter) playDropSound(drop)
+    if (drop._inPersonalFilter) { playDropSound(drop); announceDrop(drop) }
   }
   _refreshUaCount()
 })
@@ -1453,7 +1489,7 @@ function _renderTimeline() {
     return `<div class="stl-row">
       <span class="stl-time">${timeStr}</span>
       <span class="stl-rarity" style="color:${col}">${item.rarity}</span>
-      <span class="stl-name">${item.name}</span>
+      <span class="stl-name">${esc(item.name)}</span>
     </div>`
   }).join('')
 }
@@ -1630,7 +1666,7 @@ function _pushDebugLog(entry) {
   const row  = document.createElement('div')
   const type = entry.type || 'info'
   row.className = `dbg-row ${type}`
-  row.innerHTML = `<span class="dbg-time">${time}</span><span class="dbg-msg">${entry.message || ''}</span>`
+  row.innerHTML = `<span class="dbg-time">${time}</span><span class="dbg-msg">${esc(entry.message)}</span>`
   list.appendChild(row)
   list.scrollTop = list.scrollHeight
   if (btn) btn.classList.add('has-entries')
@@ -2270,7 +2306,7 @@ function _ifRenderItems() {
     card.innerHTML = `
       <div class="if-item-icon">${iconContent}</div>
       <div class="if-item-info">
-        <div class="if-item-name" title="${item.name}">${item.name}</div>
+        <div class="if-item-name" title="${esc(item.name)}">${esc(item.name)}</div>
         <div class="if-item-meta">
           <span class="if-item-rarity ${item.rarity}">${item.rarity.toUpperCase()}</span>
           ${tierBadge}
@@ -2322,7 +2358,7 @@ function _ifRenderSearch() {
   }
 
   if (results.length === 0) {
-    content.innerHTML = `<div class="if-empty">${tr('filter.noSearchResults').replace('{q}', `<strong>${_ifSearch}</strong>`)}</div>`
+    content.innerHTML = `<div class="if-empty">${tr('filter.noSearchResults').replace('{q}', `<strong>${esc(_ifSearch)}</strong>`)}</div>`
     return
   }
 
@@ -2351,10 +2387,10 @@ function _ifRenderSearch() {
     card.innerHTML = `
       <div class="if-item-icon">${iconContent}</div>
       <div class="if-item-info">
-        <div class="if-item-name" title="${item.name}">${item.name}</div>
+        <div class="if-item-name" title="${esc(item.name)}">${esc(item.name)}</div>
         <div class="if-item-meta">
           <span class="if-item-rarity ${item.rarity}">${item.rarity.toUpperCase()}</span>
-          <span style="font-size:9px;color:var(--text2);font-family:'Chakra Petch',sans-serif">${item.cat}</span>
+          <span style="font-size:9px;color:var(--text2);font-family:'Chakra Petch',sans-serif">${esc(item.cat)}</span>
           ${tierBadge}
           <span class="if-adm-badge ${admOn ? 'on' : 'off'}">${admOn ? 'ADM ✓' : 'ADM ✗'}</span>
         </div>

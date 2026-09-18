@@ -69,3 +69,22 @@
     }).observe(logList, { childList: true })
   }
 })()
+
+/* ── 4. Sync ARIA state with the .on / .active classes ───────────────────── */
+;(function () {
+  function sync(el) {
+    if (el.classList.contains('cfg-toggle')) {
+      el.setAttribute('role', 'switch')
+      el.setAttribute('aria-checked', el.classList.contains('on') ? 'true' : 'false')
+    } else if (el.classList.contains('opt-btn')) {
+      el.setAttribute('aria-pressed', el.classList.contains('on') ? 'true' : 'false')
+    } else if (el.classList.contains('nav-btn')) {
+      if (el.classList.contains('active')) el.setAttribute('aria-current', 'page')
+      else el.removeAttribute('aria-current')
+    }
+  }
+  const sel = '.cfg-toggle, .opt-btn, .nav-btn[data-page]'
+  const els = document.querySelectorAll(sel)
+  const obs = new MutationObserver(function (list) { list.forEach(function (m) { sync(m.target) }) })
+  els.forEach(function (el) { sync(el); obs.observe(el, { attributes: true, attributeFilter: ['class'] }) })
+})()

@@ -17,8 +17,8 @@
     --teal:    #3dc8a0;
     --amber:   #e8b84a;
     --text:    #ede5f6;
-    --text2:   #7a6890;
-    --text3:   #3c2e52;
+    --text2:   #a596bd;
+    --text3:   #9384ad;
     --satanic: #e05050;
     --set:     #40c870;
     --heroic:  #00d4a0;
@@ -61,18 +61,18 @@
 
   .header-icon { color: var(--accent); font-size: 12px; flex-shrink: 0; }
   .header-title {
-    font-size: 9px; font-weight: 700; letter-spacing: .14em;
+    font-size: 11px; font-weight: 700; letter-spacing: .14em;
     color: var(--text); text-transform: uppercase; flex: 1; min-width: 0;
   }
   .header-timer {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px; color: var(--text2);
+    font-size: 11px; color: var(--text2);
     font-variant-numeric: tabular-nums; flex-shrink: 0;
   }
   .header-timer.running { color: var(--teal); }
 
   .lock-hint {
-    font-size: 9px; color: var(--text3); flex-shrink: 0;
+    font-size: 11px; color: var(--text3); flex-shrink: 0;
     transition: opacity .2s;
   }
   .window:not(.locked) .lock-hint { display: none; }
@@ -113,7 +113,7 @@
   }
   .status-dot.active  { background: var(--teal);  box-shadow: 0 0 5px var(--teal); }
   .status-dot.waiting { background: var(--amber); box-shadow: 0 0 4px var(--amber); }
-  .status-label { font-size: 10px; color: var(--text2); }
+  .status-label { font-size: 11px; color: var(--text2); }
 
   /* ── Stats ──────────────────────────────── */
   .stats-bar {
@@ -122,7 +122,7 @@
   .stat-chip {
     flex: 1; padding: 4px 8px;
     display: flex; align-items: center; gap: 4px;
-    font-size: 10px; color: var(--text2);
+    font-size: 11px; color: var(--text2);
     border-right: 1px solid var(--border);
   }
   .stat-chip:last-child { border-right: none; }
@@ -144,7 +144,7 @@
   .rc:last-child { border-right: none; }
   .rc .dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
   .rc .val {
-    font-size: 10px; font-variant-numeric: tabular-nums;
+    font-size: 11px; font-variant-numeric: tabular-nums;
     font-weight: 600; color: var(--text);
     font-family: 'JetBrains Mono', monospace;
   }
@@ -191,7 +191,7 @@
     word-break: break-word; min-width: 0;
   }
   .le-ts {
-    font-size: 9px; color: var(--text2);
+    font-size: 11px; color: var(--text2);
     font-variant-numeric: tabular-nums;
     font-family: 'JetBrains Mono', monospace;
     white-space: nowrap;

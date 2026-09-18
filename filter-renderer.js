@@ -1,3 +1,7 @@
+// Escapa strings externas (nomes de itens, jogadores, mensagens) antes de interpolar em innerHTML
+const _ESC_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
+function esc(v) { return String(v ?? '').replace(/[&<>"']/g, c => _ESC_MAP[c]) }
+
 console.log('[filter-renderer] v2.4.0 carregado')
 const CAT_ICONS = {
   Helmet: '⛑', Armor: '🔰', Boots: '👢', Weapon: '⚔',
@@ -282,10 +286,10 @@ function renderItems() {
     card.innerHTML = `
       <div class="item-icon">${iconContent}</div>
       <div class="item-info">
-        <div class="item-name" title="${item.name}">${item.name}</div>
+        <div class="item-name" title="${esc(item.name)}">${esc(item.name)}</div>
         <div class="item-meta">
           <span class="item-rarity ${item.rarity}">${item.rarity.toUpperCase()}</span>
-          ${multiCat ? `<span style="font-size:9px;color:var(--text2);font-family:'Chakra Petch',sans-serif">${item.cat}</span>` : ''}
+          ${multiCat ? `<span style="font-size:9px;color:var(--text2);font-family:'Chakra Petch',sans-serif">${esc(item.cat)}</span>` : ''}
           <span class="adm-badge ${admOn ? 'on' : 'off'}">${admOn ? 'ADM ✓' : 'ADM ✗'}</span>
         </div>
       </div>
@@ -333,7 +337,7 @@ function renderSearch() {
   }
 
   if (results.length === 0) {
-    content.innerHTML = `<div class="empty">Nenhum item encontrado para "<strong>${searchQuery}</strong>".</div>`
+    content.innerHTML = `<div class="empty">Nenhum item encontrado para "<strong>${esc(searchQuery)}</strong>".</div>`
     return
   }
 
@@ -361,10 +365,10 @@ function renderSearch() {
     card.innerHTML = `
       <div class="item-icon">${iconContent}</div>
       <div class="item-info">
-        <div class="item-name" title="${item.name}">${item.name}</div>
+        <div class="item-name" title="${esc(item.name)}">${esc(item.name)}</div>
         <div class="item-meta">
           <span class="item-rarity ${item.rarity}">${item.rarity.toUpperCase()}</span>
-          <span style="font-size:9px;color:var(--text2);font-family:'Chakra Petch',sans-serif">${item.cat}</span>
+          <span style="font-size:9px;color:var(--text2);font-family:'Chakra Petch',sans-serif">${esc(item.cat)}</span>
           <span class="adm-badge ${admOn ? 'on' : 'off'}">${admOn ? 'ADM ✓' : 'ADM ✗'}</span>
         </div>
       </div>
