@@ -1041,6 +1041,19 @@ body.tab-liga .ua-player { display: block; }
 .cfg-toggle.on { background: var(--accent); }
 .cfg-toggle.on::after { transform: translateX(16px); background: #fff; }
 
+.cfg-volume { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.cfg-volume input[type=range] {
+  -webkit-appearance: none; appearance: none;
+  width: 140px; height: 4px; border-radius: 2px;
+  background: var(--border); outline: none; cursor: pointer;
+}
+.cfg-volume input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--accent); border: none; cursor: pointer;
+}
+.cfg-volume-val { min-width: 38px; text-align: right; font-size: var(--fs-sm); color: var(--text2); }
+
 .opt-group { display: flex; gap: 4px; flex-wrap: wrap; }
 .opt-btn {
   padding: 4px 10px;
@@ -2241,6 +2254,16 @@ body.no-bp.tab-liga .bp-disabled-overlay { display: flex; }
                 <div class="cfg-desc" data-i18n="cfg.showOverlayDesc">Exibe drops em tempo real sobre o jogo</div>
               </div>
               <button class="cfg-toggle on" id="togOverlay" aria-label="Mostrar overlay"></button>
+            </div>
+            <div class="cfg-row">
+              <div class="cfg-left">
+                <div class="cfg-label" data-i18n="cfg.volume">Volume do som</div>
+                <div class="cfg-desc" data-i18n="cfg.volumeDesc">Volume do alerta de itens do filtro (0 = mudo)</div>
+              </div>
+              <div class="cfg-volume">
+                <input type="range" id="rngVolume" min="0" max="100" step="5" value="100" aria-label="Volume do som">
+                <span id="volumeVal" class="cfg-volume-val">100%</span>
+              </div>
             </div>
           </div>
 

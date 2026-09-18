@@ -269,6 +269,24 @@ ipcMain.handle('settings:setLang', async (e, val) => {
   s.set('appLang', val)
   currentLang = val
 })
+ipcMain.handle('settings:getOverlayEnabled', async () => {
+  const s = await getStore()
+  return s.get('overlayEnabled', true)
+})
+ipcMain.handle('settings:setOverlayEnabled', async (e, val) => {
+  const s = await getStore()
+  overlayEnabled = !!val
+  s.set('overlayEnabled', overlayEnabled)
+  applyOverlayVisibility()
+})
+ipcMain.handle('settings:getVolume', async () => {
+  const s = await getStore()
+  return s.get('soundVolume', 100)
+})
+ipcMain.handle('settings:setVolume', async (e, val) => {
+  const s = await getStore()
+  s.set('soundVolume', Math.max(0, Math.min(100, Math.round(Number(val) || 0))))
+})
 ipcMain.handle('settings:getLeague', async () => {
   const s = await getStore()
   return s.get('lastLeagueId', null)
@@ -319,18 +337,31 @@ function createOverlays() {
   satanicOverlayWin.setIgnoreMouseEvents(true)
 }
 
+let overlayEnabled = true
+
+function applyOverlayVisibility() {
+  for (const win of [flourishWin, tickerWin, satanicOverlayWin]) {
+    if (!win || win.isDestroyed()) continue
+    if (overlayEnabled) win.showInactive()
+    else win.hide()
+  }
+}
+
 function sendOverlay(drop) {
+  if (!overlayEnabled) return
   if (tickerWin && !tickerWin.isDestroyed()) tickerWin.webContents.send('overlay:drop', drop)
 }
 
 app.whenReady().then(async () => {
   const s = await getStore()
   currentLang = s.get('appLang', 'pt')
+  overlayEnabled = s.get('overlayEnabled', true)
   loadPersonalFilter()
   loadRelicFilter()
   ensureIconsDir().catch(() => {})
   createMainWindow()
   createOverlays()
+  applyOverlayVisibility()
 
   if (app.isPackaged) {
     autoUpdater.autoDownload = false
@@ -1031,7 +1062,7 @@ function spawnSniffer() {
         const prevZone = _satanicZone?.zone
         _satanicZone = { zone: msg.zone, buffs: msg.buffs || [], debuffs: msg.debuffs || [], ts_ms: msg.ts_ms, lang: currentLang }
         _sendStatsUpdate()
-        if (msg.zone !== prevZone && satanicOverlayWin && !satanicOverlayWin.isDestroyed()) {
+        if (overlayEnabled && msg.zone !== prevZone && satanicOverlayWin && !satanicOverlayWin.isDestroyed()) {
           satanicOverlayWin.webContents.send('overlay:satanic', _satanicZone)
         }
         return

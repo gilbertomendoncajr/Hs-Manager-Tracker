@@ -143,7 +143,10 @@ function _fmtTime(ts) {
   return new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
 
+let _soundVolume = 100
+
 function playDropSound(drop) {
+  if (_soundVolume <= 0) return
   const tierMatch = (drop._tierTag || '').match(/\[(\w+)\]/)
   const tier = tierMatch ? tierMatch[1] : (drop.tier || '')
   const rarity = drop.rarity || ''
@@ -151,7 +154,9 @@ function playDropSound(drop) {
   const src = (tier === 'SS' || rarity === 'Angelic' || rarity === 'Unholy')
     ? 'assets/sounds/tink.mp3'
     : 'assets/sounds/map.mp3'
-  new Audio(src).play().catch(() => {})
+  const audio = new Audio(src)
+  audio.volume = _soundVolume / 100
+  audio.play().catch(() => {})
 }
 
 function addLigaRow(drop) {
@@ -352,7 +357,8 @@ const I18N = {
     'cfg.onClose': 'Ao fechar', 'cfg.onCloseDesc': 'O que acontece ao fechar a janela',
     'cfg.tray': 'Bandeja', 'cfg.exit': 'Fechar',
     'cfg.overlay': 'Overlay', 'cfg.showOverlay': 'Mostrar overlay',
-    'cfg.showOverlayDesc': 'Exibe drops em tempo real sobre o jogo',
+    'cfg.showOverlayDesc': 'Exibe drops e zonas satânicas em tempo real sobre o jogo',
+    'cfg.volume': 'Volume do som', 'cfg.volumeDesc': 'Volume do alerta de itens do filtro (0 = mudo)',
     'hdr.logout': 'Sair',
     'login.desc': 'Faça login com sua conta Discord para sincronizar drops com o HS Manager.',
     'stat.drops': 'drops', 'stat.rares': 'coletados',
@@ -434,7 +440,8 @@ const I18N = {
     'cfg.tray': 'Tray', 'cfg.exit': 'Quit',
     'cfg.compact': 'Compact Mode', 'cfg.compactDesc': 'Smaller window with minimal UI',
     'cfg.overlay': 'Overlay', 'cfg.showOverlay': 'Show overlay',
-    'cfg.showOverlayDesc': 'Displays drops in real time over the game',
+    'cfg.showOverlayDesc': 'Displays drops and satanic zones in real time over the game',
+    'cfg.volume': 'Sound volume', 'cfg.volumeDesc': 'Volume of the item filter alert (0 = muted)',
     'hdr.logout': 'Sign Out',
     'login.desc': 'Sign in with your Discord account to sync drops with HS Manager.',
     'stat.drops': 'drops', 'stat.rares': 'collected',
@@ -578,7 +585,7 @@ document.querySelectorAll('.opt-btn[data-close]').forEach(btn => {
 })
 
 document.querySelectorAll('.cfg-toggle').forEach(tog => {
-  if (tog.id === 'togStartup') return  // handled separately with IPC
+  if (tog.id === 'togStartup' || tog.id === 'togOverlay') return  // handled separately with IPC
   tog.addEventListener('click', () => {
     tog.classList.toggle('on')
   })
@@ -792,17 +799,28 @@ async function initAuth() {
 
 async function loadSettings() {
   if (!window.api.getTheme) return
-  const [theme, lang, startup, closeBehavior] = await Promise.all([
+  const [theme, lang, startup, closeBehavior, overlayEnabled, volume] = await Promise.all([
     window.api.getTheme(),
     window.api.getLang(),
     window.api.getStartup(),
     window.api.getCloseBehavior(),
+    window.api.getOverlayEnabled(),
+    window.api.getVolume(),
   ])
   applyTheme(theme || 'dark')
   applyLang(lang || 'pt')
 
   const togStartup = document.getElementById('togStartup')
   if (togStartup) togStartup.classList.toggle('on', !!startup)
+
+  const togOverlay = document.getElementById('togOverlay')
+  if (togOverlay) togOverlay.classList.toggle('on', overlayEnabled !== false)
+
+  _soundVolume = typeof volume === 'number' ? volume : 100
+  const rngVolume = document.getElementById('rngVolume')
+  const volumeVal = document.getElementById('volumeVal')
+  if (rngVolume) rngVolume.value = _soundVolume
+  if (volumeVal) volumeVal.textContent = `${_soundVolume}%`
 
   document.querySelectorAll('.opt-btn[data-close]').forEach(b => {
     b.classList.toggle('on', b.dataset.close === (closeBehavior || 'tray'))
@@ -814,6 +832,28 @@ if (togStartupEl) {
   togStartupEl.addEventListener('click', async () => {
     togStartupEl.classList.toggle('on')
     window.api.setStartup && window.api.setStartup(togStartupEl.classList.contains('on'))
+  })
+}
+
+const togOverlayEl = document.getElementById('togOverlay')
+if (togOverlayEl) {
+  togOverlayEl.addEventListener('click', () => {
+    togOverlayEl.classList.toggle('on')
+    window.api.setOverlayEnabled && window.api.setOverlayEnabled(togOverlayEl.classList.contains('on'))
+  })
+}
+
+const rngVolumeEl = document.getElementById('rngVolume')
+const volumeValEl = document.getElementById('volumeVal')
+if (rngVolumeEl) {
+  rngVolumeEl.addEventListener('input', () => {
+    _soundVolume = Number(rngVolumeEl.value)
+    if (volumeValEl) volumeValEl.textContent = `${_soundVolume}%`
+  })
+  // Ao soltar o slider: salva e toca uma amostra no volume escolhido
+  rngVolumeEl.addEventListener('change', () => {
+    window.api.setVolume && window.api.setVolume(_soundVolume)
+    playDropSound({ rarity: 'Angelic' })
   })
 }
 

@@ -63,6 +63,10 @@ contextBridge.exposeInMainWorld('api', {
   setTheme: (val) => ipcRenderer.invoke('settings:setTheme', val),
   getLang: () => ipcRenderer.invoke('settings:getLang'),
   setLang: (val) => ipcRenderer.invoke('settings:setLang', val),
+  getOverlayEnabled: () => ipcRenderer.invoke('settings:getOverlayEnabled'),
+  setOverlayEnabled: (val) => ipcRenderer.invoke('settings:setOverlayEnabled', val),
+  getVolume: () => ipcRenderer.invoke('settings:getVolume'),
+  setVolume: (val) => ipcRenderer.invoke('settings:setVolume', val),
   getLeague: () => ipcRenderer.invoke('settings:getLeague'),
   setLeague: (val) => ipcRenderer.invoke('settings:setLeague', val),
 
