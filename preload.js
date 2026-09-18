@@ -85,4 +85,7 @@ contextBridge.exposeInMainWorld('api', {
   getRelicEnabled: () => ipcRenderer.invoke('relic:getEnabled'),
   toggleRelic: (name) => ipcRenderer.invoke('relic:toggle', name),
   setAllRelics: (names, value) => ipcRenderer.invoke('relic:setAll', names, value),
+
+  // Bug report
+  sendReport: (title, text, imagePath, includeLog) => ipcRenderer.invoke('report:send', { title, text, imagePath, includeLog }),
 })

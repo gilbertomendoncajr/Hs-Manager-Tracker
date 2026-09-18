@@ -370,7 +370,7 @@ const I18N = {
     'empty.title': 'Monitor inativo',
     'empty.desc1': 'Selecione uma liga no rodapé',
     'empty.desc2': 'Pressione INICIAR para iniciar o rastreador',
-    'empty.desc3': 'Entre no jogo com seu personagem Blood Pact',
+    'empty.desc3': 'Vá para a tela de seleção de personagem e escolha seu personagem',
     'empty.cta': 'INICIAR',
     'update.available': '🔄 Nova versão {v} disponível', 'update.downloading': '🔄 Baixando... {p}%',
     'update.ready': '✅ Atualização pronta!', 'update.btn': 'ATUALIZAR', 'update.btnDl': 'BAIXANDO...',
@@ -452,7 +452,7 @@ const I18N = {
     'empty.title': 'Monitor inactive',
     'empty.desc1': 'Select a league in the footer',
     'empty.desc2': 'Press START to begin tracking',
-    'empty.desc3': 'Enter the game with your Blood Pact character',
+    'empty.desc3': 'Go to the character select screen and choose your character',
     'empty.cta': 'START',
     'update.available': '🔄 Version {v} available', 'update.downloading': '🔄 Downloading... {p}%',
     'update.ready': '✅ Update ready!', 'update.btn': 'UPDATE', 'update.btnDl': 'DOWNLOADING...',
@@ -534,6 +534,7 @@ function applyLang(lang) {
   // Re-apply dynamic texts that depend on monitoring state
   setMonitorUI(isMonitoring, _charIdentifiedLocal)
   updateStatsBar()
+  if (typeof _lastStatsData !== 'undefined' && _lastStatsData) _updateSatanic(_lastStatsData.satanic)
   // Re-render filter UI if loaded (category tabs and item count use tr())
   if (_ifLoaded) {
     _ifBuildCatTabs()
@@ -1191,60 +1192,61 @@ function _updateTallies(tallies) {
 }
 
 // Buff/debuff decode tables — sourced from hs-tracker buffs.js
+// Cada entrada: [nome, descrição PT, descrição EN]
 const SATANIC_BUFFS = {
-  1:  ['Loot Goblin I',      '+1 Max Loot por Inimigo Morto'],
-  2:  ['Loot Goblin II',     '+2 Max Loot por Inimigo Morto'],
-  3:  ['Rune Master',        '+15% Chance de Drop de Runas'],
-  4:  ['Gold Hunger',        '+40% Ouro de Monstros Mortos'],
-  5:  ['Heroic Windfall',    '+3% Chance de Drop Heroic'],
-  6:  ['Angelic Fortune',    '+25% Chance de Drop Angelic'],
-  7:  ["Zephy's Grace",      '+50% Velocidade de Movimento'],
-  8:  ['Fury of Tempest',    '+60% Velocidade de Ataque'],
-  9:  ['Rapid Casting',      '+60% Velocidade de Conjuração'],
-  10: ['Onslaught',          '+100% Dano de Ataque'],
-  11: ['Nether Surge',       '+40% Dano de Magia'],
-  12: ['Relic Keepers',      '2% Chance de Relic ao Matar Ancião'],
-  13: ["Goblin's Greed",     '0.5% Chance de Goblin do Tesouro'],
-  14: ['Artifact Digger',    '+55% Magic Find'],
-  15: ['Artifact Seeker',    '+110% Magic Find'],
-  16: ['Artifact Excavator', '+170% Magic Find'],
-  17: ['Recruit',            '+10% Ganho de XP'],
-  18: ['Combat Training',    '+15% Ganho de XP'],
-  19: ['Battle Scarred',     '+20% Ganho de XP'],
-  20: ['Clairvoyance',       '+100% em toda recuperação'],
-  21: ['Aftermath',          '3% Chance de Invocar Legião na Morte'],
-  22: ['Deep Cuts',          '+200% Dano de Golpe Crítico'],
-  23: ['Old Town',           '+15% Chance de Packs Antigos'],
-  24: ['Terror Zone',        '+25% Chance de Packs Antigos'],
-  25: ['Fields of Carnage',  '+30% Chance de Packs Antigos'],
+  1:  ['Loot Goblin I',      '+1 Max Loot por Inimigo Morto',              '+1 Max Loot per Enemy Killed'],
+  2:  ['Loot Goblin II',     '+2 Max Loot por Inimigo Morto',              '+2 Max Loot per Enemy Killed'],
+  3:  ['Rune Master',        '+15% Chance de Drop de Runas',               '+15% Rune Drop Chance'],
+  4:  ['Gold Hunger',        '+40% Ouro de Monstros Mortos',               '+40% Gold from Slain Monsters'],
+  5:  ['Heroic Windfall',    '+3% Chance de Drop Heroic',                  '+3% Heroic Drop Chance'],
+  6:  ['Angelic Fortune',    '+25% Chance de Drop Angelic',                '+25% Angelic Drop Chance'],
+  7:  ["Zephy's Grace",      '+50% Velocidade de Movimento',               '+50% Movement Speed'],
+  8:  ['Fury of Tempest',    '+60% Velocidade de Ataque',                  '+60% Attack Speed'],
+  9:  ['Rapid Casting',      '+60% Velocidade de Conjuração',              '+60% Cast Speed'],
+  10: ['Onslaught',          '+100% Dano de Ataque',                       '+100% Attack Damage'],
+  11: ['Nether Surge',       '+40% Dano de Magia',                         '+40% Spell Damage'],
+  12: ['Relic Keepers',      '2% Chance de Relic ao Matar Ancião',         '2% Relic Chance on Elder Kill'],
+  13: ["Goblin's Greed",     '0.5% Chance de Goblin do Tesouro',           '0.5% Treasure Goblin Chance'],
+  14: ['Artifact Digger',    '+55% Magic Find',                            '+55% Magic Find'],
+  15: ['Artifact Seeker',    '+110% Magic Find',                           '+110% Magic Find'],
+  16: ['Artifact Excavator', '+170% Magic Find',                           '+170% Magic Find'],
+  17: ['Recruit',            '+10% Ganho de XP',                           '+10% XP Gain'],
+  18: ['Combat Training',    '+15% Ganho de XP',                           '+15% XP Gain'],
+  19: ['Battle Scarred',     '+20% Ganho de XP',                           '+20% XP Gain'],
+  20: ['Clairvoyance',       '+100% em toda recuperação',                  '+100% to all recovery'],
+  21: ['Aftermath',          '3% Chance de Invocar Legião na Morte',       '3% Chance to Summon Legion on Death'],
+  22: ['Deep Cuts',          '+200% Dano de Golpe Crítico',                '+200% Critical Strike Damage'],
+  23: ['Old Town',           '+15% Chance de Packs Antigos',               '+15% Old Packs Chance'],
+  24: ['Terror Zone',        '+25% Chance de Packs Antigos',               '+25% Old Packs Chance'],
+  25: ['Fields of Carnage',  '+30% Chance de Packs Antigos',               '+30% Old Packs Chance'],
 }
 const SATANIC_DEBUFFS = [
-  ["Dusk's Shroud",      '-20% Raio de Luz'],
-  ['Elemental Erosion',  '-75% Todas as Resistências'],
-  ['Sundered Armor',     '+25% Dano Recebido'],
-  ['Vitality Drain',     '-25% Vida'],
-  ['Essence Drain',      '-25% Mana'],
-  ['Abyssal Gloom',      '+100% Escuridão'],
-  ['Skill Debilitation', '-10% Todas as Skills'],
-  ['Weakening Essence',  '-20% Todos os Atributos'],
-  ['Lifeflow Starvation','Regeneração reduzida'],
-  ['Sanguine Impairment','-75% Roubo de Vida'],
-  ['Arcane Impairment',  '-75% Roubo de Mana'],
-  ['Consumed Time',      '-25% Recuperação de Cooldown'],
-  ['Absolute Limbo',     '-50% Recuperação de Cooldown'],
-  ['Boulder Fall',       '3% Chance de Boulder na Morte'],
-  ['Lingering Evil',     '-25% Velocidade de Movimento'],
-  ['Fatal Wounds',       '10% Chance de Dano Duplo dos Monstros'],
-  ['Bloated Veins',      '+70% Vida dos Monstros'],
-  ['Abnormal Dwelling',  '+130% Vida dos Monstros'],
-  ['Colossal Bloating',  '+200% Vida dos Monstros'],
-  ['Necrosis',           '1% de Vida drenada por segundo'],
-  ['Venomous Presence',  '+200% Duração de Veneno'],
-  ['Flaming Agony',      'Nova de Fogo na morte dos monstros'],
-  ['Unholy Agility',     'Monstros mais rápidos e agressivos'],
-  ['Broken Armor',       'Você não pode bloquear ataques'],
-  ['Hemorrhage',         'Ataques de monstros causam sangramento'],
-  ['Crippling Slow',     'Ataques infligem 50% de lentidão'],
+  ["Dusk's Shroud",      '-20% Raio de Luz',                      '-20% Light Radius'],
+  ['Elemental Erosion',  '-75% Todas as Resistências',            '-75% All Resistances'],
+  ['Sundered Armor',     '+25% Dano Recebido',                    '+25% Damage Taken'],
+  ['Vitality Drain',     '-25% Vida',                              '-25% Life'],
+  ['Essence Drain',      '-25% Mana',                              '-25% Mana'],
+  ['Abyssal Gloom',      '+100% Escuridão',                        '+100% Darkness'],
+  ['Skill Debilitation', '-10% Todas as Skills',                   '-10% All Skills'],
+  ['Weakening Essence',  '-20% Todos os Atributos',                '-20% All Attributes'],
+  ['Lifeflow Starvation','Regeneração reduzida',                   'Reduced Regeneration'],
+  ['Sanguine Impairment','-75% Roubo de Vida',                     '-75% Life Steal'],
+  ['Arcane Impairment',  '-75% Roubo de Mana',                     '-75% Mana Steal'],
+  ['Consumed Time',      '-25% Recuperação de Cooldown',           '-25% Cooldown Recovery'],
+  ['Absolute Limbo',     '-50% Recuperação de Cooldown',           '-50% Cooldown Recovery'],
+  ['Boulder Fall',       '3% Chance de Boulder na Morte',          '3% Boulder Chance on Death'],
+  ['Lingering Evil',     '-25% Velocidade de Movimento',           '-25% Movement Speed'],
+  ['Fatal Wounds',       '10% Chance de Dano Duplo dos Monstros',  '10% Chance of Double Damage from Monsters'],
+  ['Bloated Veins',      '+70% Vida dos Monstros',                 '+70% Monster Life'],
+  ['Abnormal Dwelling',  '+130% Vida dos Monstros',                '+130% Monster Life'],
+  ['Colossal Bloating',  '+200% Vida dos Monstros',                '+200% Monster Life'],
+  ['Necrosis',           '1% de Vida drenada por segundo',         '1% Life Drained per Second'],
+  ['Venomous Presence',  '+200% Duração de Veneno',                '+200% Poison Duration'],
+  ['Flaming Agony',      'Nova de Fogo na morte dos monstros',     'Fire Nova on monster death'],
+  ['Unholy Agility',     'Monstros mais rápidos e agressivos',     'Monsters are faster and more aggressive'],
+  ['Broken Armor',       'Você não pode bloquear ataques',         'You cannot block attacks'],
+  ['Hemorrhage',         'Ataques de monstros causam sangramento', 'Monster attacks cause bleeding'],
+  ['Crippling Slow',     'Ataques infligem 50% de lentidão',       'Attacks inflict 50% slow'],
 ]
 
 // Zone area names sourced from hs-tracker buffs.js ZONES table
@@ -1290,7 +1292,7 @@ function _updateSatanic(satanic) {
   const renderBuff = (id) => {
     const b = SATANIC_BUFFS[id]
     const name = b ? b[0] : `Buff ${id}`
-    const desc = b ? b[1] : ''
+    const desc = b ? (_currentLang === 'en' ? b[2] : b[1]) : ''
     return `<div class="szb-mod">
       <img class="szb-icon" src="assets/icons/buffs/${id}.png" alt="" onerror="this.style.display='none'">
       <div class="szb-mod-text">
@@ -1302,7 +1304,7 @@ function _updateSatanic(satanic) {
   const renderDebuff = (id) => {
     const d = SATANIC_DEBUFFS[id - 1]
     const name = d ? d[0] : `Debuff ${id}`
-    const desc = d ? d[1] : ''
+    const desc = d ? (_currentLang === 'en' ? d[2] : d[1]) : ''
     return `<div class="szb-mod">
       <div class="szb-mod-text">
         <div class="szb-mod-name cons">${name}</div>
@@ -2352,6 +2354,82 @@ function _ifUpdateCount() {
   const el = document.getElementById('ifCount')
   if (el) el.textContent = total > 0 ? tr('filter.countOverlay').replace('{on}', myActive).replace('{total}', total) : ''
 }
+
+// ── Report ───────────────────────────────────────────────────────────────────
+;(function initReport() {
+  const rptTitle     = document.getElementById('rptTitle')
+  const rptText      = document.getElementById('rptText')
+  const rptPickImg   = document.getElementById('rptPickImg')
+  const rptFileInput = document.getElementById('rptFileInput')
+  const rptImgName   = document.getElementById('rptImgName')
+  const rptClearImg  = document.getElementById('rptClearImg')
+  const rptImgPreview = document.getElementById('rptImgPreview')
+  const rptIncludeLog = document.getElementById('rptIncludeLog')
+  const rptSend      = document.getElementById('rptSend')
+  const rptStatus    = document.getElementById('rptStatus')
+  if (!rptSend) return
+
+  let _imgPath = null
+
+  rptPickImg.addEventListener('click', () => rptFileInput.click())
+
+  rptFileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    _imgPath = file.path
+    rptImgName.textContent = file.name
+    rptClearImg.style.display = 'inline'
+    const reader = new FileReader()
+    reader.onload = (ev) => { rptImgPreview.src = ev.target.result; rptImgPreview.style.display = 'block' }
+    reader.readAsDataURL(file)
+  })
+
+  rptClearImg.addEventListener('click', () => {
+    _imgPath = null
+    rptImgName.textContent = ''
+    rptClearImg.style.display = 'none'
+    rptImgPreview.style.display = 'none'
+    rptImgPreview.src = ''
+    rptFileInput.value = ''
+  })
+
+  rptSend.addEventListener('click', async () => {
+    const title = rptTitle ? rptTitle.value.trim() : ''
+    const text  = rptText.value.trim()
+    if (!title) {
+      rptStatus.textContent = 'Por favor, adicione um título antes de enviar.'
+      rptStatus.className = 'rpt-status error'
+      return
+    }
+    if (!text) {
+      rptStatus.textContent = 'Por favor, descreva o problema antes de enviar.'
+      rptStatus.className = 'rpt-status error'
+      return
+    }
+    rptSend.disabled = true
+    rptStatus.textContent = 'Enviando...'
+    rptStatus.className = 'rpt-status'
+
+    const result = await window.api.sendReport(title, text, _imgPath, rptIncludeLog.checked)
+
+    if (result.ok) {
+      rptStatus.textContent = '✓ Report enviado! Obrigado pelo feedback.'
+      rptStatus.className = 'rpt-status ok'
+      rptTitle.value = ''
+      rptText.value = ''
+      _imgPath = null
+      rptImgName.textContent = ''
+      rptClearImg.style.display = 'none'
+      rptImgPreview.style.display = 'none'
+      rptImgPreview.src = ''
+      rptFileInput.value = ''
+    } else {
+      rptStatus.textContent = `Erro ao enviar: ${result.error}`
+      rptStatus.className = 'rpt-status error'
+    }
+    rptSend.disabled = false
+  })
+})()
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 loadSettings()

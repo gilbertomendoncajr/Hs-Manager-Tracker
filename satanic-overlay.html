@@ -174,60 +174,61 @@
 
 <script>
 const SATANIC_BUFFS = {
-  1:  ['Loot Goblin I',      '+1 Max Loot por Inimigo Morto'],
-  2:  ['Loot Goblin II',     '+2 Max Loot por Inimigo Morto'],
-  3:  ['Rune Master',        '+15% Chance de Drop de Runas'],
-  4:  ['Gold Hunger',        '+40% Ouro de Monstros Mortos'],
-  5:  ['Heroic Windfall',    '+3% Chance de Drop Heroic'],
-  6:  ['Angelic Fortune',    '+25% Chance de Drop Angelic'],
-  7:  ["Zephy's Grace",      '+50% Velocidade de Movimento'],
-  8:  ['Fury of Tempest',    '+60% Velocidade de Ataque'],
-  9:  ['Rapid Casting',      '+60% Velocidade de Conjuração'],
-  10: ['Onslaught',          '+100% Dano de Ataque'],
-  11: ['Nether Surge',       '+40% Dano de Magia'],
-  12: ['Relic Keepers',      '2% Chance de Relic ao Matar Ancião'],
-  13: ["Goblin's Greed",     '0.5% Chance de Goblin do Tesouro'],
-  14: ['Artifact Digger',    '+55% Magic Find'],
-  15: ['Artifact Seeker',    '+110% Magic Find'],
-  16: ['Artifact Excavator', '+170% Magic Find'],
-  17: ['Recruit',            '+10% Ganho de XP'],
-  18: ['Combat Training',    '+15% Ganho de XP'],
-  19: ['Battle Scarred',     '+20% Ganho de XP'],
-  20: ['Clairvoyance',       '+100% em toda recuperação'],
-  21: ['Aftermath',          '3% Chance de Invocar Legião na Morte'],
-  22: ['Deep Cuts',          '+200% Dano de Golpe Crítico'],
-  23: ['Old Town',           '+15% Chance de Packs Antigos'],
-  24: ['Terror Zone',        '+25% Chance de Packs Antigos'],
-  25: ['Fields of Carnage',  '+30% Chance de Packs Antigos'],
+  1:  ['Loot Goblin I',      '+1 Max Loot por Inimigo Morto',              '+1 Max Loot per Enemy Killed'],
+  2:  ['Loot Goblin II',     '+2 Max Loot por Inimigo Morto',              '+2 Max Loot per Enemy Killed'],
+  3:  ['Rune Master',        '+15% Chance de Drop de Runas',               '+15% Rune Drop Chance'],
+  4:  ['Gold Hunger',        '+40% Ouro de Monstros Mortos',               '+40% Gold from Slain Monsters'],
+  5:  ['Heroic Windfall',    '+3% Chance de Drop Heroic',                  '+3% Heroic Drop Chance'],
+  6:  ['Angelic Fortune',    '+25% Chance de Drop Angelic',                '+25% Angelic Drop Chance'],
+  7:  ["Zephy's Grace",      '+50% Velocidade de Movimento',               '+50% Movement Speed'],
+  8:  ['Fury of Tempest',    '+60% Velocidade de Ataque',                  '+60% Attack Speed'],
+  9:  ['Rapid Casting',      '+60% Velocidade de Conjuração',              '+60% Cast Speed'],
+  10: ['Onslaught',          '+100% Dano de Ataque',                       '+100% Attack Damage'],
+  11: ['Nether Surge',       '+40% Dano de Magia',                         '+40% Spell Damage'],
+  12: ['Relic Keepers',      '2% Chance de Relic ao Matar Ancião',         '2% Relic Chance on Elder Kill'],
+  13: ["Goblin's Greed",     '0.5% Chance de Goblin do Tesouro',           '0.5% Treasure Goblin Chance'],
+  14: ['Artifact Digger',    '+55% Magic Find',                            '+55% Magic Find'],
+  15: ['Artifact Seeker',    '+110% Magic Find',                           '+110% Magic Find'],
+  16: ['Artifact Excavator', '+170% Magic Find',                           '+170% Magic Find'],
+  17: ['Recruit',            '+10% Ganho de XP',                           '+10% XP Gain'],
+  18: ['Combat Training',    '+15% Ganho de XP',                           '+15% XP Gain'],
+  19: ['Battle Scarred',     '+20% Ganho de XP',                           '+20% XP Gain'],
+  20: ['Clairvoyance',       '+100% em toda recuperação',                  '+100% to all recovery'],
+  21: ['Aftermath',          '3% Chance de Invocar Legião na Morte',       '3% Chance to Summon Legion on Death'],
+  22: ['Deep Cuts',          '+200% Dano de Golpe Crítico',                '+200% Critical Strike Damage'],
+  23: ['Old Town',           '+15% Chance de Packs Antigos',               '+15% Old Packs Chance'],
+  24: ['Terror Zone',        '+25% Chance de Packs Antigos',               '+25% Old Packs Chance'],
+  25: ['Fields of Carnage',  '+30% Chance de Packs Antigos',               '+30% Old Packs Chance'],
 }
 const SATANIC_DEBUFFS = [
-  ["Dusk's Shroud",      '-20% Raio de Luz'],
-  ['Elemental Erosion',  '-75% Todas as Resistências'],
-  ['Sundered Armor',     '+25% Dano Recebido'],
-  ['Vitality Drain',     '-25% Vida'],
-  ['Essence Drain',      '-25% Mana'],
-  ['Abyssal Gloom',      '+100% Escuridão'],
-  ['Skill Debilitation', '-10% Todas as Skills'],
-  ['Weakening Essence',  '-20% Todos os Atributos'],
-  ['Lifeflow Starvation','Regeneração reduzida'],
-  ['Sanguine Impairment','-75% Roubo de Vida'],
-  ['Arcane Impairment',  '-75% Roubo de Mana'],
-  ['Consumed Time',      '-25% Recuperação de Cooldown'],
-  ['Absolute Limbo',     '-50% Recuperação de Cooldown'],
-  ['Boulder Fall',       '3% Chance de Boulder na Morte'],
-  ['Lingering Evil',     '-25% Velocidade de Movimento'],
-  ['Fatal Wounds',       '10% Chance de Dano Duplo dos Monstros'],
-  ['Bloated Veins',      '+70% Vida dos Monstros'],
-  ['Abnormal Dwelling',  '+130% Vida dos Monstros'],
-  ['Colossal Bloating',  '+200% Vida dos Monstros'],
-  ['Necrosis',           '1% de Vida drenada por segundo'],
-  ['Venomous Presence',  '+200% Duração de Veneno'],
-  ['Flaming Agony',      'Nova de Fogo na morte dos monstros'],
-  ['Unholy Agility',     'Monstros mais rápidos e agressivos'],
-  ['Broken Armor',       'Você não pode bloquear ataques'],
-  ['Hemorrhage',         'Ataques de monstros causam sangramento'],
-  ['Crippling Slow',     'Ataques infligem 50% de lentidão'],
+  ["Dusk's Shroud",      '-20% Raio de Luz',                      '-20% Light Radius'],
+  ['Elemental Erosion',  '-75% Todas as Resistências',            '-75% All Resistances'],
+  ['Sundered Armor',     '+25% Dano Recebido',                    '+25% Damage Taken'],
+  ['Vitality Drain',     '-25% Vida',                              '-25% Life'],
+  ['Essence Drain',      '-25% Mana',                              '-25% Mana'],
+  ['Abyssal Gloom',      '+100% Escuridão',                        '+100% Darkness'],
+  ['Skill Debilitation', '-10% Todas as Skills',                   '-10% All Skills'],
+  ['Weakening Essence',  '-20% Todos os Atributos',                '-20% All Attributes'],
+  ['Lifeflow Starvation','Regeneração reduzida',                   'Reduced Regeneration'],
+  ['Sanguine Impairment','-75% Roubo de Vida',                     '-75% Life Steal'],
+  ['Arcane Impairment',  '-75% Roubo de Mana',                     '-75% Mana Steal'],
+  ['Consumed Time',      '-25% Recuperação de Cooldown',           '-25% Cooldown Recovery'],
+  ['Absolute Limbo',     '-50% Recuperação de Cooldown',           '-50% Cooldown Recovery'],
+  ['Boulder Fall',       '3% Chance de Boulder na Morte',          '3% Boulder Chance on Death'],
+  ['Lingering Evil',     '-25% Velocidade de Movimento',           '-25% Movement Speed'],
+  ['Fatal Wounds',       '10% Chance de Dano Duplo dos Monstros',  '10% Chance of Double Damage from Monsters'],
+  ['Bloated Veins',      '+70% Vida dos Monstros',                 '+70% Monster Life'],
+  ['Abnormal Dwelling',  '+130% Vida dos Monstros',                '+130% Monster Life'],
+  ['Colossal Bloating',  '+200% Vida dos Monstros',                '+200% Monster Life'],
+  ['Necrosis',           '1% de Vida drenada por segundo',         '1% Life Drained per Second'],
+  ['Venomous Presence',  '+200% Duração de Veneno',                '+200% Poison Duration'],
+  ['Flaming Agony',      'Nova de Fogo na morte dos monstros',     'Fire Nova on monster death'],
+  ['Unholy Agility',     'Monstros mais rápidos e agressivos',     'Monsters are faster and more aggressive'],
+  ['Broken Armor',       'Você não pode bloquear ataques',         'You cannot block attacks'],
+  ['Hemorrhage',         'Ataques de monstros causam sangramento', 'Monster attacks cause bleeding'],
+  ['Crippling Slow',     'Ataques infligem 50% de lentidão',       'Attacks inflict 50% slow'],
 ]
+let _overlayLang = 'pt'
 const ZONE_AREAS = {
   1: ['Outskirts of Inoya','Fields of Battle','The Pumpkin Patch','Woodhill Plains',"King's Garden",'Witching River'],
   2: ['Crystal Village','Chilling Lake','Arctic Tundra','Snowy Mountains','The Glacial Trail'],
@@ -268,7 +269,7 @@ function fmtZone(raw) {
 function renderBuff(id) {
   const b = SATANIC_BUFFS[id]
   const name = b ? b[0] : `Buff ${id}`
-  const desc = b ? b[1] : ''
+  const desc = b ? (_overlayLang === 'en' ? b[2] : b[1]) : ''
   const iconSrc = `assets/icons/buffs/${id}.png`
   return `<div class="sz-mod">
     <img class="sz-mod-icon" src="${iconSrc}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'sz-mod-dot pros'}))">
@@ -282,7 +283,7 @@ function renderBuff(id) {
 function renderDebuff(id) {
   const d = SATANIC_DEBUFFS[id - 1]
   const name = d ? d[0] : `Debuff ${id}`
-  const desc = d ? d[1] : ''
+  const desc = d ? (_overlayLang === 'en' ? d[2] : d[1]) : ''
   return `<div class="sz-mod">
     <span class="sz-mod-dot cons"></span>
     <div class="sz-mod-body">
@@ -310,6 +311,7 @@ function showSatanic(data) {
     return
   }
 
+  if (data.lang) _overlayLang = data.lang
   szZoneName.textContent = fmtZone(data.zone)
 
   const buffIds   = data.buffs   || []

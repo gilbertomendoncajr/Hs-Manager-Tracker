@@ -620,6 +620,7 @@ header button, header select, header a,
   align-items: center; justify-content: center;
   gap: 0; text-align: center; padding: 32px 24px;
   pointer-events: none; user-select: none;
+  position: relative;
 }
 .drop-hint-title {
   font-family: 'Space Mono', monospace;
@@ -628,9 +629,10 @@ header button, header select, header a,
   margin-bottom: 10px;
 }
 .drop-hint-arrow {
-  margin-top: 28px;
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
-  color: var(--accent); opacity: .6;
+  position: absolute;
+  bottom: 16px; right: 22px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  color: var(--accent); opacity: .55;
   animation: arrowBounce 1.6s ease-in-out infinite;
 }
 .drop-hint-arrow-label {
@@ -651,7 +653,7 @@ header button, header select, header a,
   flex-direction: column;
   gap: 0;
   margin-top: 22px;
-  width: 272px;
+  width: 320px;
   position: relative;
 }
 #dropHint[data-state="inactive"] .drop-hint-steps { display: flex; }
@@ -681,13 +683,14 @@ header button, header select, header a,
 }
 .dhs-content {
   display: flex; flex-direction: row;
-  align-items: center; gap: 8px;
-  padding-top: 6px;
+  align-items: flex-start; gap: 8px;
+  padding-top: 7px;
 }
-.dhs-icon { font-size: 13px; opacity: 0.5; }
+.dhs-icon { font-size: 13px; opacity: 0.5; flex-shrink: 0; width: 16px; text-align: center; }
 .dhs-text {
   font-family: var(--font-sans); font-size: 11.5px; font-weight: 500;
   color: rgba(255,255,255,0.38); letter-spacing: .03em; line-height: 1.35;
+  text-align: left;
 }
 #dropHint[data-state="login"] .drop-hint-arrow,
 #dropHint[data-state="monitoring"] .drop-hint-arrow { display: none; }
@@ -1077,6 +1080,65 @@ body.tab-liga .ua-player { display: block; }
 
 /* ── Sobre page ──────────────────────────────────────────────────────── */
 #p-sobre { align-items: center; justify-content: center; }
+/* ── Report page ─────────────────────────────────────────────── */
+.rpt-wrap {
+  padding: 28px 32px; max-width: 540px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.rpt-title {
+  font-family: 'Space Mono', monospace;
+  font-size: 13px; font-weight: 700;
+  color: var(--text); letter-spacing: .1em; text-transform: uppercase;
+}
+.rpt-sub {
+  font-size: 11.5px; color: var(--text2); line-height: 1.5;
+  margin-top: -6px;
+}
+.rpt-textarea {
+  width: 100%; min-height: 110px; resize: vertical;
+  background: var(--surf-hi); border: 1px solid var(--border);
+  border-radius: 4px; padding: 10px 12px;
+  color: var(--text); font-family: var(--font-sans); font-size: 12px;
+  line-height: 1.5; outline: none;
+}
+.rpt-textarea:focus { border-color: var(--brt); }
+.rpt-textarea::placeholder { color: var(--text3); }
+.rpt-attach-row {
+  display: flex; align-items: center; gap: 10px;
+}
+.rpt-attach-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 4px;
+  border: 1px solid var(--border); background: var(--surf-hi);
+  color: var(--text2); font-size: 11.5px; cursor: pointer;
+}
+.rpt-attach-btn:hover { border-color: var(--brt); color: var(--text); }
+.rpt-attach-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
+.rpt-img-name { font-size: 11px; color: var(--text2); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rpt-img-clear { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 12px; padding: 2px 4px; }
+.rpt-img-clear:hover { color: var(--accent); }
+.rpt-img-preview {
+  max-width: 100%; max-height: 180px; border-radius: 4px;
+  border: 1px solid var(--border); object-fit: contain;
+}
+.rpt-check-row {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11.5px; color: var(--text2); cursor: pointer;
+}
+.rpt-check-row input[type="checkbox"] { accent-color: var(--accent); width: 13px; height: 13px; }
+.rpt-send-btn {
+  align-self: flex-start;
+  padding: 8px 22px; border-radius: 4px;
+  background: var(--accent); border: none; color: #fff;
+  font-size: 12px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; cursor: pointer;
+}
+.rpt-send-btn:hover { background: #e03030; }
+.rpt-send-btn:disabled { opacity: .5; cursor: default; }
+.rpt-status { font-size: 11.5px; margin-top: -6px; }
+.rpt-status.ok { color: #4caf50; }
+.rpt-status.error { color: var(--accent); }
+
 .sobre-card { text-align: center; padding: 32px; }
 .sobre-logo {
   width: 80px; height: 80px; border-radius: 50%;
@@ -1681,6 +1743,15 @@ body.no-bp.tab-liga .bp-disabled-overlay { display: flex; }
         <span class="nav-btn-label" data-i18n="nav.compact">Compact Mode</span>
       </button>
 
+      <button class="nav-btn" data-page="report">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        <span class="nav-btn-label">Reportar Bug</span>
+      </button>
+
       <div class="nav-sp"></div>
 
       <button class="nav-btn" data-page="config">
@@ -2177,6 +2248,39 @@ body.no-bp.tab-liga .bp-disabled-overlay { display: flex; }
       </div><!-- /#p-config -->
 
       <!-- SOBRE -->
+      <!-- REPORT -->
+      <div class="page" id="p-report">
+        <div class="rpt-wrap">
+          <div class="rpt-title">Reportar Bug</div>
+          <div class="rpt-sub">Descreva o problema. Cada report cria um post público no Discord — confira se já foi reportado antes de enviar.</div>
+
+          <input id="rptTitle" class="rpt-textarea" style="min-height:unset;height:36px;padding:8px 12px;" placeholder="Título curto (ex: Drop duplicado no log, Overlay não aparece...)">
+          <textarea id="rptText" class="rpt-textarea" placeholder="Descreva com detalhes: o que você estava fazendo, o que aconteceu de errado e como reproduzir."></textarea>
+
+          <div class="rpt-attach-row">
+            <button id="rptPickImg" class="rpt-attach-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+              Anexar Screenshot
+            </button>
+            <span id="rptImgName" class="rpt-img-name"></span>
+            <button id="rptClearImg" class="rpt-img-clear" style="display:none">✕</button>
+          </div>
+          <input type="file" id="rptFileInput" accept="image/*" style="display:none">
+          <img id="rptImgPreview" class="rpt-img-preview" style="display:none" alt="">
+
+          <label class="rpt-check-row">
+            <input type="checkbox" id="rptIncludeLog" checked>
+            <span>Incluir arquivo de log (recomendado)</span>
+          </label>
+
+          <button id="rptSend" class="rpt-send-btn">Enviar Report</button>
+          <div id="rptStatus" class="rpt-status"></div>
+        </div>
+      </div>
+
       <div class="page" id="p-sobre">
         <div class="sobre-card">
           <div class="sobre-logo"><img src="icon.png" alt="HS Drop Logger"></div>

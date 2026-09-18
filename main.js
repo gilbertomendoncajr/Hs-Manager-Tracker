@@ -1028,9 +1028,10 @@ function spawnSniffer() {
         return
       }
       if (msg.type === 'stat:satanic') {
-        _satanicZone = { zone: msg.zone, buffs: msg.buffs || [], debuffs: msg.debuffs || [], ts_ms: msg.ts_ms }
+        const prevZone = _satanicZone?.zone
+        _satanicZone = { zone: msg.zone, buffs: msg.buffs || [], debuffs: msg.debuffs || [], ts_ms: msg.ts_ms, lang: currentLang }
         _sendStatsUpdate()
-        if (satanicOverlayWin && !satanicOverlayWin.isDestroyed()) {
+        if (msg.zone !== prevZone && satanicOverlayWin && !satanicOverlayWin.isDestroyed()) {
           satanicOverlayWin.webContents.send('overlay:satanic', _satanicZone)
         }
         return
@@ -1366,9 +1367,11 @@ ipcMain.handle('filter:close', () => {
 })
 
 // Fetch server filter (used both for the filter window and drop processing)
+// O filtro agora é por liga — sem leagueId, o servidor cai para o filtro global legado.
 async function fetchServerFilter() {
   try {
-    const res = await fetch(`${BASE_URL}/api/filter`)
+    const qs = currentLeagueId ? `?leagueId=${currentLeagueId}` : ''
+    const res = await fetch(`${BASE_URL}/api/filter${qs}`)
     if (!res.ok) return null
     return await res.json()  // { grouped, enabledNames, total }
   } catch { return null }
@@ -1569,6 +1572,93 @@ ipcMain.handle('relic:setAll', (_, names, value) => {
     else relicFilter.delete(name)
   }
   saveRelicFilter()
+})
+
+// ── Bug Report ───────────────────────────────────────────────────────────────
+const REPORT_WEBHOOK = 'https://discord.com/api/webhooks/1549766158889254922/tL0kaBLXtp3EX5IpaYYUmDZaAf7xJThCyUCu_gQ8Wy2OyfXxi25mtIz-FCBs6JQ5EpYh'
+
+function _sendDiscordWebhook(webhookUrl, payload, files) {
+  return new Promise((resolve, reject) => {
+    const boundary = 'hsdlboundary' + Date.now().toString(16)
+    const parts = []
+
+    parts.push(Buffer.from(
+      `--${boundary}\r\nContent-Disposition: form-data; name="payload_json"\r\nContent-Type: application/json\r\n\r\n` +
+      JSON.stringify(payload) + '\r\n'
+    ))
+    files.forEach((f, i) => {
+      parts.push(Buffer.concat([
+        Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="files[${i}]"; filename="${f.name}"\r\nContent-Type: application/octet-stream\r\n\r\n`),
+        f.data,
+        Buffer.from('\r\n'),
+      ]))
+    })
+    parts.push(Buffer.from(`--${boundary}--\r\n`))
+
+    const body = Buffer.concat(parts)
+    const url = new URL(webhookUrl)
+    const req = require('https').request({
+      method: 'POST',
+      hostname: url.hostname,
+      path: url.pathname + url.search,
+      headers: { 'Content-Type': `multipart/form-data; boundary=${boundary}`, 'Content-Length': body.length },
+    }, (res) => {
+      let raw = ''
+      res.on('data', c => raw += c)
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) resolve()
+        else reject(new Error(`HTTP ${res.statusCode}: ${raw}`))
+      })
+    })
+    req.on('error', reject)
+    req.write(body)
+    req.end()
+  })
+}
+
+ipcMain.handle('report:send', async (_, { title, text, imagePath, includeLog }) => {
+  try {
+    if (!REPORT_WEBHOOK || REPORT_WEBHOOK === 'PLACEHOLDER_WEBHOOK_URL') {
+      return { ok: false, error: 'Webhook não configurado.' }
+    }
+    const files = []
+
+    if (includeLog) {
+      const logPath = _getLogPath()
+      if (fs.existsSync(logPath)) {
+        const stat = fs.statSync(logPath)
+        const maxBytes = 50 * 1024
+        const start = Math.max(0, stat.size - maxBytes)
+        const buf = Buffer.alloc(Math.min(stat.size, maxBytes))
+        const fd = fs.openSync(logPath, 'r')
+        fs.readSync(fd, buf, 0, buf.length, start)
+        fs.closeSync(fd)
+        files.push({ name: 'hs-drop-logger.log', data: buf })
+      }
+    }
+
+    if (imagePath && fs.existsSync(imagePath)) {
+      files.push({ name: path.basename(imagePath), data: fs.readFileSync(imagePath) })
+    }
+
+    const threadTitle = (title || text || 'Bug sem título').slice(0, 100)
+
+    const embed = {
+      title: `🐛 ${title || 'Bug Report'}`,
+      description: text || '(sem descrição)',
+      color: 0xc82828,
+      timestamp: new Date().toISOString(),
+      footer: { text: `HS Drop Logger v${app.getVersion()}` },
+    }
+
+    // thread_name é obrigatório para postar em canal Fórum do Discord
+    await _sendDiscordWebhook(REPORT_WEBHOOK, { thread_name: threadTitle, embeds: [embed] }, files)
+    writeLog('info', '[report] report enviado com sucesso')
+    return { ok: true }
+  } catch (err) {
+    writeLog('error', `[report] ${err.message}`)
+    return { ok: false, error: err.message }
+  }
 })
 
 ipcMain.handle('monitor:getState', () => ({ isMonitoring, leagueId: currentLeagueId, charIdentified }))
