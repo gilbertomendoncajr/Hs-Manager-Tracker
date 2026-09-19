@@ -23,9 +23,16 @@ const tabLigaBtn    = document.getElementById('tabLiga')
 const cntMeus            = document.getElementById('cntMeus')
 const cntLiga            = document.getElementById('cntLiga')
 const btnToggleFiltered  = document.getElementById('btnToggleFiltered')
-const uaSection     = document.getElementById('uaSection')
-const uaBody        = document.getElementById('uaBody')
-const uaCount       = document.getElementById('uaCount')
+const uaSection          = document.getElementById('uaSection')
+const uaBody             = document.getElementById('uaBody')
+const uaFilteredSection  = document.getElementById('uaFilteredSection')
+const uaFilteredBody     = document.getElementById('uaFilteredBody')
+const uaSubtabBar        = document.getElementById('uaSubtabBar')
+const subTabFiltered     = document.getElementById('subTabFiltered')
+const subTabAll          = document.getElementById('subTabAll')
+const cntFiltered        = document.getElementById('cntFiltered')
+const cntAll             = document.getElementById('cntAll')
+const uaCount            = document.getElementById('uaCount')
 const dropHint      = document.getElementById('dropHint')
 const dropHintTitle = document.getElementById('dropHintTitle')
 const dropHintSub   = document.getElementById('dropHintSub')
@@ -43,6 +50,7 @@ let ligaFilteredCount = 0             // tab:'liga-filtrado' — blocked by ADM
 let showFiltered = false              // toggle for ADM-filtered entries in Liga tab
 
 let currentTab = 'meus'
+let currentUaSubtab = 'filtered' // 'filtered' | 'all'
 let isMonitoring = false
 let isPaused = false
 
@@ -104,12 +112,22 @@ function toggleFiltered() {
 
 function updateEmptyState() {}
 
+function _switchUaSubtab(tab) {
+  currentUaSubtab = tab
+  if (subTabFiltered) subTabFiltered.classList.toggle('active', tab === 'filtered')
+  if (subTabAll) subTabAll.classList.toggle('active', tab === 'all')
+  if (uaFilteredSection) uaFilteredSection.style.display = tab === 'filtered' ? 'block' : 'none'
+  if (uaSection) uaSection.style.display = tab === 'all' ? 'block' : 'none'
+}
+
 function _refreshUaCount() {
   let count = 0
   uaBody.querySelectorAll('tr[data-rarity]').forEach(r => {
     if (UA_RARITIES.has(r.dataset.rarity) && !r.style.display.includes('none')) count++
   })
   uaCount.textContent = count
+  if (cntAll) cntAll.textContent = uaBody.children.length
+  if (cntFiltered) cntFiltered.textContent = uaFilteredBody ? uaFilteredBody.children.length : 0
 }
 
 function switchTab(tab) {
@@ -126,10 +144,14 @@ function switchTab(tab) {
     if (ligaSection) ligaSection.style.display = ''
     if (logList) logList.style.display = 'none'
     if (uaSectionEl) uaSectionEl.style.display = 'none'
+    if (uaFilteredSection) uaFilteredSection.style.display = 'none'
+    if (uaSubtabBar) uaSubtabBar.style.display = 'none'
   } else {
     if (ligaSection) ligaSection.style.display = 'none'
     if (logList) logList.style.display = ''
-    if (uaSectionEl) uaSectionEl.style.display = uaBody.children.length > 0 ? 'block' : 'none'
+    const hasDrops = uaBody.children.length > 0
+    if (uaSubtabBar) uaSubtabBar.style.display = hasDrops ? 'flex' : 'none'
+    _switchUaSubtab(currentUaSubtab)
     _refreshUaCount()
   }
 
@@ -240,8 +262,16 @@ function updateDropHint() {
 
 function clearUATable() {
   uaBody.innerHTML = ''
+  if (uaFilteredBody) uaFilteredBody.innerHTML = ''
   uaMap.clear()
   uaSection.style.display = 'none'
+  if (uaFilteredSection) uaFilteredSection.style.display = 'none'
+  if (uaSubtabBar) uaSubtabBar.style.display = 'none'
+  if (cntAll) cntAll.textContent = '0'
+  if (cntFiltered) cntFiltered.textContent = '0'
+  currentUaSubtab = 'filtered'
+  if (subTabFiltered) subTabFiltered.classList.add('active')
+  if (subTabAll) subTabAll.classList.remove('active')
   uaCount.textContent = '0'
   updateDropHint()
 }
@@ -1027,6 +1057,8 @@ window.api.onUpdateReady((data) => {
 tabMeusBtn.addEventListener('click', () => switchTab('meus'))
 tabLigaBtn.addEventListener('click', () => switchTab('liga'))
 if (btnToggleFiltered) btnToggleFiltered.addEventListener('click', toggleFiltered)
+if (subTabFiltered) subTabFiltered.addEventListener('click', () => _switchUaSubtab('filtered'))
+if (subTabAll) subTabAll.addEventListener('click', () => _switchUaSubtab('all'))
 
 // ── Tabela Unholy / Angelic ──────────────────────────────────────────────────
 function _addPendingRow(drop, collected = false) {
@@ -1046,9 +1078,25 @@ function _addPendingRow(drop, collected = false) {
     <td class="ua-collect" id="ua-c-${safeId}">${collected ? fmtTime(drop.ts_ms) : '⏳'}</td>
   `
   if (collected) row.querySelector('.ua-collect').classList.add('done')
+
+  // Tabela "Todos"
   uaBody.insertBefore(row, uaBody.firstChild)
   uaMap.set(drop.fp, safeId)
-  uaSection.style.display = 'block'
+
+  // Tabela "Filtrados" — cópia da linha para drops que passaram no filtro pessoal
+  if (drop._inPersonalFilter && uaFilteredBody) {
+    const rowF = row.cloneNode(true)
+    rowF.id = `flt-${safeId}`
+    uaFilteredBody.insertBefore(rowF, uaFilteredBody.firstChild)
+  }
+
+  // Mostra sub-tabs e seção correta
+  if (uaSubtabBar) uaSubtabBar.style.display = 'flex'
+  if (currentUaSubtab === 'all') {
+    uaSection.style.display = 'block'
+  } else {
+    if (uaFilteredSection) uaFilteredSection.style.display = uaFilteredBody && uaFilteredBody.children.length > 0 ? 'block' : 'none'
+  }
   if (dropHint) dropHint.style.display = 'none'
   uaCount.textContent = uaBody.children.length
 
@@ -1093,6 +1141,13 @@ window.api.onDropCollected((drop) => {
         row.classList.add('ua-site-filtered')
         if (currentTab === 'liga') row.style.display = 'none'
       }
+    }
+    // Atualiza linha na tabela de filtrados se existir
+    const rowF = uaFilteredBody ? uaFilteredBody.querySelector(`#flt-${safeId}`) : null
+    if (rowF) {
+      rowF.classList.add('collected')
+      const cellF = rowF.querySelector('.ua-collect')
+      if (cellF) { cellF.textContent = fmtTime(drop.ts_ms); cellF.classList.add('done') }
     }
   } else {
     // Missed floor → adiciona linha já como coletada
