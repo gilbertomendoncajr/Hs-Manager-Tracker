@@ -32,6 +32,8 @@ const subTabFiltered     = document.getElementById('subTabFiltered')
 const subTabAll          = document.getElementById('subTabAll')
 const cntFiltered        = document.getElementById('cntFiltered')
 const cntAll             = document.getElementById('cntAll')
+const uaFilteredEmptyState = document.getElementById('uaFilteredEmptyState')
+const uaAllEmptyState    = document.getElementById('uaAllEmptyState')
 const uaCount            = document.getElementById('uaCount')
 const dropHint      = document.getElementById('dropHint')
 const dropHintTitle = document.getElementById('dropHintTitle')
@@ -111,6 +113,13 @@ function toggleFiltered() {
 }
 
 function updateEmptyState() {}
+
+function _updateUaEmptyStates() {
+  const hasFiltered = uaFilteredBody && uaFilteredBody.children.length > 0
+  const hasAll = uaBody && uaBody.children.length > 0
+  if (uaFilteredEmptyState) uaFilteredEmptyState.style.display = hasFiltered ? 'none' : 'block'
+  if (uaAllEmptyState) uaAllEmptyState.style.display = hasAll ? 'none' : 'block'
+}
 
 function _switchUaSubtab(tab) {
   currentUaSubtab = tab
@@ -273,6 +282,7 @@ function clearUATable() {
   if (subTabFiltered) subTabFiltered.classList.add('active')
   if (subTabAll) subTabAll.classList.remove('active')
   uaCount.textContent = '0'
+  _updateUaEmptyStates()
   updateDropHint()
 }
 
@@ -467,6 +477,9 @@ const I18N = {
     'filter.importMerge': '+ Mesclar', 'filter.importReplace': '↺ Substituir',
     'preset.saveAsTitle': 'SALVAR PRESET COMO',
     'preset.namePlaceholder': 'Nome do preset (ex: Fogo, Gelo...)',
+    'drops.tabFiltered': 'Filtrados', 'drops.tabAll': 'Todos',
+    'drops.emptyFiltered': 'Itens que passarem pelo seu filtro pessoal aparecerão aqui.',
+    'drops.emptyAll': 'Todos os drops desta sessão aparecerão aqui.',
   },
   en: {
     'nav.drops': 'My Drops', 'nav.liga': 'League', 'nav.stats': 'Statistics',
@@ -552,6 +565,9 @@ const I18N = {
     'filter.importMerge': '+ Merge', 'filter.importReplace': '↺ Replace',
     'preset.saveAsTitle': 'SAVE PRESET AS',
     'preset.namePlaceholder': 'Preset name (e.g. Fire, Ice...)',
+    'drops.tabFiltered': 'Filtered', 'drops.tabAll': 'All',
+    'drops.emptyFiltered': 'Items that pass your personal loot filter will appear here.',
+    'drops.emptyAll': 'All drops from this session will appear here.',
   },
 }
 
@@ -1092,11 +1108,8 @@ function _addPendingRow(drop, collected = false) {
 
   // Mostra sub-tabs e seção correta
   if (uaSubtabBar) uaSubtabBar.style.display = 'flex'
-  if (currentUaSubtab === 'all') {
-    uaSection.style.display = 'block'
-  } else {
-    if (uaFilteredSection) uaFilteredSection.style.display = uaFilteredBody && uaFilteredBody.children.length > 0 ? 'block' : 'none'
-  }
+  _switchUaSubtab(currentUaSubtab)
+  _updateUaEmptyStates()
   if (dropHint) dropHint.style.display = 'none'
   uaCount.textContent = uaBody.children.length
 

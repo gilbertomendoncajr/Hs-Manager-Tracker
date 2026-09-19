@@ -616,15 +616,14 @@ header button, header select, header a,
   flex-shrink: 0;
 }
 .ua-subtab {
-  display: flex; align-items: center; gap: 6px;
-  padding: 0 16px; height: 34px;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  flex: 1; padding: 0; height: 34px;
   background: none; border: none;
   border-bottom: 2px solid transparent;
   color: var(--text2); font-family: var(--font-sans);
   font-size: var(--fs-sm); font-weight: 600;
   letter-spacing: .04em; text-transform: uppercase;
   cursor: pointer; transition: color .12s, border-color .12s;
-  flex-shrink: 0;
 }
 .ua-subtab:hover { color: var(--text); }
 .ua-subtab.active { color: var(--amber); border-bottom-color: var(--amber); }
@@ -637,6 +636,11 @@ header button, header select, header a,
   min-width: 18px; text-align: center;
 }
 .ua-subtab:not(.active) .ua-subtab-count { color: var(--text3); background: none; border-color: var(--border); }
+.ua-empty-state {
+  padding: 28px 20px; text-align: center;
+  color: var(--text3); font-size: var(--fs-sm);
+  font-family: var(--font-sans); letter-spacing: .01em;
+}
 
 #uaSection, #uaFilteredSection {
   background: var(--surf); width: 100%;
@@ -1999,22 +2003,25 @@ html[data-reduce-motion="1"] *, html[data-reduce-motion="1"] *::before, html[dat
 
         <!-- Sub-tab bar: Filtrados / Todos -->
         <div class="ua-subtab-bar" id="uaSubtabBar" style="display:none">
-          <button class="ua-subtab active" id="subTabFiltered">
-            Filtrados <span class="ua-subtab-count" id="cntFiltered">0</span>
+          <button class="ua-subtab active" id="subTabFiltered" data-i18n-before="drops.tabFiltered">
+            <span data-i18n="drops.tabFiltered">Filtered</span>
+            <span class="ua-subtab-count" id="cntFiltered">0</span>
           </button>
           <button class="ua-subtab" id="subTabAll">
-            Todos <span class="ua-subtab-count" id="cntAll">0</span>
+            <span data-i18n="drops.tabAll">All</span>
+            <span class="ua-subtab-count" id="cntAll">0</span>
           </button>
         </div>
 
         <!-- Filtrados: só drops que passaram pelo filtro pessoal -->
         <div id="uaFilteredSection" style="display:none">
+          <p class="ua-empty-state" id="uaFilteredEmptyState" data-i18n="drops.emptyFiltered">Items that pass your personal loot filter will appear here.</p>
           <table id="uaFilteredTable">
             <thead>
               <tr>
                 <th data-i18n="th.item">Item</th>
-                <th data-i18n="th.dropped">Dropou</th>
-                <th data-i18n="th.collected">Coletou</th>
+                <th data-i18n="th.dropped">Dropped</th>
+                <th data-i18n="th.collected">Collected</th>
               </tr>
             </thead>
             <tbody id="uaFilteredBody"></tbody>
@@ -2023,12 +2030,13 @@ html[data-reduce-motion="1"] *, html[data-reduce-motion="1"] *::before, html[dat
 
         <!-- Todos: todos os drops da sessão -->
         <div id="uaSection" style="display:none">
+          <p class="ua-empty-state" id="uaAllEmptyState" data-i18n="drops.emptyAll">All drops from this session will appear here.</p>
           <table id="uaTable">
             <thead>
               <tr>
                 <th data-i18n="th.item">Item</th>
-                <th data-i18n="th.dropped">Dropou</th>
-                <th data-i18n="th.collected">Coletou</th>
+                <th data-i18n="th.dropped">Dropped</th>
+                <th data-i18n="th.collected">Collected</th>
               </tr>
             </thead>
             <tbody id="uaBody"></tbody>
