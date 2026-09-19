@@ -631,11 +631,16 @@ ipcMain.handle('auth:login', () => {
       height: 700,
       title: 'Login — HS Manager',
       icon: path.join(__dirname, 'assets', 'icons', 'brand_dog.png'),
-      autoHideMenuBar: true,
+      frame: false,
       backgroundColor: '#09080A',
-      webPreferences: { partition: `temp:hs-auth-${Date.now()}` },
+      webPreferences: {
+        partition: `temp:hs-auth-${Date.now()}`,
+        preload: path.join(__dirname, 'preload-auth.js'),
+      },
     })
-    authWin.removeMenu()
+    const closeAuth = (e) => { if (e.sender === authWin.webContents && !authWin.isDestroyed()) authWin.close() }
+    ipcMain.on('auth:close', closeAuth)
+    authWin.on('closed', () => ipcMain.removeListener('auth:close', closeAuth))
 
     authWin.loadURL(`${BASE_URL}/api/auth/signin/discord`)
 

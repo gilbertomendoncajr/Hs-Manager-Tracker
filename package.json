@@ -1,6 +1,6 @@
 {
   "name": "hs-drop-logger",
-  "version": "2.8.0",
+  "version": "2.8.1",
   "description": "Auto-logger de drops para HS Manager",
   "main": "main.js",
   "scripts": {
@@ -24,6 +24,7 @@
       "preload.js",
       "preload-overlay.js",
       "preload-compact.js",
+      "preload-auth.js",
       "index-v2.html",
       "v2-shim.js",
       "motion-pref.js",
