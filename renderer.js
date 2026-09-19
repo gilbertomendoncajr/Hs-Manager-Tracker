@@ -158,9 +158,9 @@ function switchTab(tab) {
   } else {
     if (ligaSection) ligaSection.style.display = 'none'
     if (logList) logList.style.display = ''
-    const hasDrops = uaBody.children.length > 0
-    if (uaSubtabBar) uaSubtabBar.style.display = hasDrops ? 'flex' : 'none'
+    if (uaSubtabBar) uaSubtabBar.style.display = 'flex'
     _switchUaSubtab(currentUaSubtab)
+    _updateUaEmptyStates()
     _refreshUaCount()
   }
 
